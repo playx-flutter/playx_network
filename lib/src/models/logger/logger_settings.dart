@@ -1,3 +1,5 @@
+
+/// Logger settings used to customize what should be logged by the application when performing a request.
 class LoggerSettings {
   /// Print request [Options]
   final bool request;

@@ -1,7 +1,9 @@
+import 'dart:developer';
 import 'dart:io';
 import 'dart:ui';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:playx_network/src/models/exceptions/message/english_exception_message.dart';
 import 'package:playx_network/src/models/exceptions/message/exception_message.dart';
 import 'package:playx_network/src/utils/utils.dart';
@@ -66,6 +68,7 @@ class ApiHandler {
             return NetworkResult.success(result);
             // ignore: avoid_catches_without_on_clauses
           } catch (e) {
+            log('Playx Network Error : ', error: e);
             return NetworkResult.error(
               UnableToProcessException(
                   exceptionMessage: exceptionMessages,
@@ -76,6 +79,7 @@ class ApiHandler {
       }
       // ignore: avoid_catches_without_on_clauses
     } catch (e) {
+      log('Playx Network Error : ', error: e);
       return NetworkResult.error(UnexpectedErrorException(
         exceptionMessage: exceptionMessages,
       ));
@@ -125,6 +129,7 @@ class ApiHandler {
             return NetworkResult.success(result);
             // ignore: avoid_catches_without_on_clauses
           } catch (e) {
+            log('Playx Network Error : ', error: e);
             return NetworkResult.error(
               UnableToProcessException(
                   exceptionMessage: exceptionMessages,
@@ -135,6 +140,7 @@ class ApiHandler {
       }
       // ignore: avoid_catches_without_on_clauses
     } catch (e) {
+      log('Playx Network Error : ', error: e);
       return NetworkResult.error(UnexpectedErrorException(
         exceptionMessage: exceptionMessages,
       ));
@@ -280,5 +286,4 @@ class ApiHandler {
         json != null ? DefaultApiError.fromJson(json) : null;
     return error?.message;
   }
-
 }

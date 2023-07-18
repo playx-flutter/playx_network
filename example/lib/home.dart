@@ -48,7 +48,9 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
       ),
       //if you want to attach a token to the client.
-      token: '',
+      customHeaders: {
+
+      },
       //attach logger to the client to print ongoing requests works only on debug mode.
       attachLoggerOnDebug: true,
       logSettings: const LoggerSettings(

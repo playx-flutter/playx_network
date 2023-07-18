@@ -1,12 +1,10 @@
 import 'package:playx_network/src/models/exceptions/message/exception_message.dart';
 
+///Default client error messages.
+///To customize your messages you can override [ExceptionMessage] the same way as this class and customize the messages.
 class DefaultEnglishExceptionMessage extends ExceptionMessage {
 
 const  DefaultEnglishExceptionMessage();
-
-
-  @override
-  String get languageCode => 'en';
 
   @override
   String get badRequest =>  "Sorry, The API request is invalid or improperly formed.";

@@ -1,11 +1,13 @@
 import 'exceptions/network_exception.dart';
 
+/// Generic Wrapper class that happens when receiving a valid network response.
 class NetworkSuccess<T> extends NetworkResult<T> {
   final T data;
 
   const NetworkSuccess(this.data);
 }
 
+/// Generic Wrapper class that happens when an error happens.
 class NetworkError<T> extends NetworkResult<T> {
   final NetworkException error;
 
@@ -13,7 +15,7 @@ class NetworkError<T> extends NetworkResult<T> {
 }
 
 /// Generic Wrapper class for the result of network response.
-/// when the network call is successful it returns success.
+/// when the network call is successful it returns [NetworkSuccess].
 /// else it returns error with [NetworkException].
 sealed class NetworkResult<T> {
   const NetworkResult();
@@ -22,6 +24,7 @@ sealed class NetworkResult<T> {
 
   const factory NetworkResult.error(NetworkException error) = NetworkError;
 
+  ///Helps determining whether the network call is successful or not.
   void when({
     required Function(T success) success,
     required Function(NetworkException error) error,
@@ -36,6 +39,7 @@ sealed class NetworkResult<T> {
     }
   }
 
+  ///Maps the network request whether it's success or error to your desired model.
   S map<S>({
     required S Function(NetworkSuccess<T> data) success,
     required S Function(NetworkError<T> error) error,
@@ -48,6 +52,7 @@ sealed class NetworkResult<T> {
     }
   }
 
+  ///Maps the network request whether it's success or error to your desired model asynchronously.
   Future<S> mapAsync<S>({
     required Future<S> Function(NetworkSuccess<T> data) success,
     required Future<S> Function(NetworkError<T> error) error,

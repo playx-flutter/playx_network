@@ -1,8 +1,6 @@
 import 'package:playx_network/src/models/exceptions/message/exception_message.dart';
 
 class DefaultArabicExceptionMessage extends ExceptionMessage {
-  @override
-  String get languageCode => 'ar';
 
   @override
   String get badRequest => "عذرًا ، الطلب غير صالح أو تم صياغته بشكل غير صحيح.";

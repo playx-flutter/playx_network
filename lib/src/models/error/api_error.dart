@@ -1,7 +1,7 @@
 
 import 'package:playx_network/src/models/error/message.dart';
 
-///api error model that can be received from network response.
+///Default api error model that can be received from network response.
 ///can be updated based on the response.
 class DefaultApiError {
   int? statusCode;

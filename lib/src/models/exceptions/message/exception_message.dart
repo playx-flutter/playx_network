@@ -1,3 +1,5 @@
+
+/// Class that can be extended to implement your own custom errors message.
 abstract class ExceptionMessage {
 
  const ExceptionMessage();
@@ -6,7 +8,6 @@ abstract class ExceptionMessage {
 
   String get unauthorizedRequest;
 
-  String get languageCode;
 
   String get badRequest;
 
