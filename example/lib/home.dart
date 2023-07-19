@@ -38,6 +38,8 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     //Configure your network client based on your needs.
+
+
     _client = PlayxNetworkClient(
       // customize your dio options.
       dio: Dio(
@@ -70,7 +72,7 @@ class _MyHomePageState extends State<MyHomePage> {
     );
     super.initState();
 
-    //Get weahter and cats from api.
+    //Get weather and cats from api.
     getWeatherFromApi();
     getCatsFromApi();
   }
