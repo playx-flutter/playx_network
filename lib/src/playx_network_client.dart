@@ -62,6 +62,26 @@ class PlayxNetworkClient {
     );
   }
 
+   static Dio createDefaultDioClient({
+    required String baseUrl,
+  }) {
+    final Dio dio = Dio(
+      BaseOptions(
+        baseUrl: baseUrl,
+        validateStatus: (_) => true,
+        followRedirects: true,
+        connectTimeout: const Duration(seconds: 30),
+        sendTimeout: const Duration(seconds: 20),
+        contentType: Headers.jsonContentType,
+      ),
+    );
+
+    return dio;
+  }
+
+
+
+
   /// sends a [GET] request to the given [url]
   /// and returns object of Type [T] model.
   /// You can pass your own queries, headers weather to attach custom headers or not.

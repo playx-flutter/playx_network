@@ -7,22 +7,6 @@ class DioClient {
 
   DioClient({required this.dio, this.customHeaders = const {}});
 
-  static Dio createDioClient({
-    required String baseUrl,
-  }) {
-    final Dio dio = Dio(
-      BaseOptions(
-        baseUrl: baseUrl,
-        validateStatus: (_) => true,
-        followRedirects: true,
-        connectTimeout: const Duration(seconds: 30),
-        sendTimeout: const Duration(seconds: 20),
-        contentType: Headers.jsonContentType,
-      ),
-    );
-
-    return dio;
-  }
 
   /// sends a [GET] request to the given [url]
   Future<Response> get<T>(

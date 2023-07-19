@@ -3,10 +3,6 @@ import 'package:playx_network/playx_network.dart';
 class CustomExceptionMessage  extends ExceptionMessage{
   const  CustomExceptionMessage();
 
-
-  @override
-  String get languageCode => 'en';
-
   @override
   String get badRequest =>  "Sorry, The API request is invalid or improperly formed.";
 

@@ -5,10 +5,11 @@
 
 class Cat {
   Cat({
-      this.id, 
-      this.url, 
-      this.width, 
-      this.height,});
+    this.id,
+    this.url,
+    this.width,
+    this.height,
+  });
 
   Cat.fromJson(dynamic json) {
     id = json['id'];
@@ -16,6 +17,7 @@ class Cat {
     width = json['width'];
     height = json['height'];
   }
+
   String? id;
   String? url;
   num? width;
@@ -29,5 +31,4 @@ class Cat {
     map['height'] = height;
     return map;
   }
-
 }
