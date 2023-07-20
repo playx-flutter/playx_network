@@ -31,7 +31,7 @@ class PlayxNetworkClient {
   /// also you can handle when un authorized request is received by using [onUnauthorizedRequestReceived].
   PlayxNetworkClient({
     required Dio dio,
-    Map<String, dynamic> customHeaders = const {},
+    final Future<Map<String, dynamic>> Function()? customHeaders,
     bool attachLoggerOnDebug = true,
     LoggerSettings logSettings = const LoggerSettings(),
     ErrorMapper? errorMapper,

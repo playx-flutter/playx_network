@@ -39,7 +39,6 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     //Configure your network client based on your needs.
 
-
     _client = PlayxNetworkClient(
       // customize your dio options.
       dio: Dio(
@@ -50,9 +49,7 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
       ),
       //if you want to attach a token to the client.
-      customHeaders: {
-
-      },
+      customHeaders: ()=> getCustomHeaders(),
       //attach logger to the client to print ongoing requests works only on debug mode.
       attachLoggerOnDebug: true,
       logSettings: const LoggerSettings(
@@ -75,6 +72,10 @@ class _MyHomePageState extends State<MyHomePage> {
     //Get weather and cats from api.
     getWeatherFromApi();
     getCatsFromApi();
+  }
+
+  Future<Map<String, dynamic>> getCustomHeaders() async{
+    return { };
   }
 
   @override

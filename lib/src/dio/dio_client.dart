@@ -3,9 +3,9 @@ import 'package:dio/dio.dart';
 // ignore: avoid_classes_with_only_static_members
 class DioClient {
   final Dio dio;
-  final Map<String, dynamic> customHeaders;
+  final Future<Map<String, dynamic>> Function()? customHeaders;
 
-  DioClient({required this.dio, this.customHeaders = const {}});
+  DioClient({required this.dio, this.customHeaders});
 
 
   /// sends a [GET] request to the given [url]
@@ -23,7 +23,7 @@ class DioClient {
         options: options ??
             Options(
               headers: {
-                if (attachCustomHeaders) ...customHeaders,
+                if (attachCustomHeaders && customHeaders != null) ...?await customHeaders?.call(),
                 ...headers,
               },
             ),
@@ -50,7 +50,7 @@ class DioClient {
       options: options ??
           Options(
             headers: {
-              if (attachCustomHeaders) ...customHeaders,
+              if (attachCustomHeaders && customHeaders != null) ...?await customHeaders?.call(),
               ...headers,
             },
             contentType: contentType,
@@ -78,7 +78,7 @@ class DioClient {
       options: options ??
           Options(
             headers: {
-              if (attachCustomHeaders) ...customHeaders,
+              if (attachCustomHeaders && customHeaders != null) ...?await customHeaders?.call(),
               ...headers,
             },
             contentType: contentType,
@@ -107,7 +107,7 @@ class DioClient {
       options: options ??
           Options(
             headers: {
-              if (attachCustomHeaders) ...customHeaders,
+              if (attachCustomHeaders && customHeaders != null) ...?await customHeaders?.call(),
               ...headers,
             },
             contentType: contentType,
