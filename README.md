@@ -1,6 +1,3 @@
-
-
-
 # Playx  Network
 [![pub package](https://img.shields.io/pub/v/playx_network.svg?color=1284C5)](https://pub.dev/packages/playx_network)
 
@@ -18,7 +15,7 @@ Wrapper around [`Dio`](https://pub.dev/packages/dio) that can perform API reques
 In `pubspec.yaml` add these lines to `dependencies`
 
 ```yaml  
-playx_network: ^0.0.2
+playx_network: ^0.0.4
 ```  
 
 ## Usage
@@ -40,8 +37,8 @@ To use it we need to :
         ),
       ),
       //If you want to attach a token to the client or add any custom headers to all requests.
-      customHeaders: {
-       'authorization': 'Bearer token'
+      customHeaders: () async => {
+        'authorization': 'Bearer token'
       },
       //Function that converts json error response from api to error message.
       // You should specify how to extract error message from the response.

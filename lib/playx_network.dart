@@ -8,4 +8,5 @@ export 'package:playx_network/src/models/exceptions/message/english_exception_me
 export 'package:playx_network/src/models/exceptions/message/exception_message.dart';
 export 'package:playx_network/src/models/error/api_error.dart';
 export 'package:dio/dio.dart';
+export 'package:dio/io.dart';
 
