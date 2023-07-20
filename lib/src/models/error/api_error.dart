@@ -5,28 +5,33 @@ import 'package:playx_network/src/models/error/message.dart';
 ///can be updated based on the response.
 class DefaultApiError {
   int? statusCode;
-  String? error;
   String? message;
 
   DefaultApiError({
     this.statusCode,
-    this.error,
     this.message,
   });
 
   DefaultApiError.fromJson(dynamic json) {
-    statusCode = json['statusCode'] as int?;
-    error = json['error'] as String?;
     try {
-      message = json['message'] as String?;
-      // ignore: avoid_catches_without_on_clauses
-    } catch (_) {
-      try {
-        final apiMessage =
-            ApiMessage.fromJson((json['message'] as List).firstOrNull);
+      final map = json as Map<String, dynamic>;
+      if(map.containsKey('statusCode')){
+        statusCode = map['statusCode'] as int?;
+      }
+      if(map.containsKey('message')){
+        message = json['message'] as String?;
+      }else if(map.containsKey('error')){
+        if(map['error'] is Map<String, dynamic>){
+          final error = map['error'] as Map<String, dynamic>;
+          if (error.containsKey('message')) {
+            message = error['message'] as String?;
+          }
+        }
+      }else{
+        final apiMessage = ApiMessage.fromJson((json['message'] as List).firstOrNull);
         message = apiMessage.messages?.firstOrNull?.message;
-        // ignore: avoid_catches_without_on_clauses
-      } catch (_) {}
-    }
+      }
+      // ignore: avoid_catches_without_on_clauses
+    } catch (_) {}
   }
 }
