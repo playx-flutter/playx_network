@@ -10,7 +10,7 @@ import 'handler/api_handler.dart';
 import 'models/network_result.dart';
 
 ///Function that converts json response to the required model.
-typedef JsonMapper<T> = T Function(Map<String, dynamic> json);
+typedef JsonMapper<T> = T Function(dynamic json);
 
 ///Function that converts json error response from api to error message.
 typedef ErrorMapper = String? Function(Map<String, dynamic> json);

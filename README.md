@@ -18,7 +18,7 @@ Wrapper around [`Dio`](https://pub.dev/packages/dio) that can perform API reques
 In `pubspec.yaml` add these lines to `dependencies`
 
 ```yaml  
-playx_network: ^0.0.1
+playx_network: ^0.0.2
 ```  
 
 ## Usage
