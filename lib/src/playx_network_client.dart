@@ -13,7 +13,7 @@ import 'models/network_result.dart';
 typedef JsonMapper<T> = T Function(dynamic json);
 
 ///Function that converts json error response from api to error message.
-typedef ErrorMapper = String? Function(Map<String, dynamic> json);
+typedef ErrorMapper = String? Function(dynamic json);
 
 /// PlayxNetworkClient is a Wrapper around [Dio] that can perform api request
 /// With better error handling and easily get the result of any api request.
