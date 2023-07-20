@@ -63,8 +63,7 @@ class ApiHandler {
           }
 
           try {
-            final json = data as Map<String, dynamic>;
-            final result = fromJson(json);
+            final result = fromJson(data);
             return NetworkResult.success(result);
             // ignore: avoid_catches_without_on_clauses
           } catch (e) {
@@ -119,7 +118,7 @@ class ApiHandler {
 
           try {
             final List<T> result = (data as List)
-                .map((item) => fromJson(item as Map<String, dynamic>))
+                .map((item) => fromJson(item))
                 .toList();
             if (result.isEmpty) {
               return NetworkResult.error(EmptyResponseException(
@@ -152,13 +151,14 @@ class ApiHandler {
   }
 
   NetworkException _handleResponse(Response? response) {
-    final dynamic jsonData = response?.data;
+    final dynamic errorJson = response?.data;
 
-    if (jsonData is Map<String, dynamic>) {
-      final Map<String, dynamic> json = jsonData;
-      final String? errMsg = errorMapper(json);
+       String? errMsg;
+      try{
+        errMsg =  errorMapper(errorJson);
+      }catch(_){}
 
-      final int statusCode = response?.statusCode ?? 0;
+      final int statusCode = response?.statusCode ?? -1;
       switch (statusCode) {
         case 400:
           return DefaultApiException(
@@ -207,11 +207,6 @@ class ApiHandler {
               exceptionMessage: exceptionMessages,
               shouldShowApiError: shouldShowApiErrors);
       }
-    } else {
-      return UnexpectedErrorException(
-        exceptionMessage: exceptionMessages,
-      );
-    }
   }
 
   NetworkException _getDioException(dynamic error) {
@@ -281,7 +276,7 @@ class ApiHandler {
     }
   }
 
-  static String? getErrorMessageFromResponse(Map<String, dynamic>? json) {
+  static String? getErrorMessageFromResponse(dynamic json) {
     final DefaultApiError? error =
         json != null ? DefaultApiError.fromJson(json) : null;
     return error?.message;
