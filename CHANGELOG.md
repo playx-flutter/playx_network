@@ -1,3 +1,6 @@
+#0.0.5 
+- Enhancements for default error model.
+
 #0.0.4
 - Make `customHeaders` to be of type function that return a map to be updated correctly.
 
