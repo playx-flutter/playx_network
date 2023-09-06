@@ -30,10 +30,11 @@ class ApiHandler {
     this.onUnauthorizedRequestReceived,
   });
 
-  Future<NetworkResult<T>> handleNetworkResult<T>(
-    Response response,
-    JsonMapper<T> fromJson,
-  ) async {
+  Future<NetworkResult<T>> handleNetworkResult<T>({
+    required Response response,
+    required JsonMapper<T> fromJson,
+    bool shouldHandleUnauthorizedRequest = true,
+  }) async {
     try {
       final correctCodes = [
         200,
@@ -44,21 +45,22 @@ class ApiHandler {
           !correctCodes.contains(response.statusCode)) {
         final NetworkException exception = _handleResponse(response);
 
-        if (exception is UnauthorizedRequestException) {
+        if (shouldHandleUnauthorizedRequest &&
+            exception is UnauthorizedRequestException) {
           onUnauthorizedRequestReceived?.call();
         }
         return NetworkResult.error(exception);
       } else {
         if (isResponseBlank(response) ?? true) {
           return NetworkResult.error(UnexpectedErrorException(
-            exceptionMessage: exceptionMessages,
+            errorMessage: exceptionMessages.unexpectedError,
           ));
         } else {
           final data = response.data;
 
           if (data == null) {
             return NetworkResult.error(EmptyResponseException(
-                exceptionMessage: exceptionMessages,
+                errorMessage: exceptionMessages.emptyResponse,
                 shouldShowApiError: shouldShowApiErrors));
           }
 
@@ -70,7 +72,7 @@ class ApiHandler {
             log('Playx Network Error : ', error: e);
             return NetworkResult.error(
               UnableToProcessException(
-                  exceptionMessage: exceptionMessages,
+                  errorMessage: exceptionMessages.unableToProcess,
                   shouldShowApiError: shouldShowApiErrors),
             );
           }
@@ -80,15 +82,16 @@ class ApiHandler {
     } catch (e) {
       log('Playx Network Error : ', error: e);
       return NetworkResult.error(UnexpectedErrorException(
-        exceptionMessage: exceptionMessages,
+        errorMessage: exceptionMessages.unexpectedError,
       ));
     }
   }
 
-  Future<NetworkResult<List<T>>> handleNetworkResultForList<T>(
-    Response response,
-    JsonMapper<T> fromJson,
-  ) async {
+  Future<NetworkResult<List<T>>> handleNetworkResultForList<T>({
+    required Response response,
+    required JsonMapper<T> fromJson,
+    bool shouldHandleUnauthorizedRequest = true,
+  }) async {
     try {
       final correctCodes = [
         200,
@@ -98,31 +101,31 @@ class ApiHandler {
       if (response.statusCode == HttpStatus.badRequest ||
           !correctCodes.contains(response.statusCode)) {
         final NetworkException exception = _handleResponse(response);
-        if (exception is UnauthorizedRequestException) {
+        if (shouldHandleUnauthorizedRequest &&
+            exception is UnauthorizedRequestException) {
           onUnauthorizedRequestReceived?.call();
         }
         return NetworkResult.error(exception);
       } else {
         if (isResponseBlank(response) ?? true) {
           return NetworkResult.error(UnexpectedErrorException(
-            exceptionMessage: exceptionMessages,
+            errorMessage: exceptionMessages.unexpectedError,
           ));
         } else {
           final data = response.data;
 
           if (data == null) {
             return NetworkResult.error(EmptyResponseException(
-                exceptionMessage: exceptionMessages,
+                errorMessage: exceptionMessages.emptyResponse,
                 shouldShowApiError: shouldShowApiErrors));
           }
 
           try {
-            final List<T> result = (data as List)
-                .map((item) => fromJson(item))
-                .toList();
+            final List<T> result =
+                (data as List).map((item) => fromJson(item)).toList();
             if (result.isEmpty) {
               return NetworkResult.error(EmptyResponseException(
-                  exceptionMessage: exceptionMessages,
+                  errorMessage: exceptionMessages.emptyResponse,
                   shouldShowApiError: shouldShowApiErrors));
             }
             return NetworkResult.success(result);
@@ -131,7 +134,7 @@ class ApiHandler {
             log('Playx Network Error : ', error: e);
             return NetworkResult.error(
               UnableToProcessException(
-                  exceptionMessage: exceptionMessages,
+                  errorMessage: exceptionMessages.unableToProcess,
                   shouldShowApiError: shouldShowApiErrors),
             );
           }
@@ -141,7 +144,7 @@ class ApiHandler {
     } catch (e) {
       log('Playx Network Error : ', error: e);
       return NetworkResult.error(UnexpectedErrorException(
-        exceptionMessage: exceptionMessages,
+        errorMessage: exceptionMessages.unexpectedError,
       ));
     }
   }
@@ -153,124 +156,124 @@ class ApiHandler {
   NetworkException _handleResponse(Response? response) {
     final dynamic errorJson = response?.data;
 
-       String? errMsg;
-      try{
-        errMsg =  errorMapper(errorJson);
-      }catch(_){}
+    String? errMsg;
+    try {
+      errMsg = errorMapper(errorJson);
+    } catch (_) {}
 
-      final int statusCode = response?.statusCode ?? -1;
-      switch (statusCode) {
-        case 400:
-          return DefaultApiException(
-              error: errMsg,
-              exceptionMessage: exceptionMessages,
-              shouldShowApiError: shouldShowApiErrors);
-        case 401:
-        case 403:
-          return UnauthorizedRequestException(
-              error: errMsg,
-              exceptionMessage: exceptionMessages,
-              shouldShowApiError: shouldShowApiErrors);
-        case 404:
-          return NotFoundException(
-              error: errMsg,
-              exceptionMessage: exceptionMessages,
-              shouldShowApiError: shouldShowApiErrors);
-        case 409:
-          return ConflictException(
-              error: errMsg,
-              exceptionMessage: exceptionMessages,
-              shouldShowApiError: shouldShowApiErrors);
-        case 408:
-          return RequestTimeoutException(
-              error: errMsg,
-              exceptionMessage: exceptionMessages,
-              shouldShowApiError: shouldShowApiErrors);
-        case 422:
-          return UnableToProcessException(
-              error: errMsg,
-              exceptionMessage: exceptionMessages,
-              shouldShowApiError: shouldShowApiErrors);
-        case 500:
-          return InternalServerErrorException(
-              error: errMsg,
-              exceptionMessage: exceptionMessages,
-              shouldShowApiError: shouldShowApiErrors);
-        case 503:
-          return ServiceUnavailableException(
-              error: errMsg,
-              exceptionMessage: exceptionMessages,
-              shouldShowApiError: shouldShowApiErrors);
-        default:
-          return DefaultApiException(
-              error: errMsg,
-              exceptionMessage: exceptionMessages,
-              shouldShowApiError: shouldShowApiErrors);
-      }
+    final int statusCode = response?.statusCode ?? -1;
+    switch (statusCode) {
+      case 400:
+        return DefaultApiException(
+            apiErrorMessage: errMsg,
+            errorMessage: exceptionMessages.defaultError,
+            shouldShowApiError: shouldShowApiErrors);
+      case 401:
+      case 403:
+        return UnauthorizedRequestException(
+            apiErrorMessage: errMsg,
+            errorMessage: exceptionMessages.unauthorizedRequest,
+            shouldShowApiError: shouldShowApiErrors);
+      case 404:
+        return NotFoundException(
+            apiErrorMessage: errMsg,
+            errorMessage: exceptionMessages.notFound,
+            shouldShowApiError: shouldShowApiErrors);
+      case 409:
+        return ConflictException(
+            apiErrorMessage: errMsg,
+            errorMessage: exceptionMessages.conflict,
+            shouldShowApiError: shouldShowApiErrors);
+      case 408:
+        return RequestTimeoutException(
+            apiErrorMessage: errMsg,
+            errorMessage: exceptionMessages.requestTimeout,
+            shouldShowApiError: shouldShowApiErrors);
+      case 422:
+        return UnableToProcessException(
+            apiErrorMessage: errMsg,
+            errorMessage: exceptionMessages.unableToProcess,
+            shouldShowApiError: shouldShowApiErrors);
+      case 500:
+        return InternalServerErrorException(
+            apiErrorMessage: errMsg,
+            errorMessage: exceptionMessages.internalServerError,
+            shouldShowApiError: shouldShowApiErrors);
+      case 503:
+        return ServiceUnavailableException(
+            apiErrorMessage: errMsg,
+            errorMessage: exceptionMessages.serviceUnavailable,
+            shouldShowApiError: shouldShowApiErrors);
+      default:
+        return DefaultApiException(
+            apiErrorMessage: errMsg,
+            errorMessage: exceptionMessages.defaultError,
+            shouldShowApiError: shouldShowApiErrors);
+    }
   }
 
   NetworkException _getDioException(dynamic error) {
     if (error is Exception) {
       try {
-        NetworkException networkExceptions =
-            UnexpectedErrorException(exceptionMessage: exceptionMessages);
+        NetworkException networkExceptions = UnexpectedErrorException(
+            errorMessage: exceptionMessages.unexpectedError);
 
         if (error is DioException) {
           networkExceptions = switch (error.type) {
             DioExceptionType.cancel => RequestCanceledException(
-                exceptionMessage: exceptionMessages,
+                errorMessage: exceptionMessages.requestCancelled,
               ),
             DioExceptionType.connectionTimeout => RequestTimeoutException(
-                exceptionMessage: exceptionMessages,
+                errorMessage: exceptionMessages.requestTimeout,
                 shouldShowApiError: shouldShowApiErrors),
             DioExceptionType.unknown => error.error is SocketException
                 ? NoInternetConnectionException(
-                    exceptionMessage: exceptionMessages,
+                    errorMessage: exceptionMessages.noInternetConnection,
                   )
                 : UnexpectedErrorException(
-                    exceptionMessage: exceptionMessages,
+                    errorMessage: exceptionMessages.unexpectedError,
                   ),
             DioExceptionType.receiveTimeout => SendTimeoutException(
-                exceptionMessage: exceptionMessages,
+                errorMessage: exceptionMessages.sendTimeout,
               ),
             DioExceptionType.badResponse => _handleResponse(error.response),
             DioExceptionType.sendTimeout => SendTimeoutException(
-                exceptionMessage: exceptionMessages,
+                errorMessage: exceptionMessages.sendTimeout,
               ),
             DioExceptionType.badCertificate => UnexpectedErrorException(
-                exceptionMessage: exceptionMessages,
+                errorMessage: exceptionMessages.unexpectedError,
               ),
             DioExceptionType.connectionError => NoInternetConnectionException(
-                exceptionMessage: exceptionMessages,
+                errorMessage: exceptionMessages.noInternetConnection,
               ),
           };
         } else if (error is SocketException) {
           networkExceptions = NoInternetConnectionException(
-            exceptionMessage: exceptionMessages,
+            errorMessage: exceptionMessages.noInternetConnection,
           );
         } else {
           networkExceptions = UnexpectedErrorException(
-            exceptionMessage: exceptionMessages,
+            errorMessage: exceptionMessages.unexpectedError,
           );
         }
         return networkExceptions;
       } on FormatException catch (_) {
         return FormatException(
-          exceptionMessage: exceptionMessages,
+          errorMessage: exceptionMessages.formatException,
         );
       } catch (_) {
         return UnexpectedErrorException(
-          exceptionMessage: exceptionMessages,
+          errorMessage: exceptionMessages.unexpectedError,
         );
       }
     } else {
       if (error.toString().contains("is not a subtype of")) {
         return UnableToProcessException(
-            exceptionMessage: exceptionMessages,
-            shouldShowApiError: shouldShowApiErrors);
+            errorMessage: exceptionMessages.unableToProcess,
+            shouldShowApiError: false);
       } else {
         return UnexpectedErrorException(
-          exceptionMessage: exceptionMessages,
+          errorMessage: exceptionMessages.unexpectedError,
         );
       }
     }
