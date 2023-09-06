@@ -62,7 +62,7 @@ class PlayxNetworkClient {
     );
   }
 
-   static Dio createDefaultDioClient({
+  static Dio createDefaultDioClient({
     required String baseUrl,
   }) {
     final Dio dio = Dio(
@@ -79,9 +79,6 @@ class PlayxNetworkClient {
     return dio;
   }
 
-
-
-
   /// sends a [GET] request to the given [url]
   /// and returns object of Type [T] model.
   /// You can pass your own queries, headers weather to attach custom headers or not.
@@ -96,6 +93,7 @@ class PlayxNetworkClient {
     CancelToken? cancelToken,
     ProgressCallback? onReceiveProgress,
     required JsonMapper<T> fromJson,
+    bool shouldHandleUnauthorizedRequest = true,
   }) async {
     try {
       final res = await _dioClient.get(
@@ -107,7 +105,10 @@ class PlayxNetworkClient {
         cancelToken: cancelToken,
         onReceiveProgress: onReceiveProgress,
       );
-      return _apiHandler.handleNetworkResult(res, fromJson);
+      return _apiHandler.handleNetworkResult(
+          response: res,
+          fromJson: fromJson,
+          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
       return _apiHandler.handleDioException(error);
@@ -129,6 +130,7 @@ class PlayxNetworkClient {
     CancelToken? cancelToken,
     ProgressCallback? onReceiveProgress,
     required JsonMapper<T> fromJson,
+    bool shouldHandleUnauthorizedRequest = true,
   }) async {
     try {
       final res = await _dioClient.get(path,
@@ -138,7 +140,10 @@ class PlayxNetworkClient {
           attachCustomHeaders: attachCustomHeaders,
           cancelToken: cancelToken,
           onReceiveProgress: onReceiveProgress);
-      return _apiHandler.handleNetworkResultForList(res, fromJson);
+      return _apiHandler.handleNetworkResultForList(
+          response: res,
+          fromJson: fromJson,
+          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
       return _apiHandler.handleDioException(error);
@@ -162,6 +167,7 @@ class PlayxNetworkClient {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
     required JsonMapper<T> fromJson,
+    bool shouldHandleUnauthorizedRequest = true,
   }) async {
     try {
       final res = await _dioClient.post(
@@ -177,8 +183,10 @@ class PlayxNetworkClient {
         onReceiveProgress: onReceiveProgress,
       );
       return _apiHandler.handleNetworkResult(
-        res,
-        fromJson,
+
+        response: res,
+        fromJson: fromJson,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
@@ -203,6 +211,7 @@ class PlayxNetworkClient {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
     required JsonMapper<T> fromJson,
+    bool shouldHandleUnauthorizedRequest = true,
   }) async {
     try {
       final res = await _dioClient.post(
@@ -218,8 +227,10 @@ class PlayxNetworkClient {
         onReceiveProgress: onReceiveProgress,
       );
       return _apiHandler.handleNetworkResultForList(
-        res,
-        fromJson,
+
+        response: res,
+        fromJson: fromJson,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
@@ -242,6 +253,7 @@ class PlayxNetworkClient {
     bool attachCustomHeaders = true,
     CancelToken? cancelToken,
     required JsonMapper<T> fromJson,
+    bool shouldHandleUnauthorizedRequest = true,
   }) async {
     try {
       final res = await _dioClient.delete(
@@ -255,8 +267,10 @@ class PlayxNetworkClient {
         cancelToken: cancelToken,
       );
       return _apiHandler.handleNetworkResult(
-        res,
-        fromJson,
+
+        response: res,
+        fromJson: fromJson,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
@@ -279,6 +293,7 @@ class PlayxNetworkClient {
     bool attachCustomHeaders = true,
     CancelToken? cancelToken,
     required JsonMapper<T> fromJson,
+    bool shouldHandleUnauthorizedRequest = true,
   }) async {
     try {
       final res = await _dioClient.delete(
@@ -292,8 +307,10 @@ class PlayxNetworkClient {
         cancelToken: cancelToken,
       );
       return _apiHandler.handleNetworkResultForList(
-        res,
-        fromJson,
+
+        response: res,
+        fromJson: fromJson,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
@@ -318,6 +335,7 @@ class PlayxNetworkClient {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
     required JsonMapper<T> fromJson,
+    bool shouldHandleUnauthorizedRequest = true,
   }) async {
     try {
       final res = await _dioClient.put(
@@ -332,7 +350,10 @@ class PlayxNetworkClient {
         onSendProgress: onSendProgress,
         onReceiveProgress: onReceiveProgress,
       );
-      return _apiHandler.handleNetworkResult(res, fromJson);
+      return _apiHandler.handleNetworkResult(
+          response: res,
+          fromJson: fromJson,
+          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
       return _apiHandler.handleDioException(error);
@@ -356,6 +377,7 @@ class PlayxNetworkClient {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
     required JsonMapper<T> fromJson,
+    bool shouldHandleUnauthorizedRequest = true,
   }) async {
     try {
       final res = await _dioClient.put(
@@ -370,7 +392,10 @@ class PlayxNetworkClient {
         onSendProgress: onSendProgress,
         onReceiveProgress: onReceiveProgress,
       );
-      return _apiHandler.handleNetworkResultForList(res, fromJson);
+      return _apiHandler.handleNetworkResultForList(
+          response: res,
+          fromJson: fromJson,
+          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
       return _apiHandler.handleDioException(error);

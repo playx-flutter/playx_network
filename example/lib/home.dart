@@ -133,8 +133,8 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       _isLoading = true;
     });
-
     final result = await _client.get(_forecastEndpoint,
+        shouldHandleUnauthorizedRequest: false,
         //your custom queries.
         query: {
           'latitude': '30.04',

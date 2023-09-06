@@ -1,3 +1,7 @@
+#0.0.6
+- Add ability to not handle unauthorized requests on each request.
+- [Breaking Change]! : Each Network Exception now takes errorMessage of type String instead of exceptionMessage
+
 #0.0.5 
 - Enhancements for default error model.
 
