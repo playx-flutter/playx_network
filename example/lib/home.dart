@@ -66,10 +66,14 @@ class _MyHomePageState extends State<MyHomePage> {
       shouldShowApiErrors: true,
       //creates custom exception messages to be displayed when error is received.
       exceptionMessages: const CustomExceptionMessage(),
+      onUnauthorizedRequestReceived: (){
+        print('onUnauthorizedRequestReceived');
+
+      }
     );
     super.initState();
 
-    //Get weather and cats from api.
+    // Get weather and cats from api.
     getWeatherFromApi();
     getCatsFromApi();
   }
@@ -189,7 +193,7 @@ class _MyHomePageState extends State<MyHomePage> {
       });
     });
 
-    // We can map the result to another type like this example:
+      // We can map the result to another type like this example:
     // As it converts lis of cats to list of cats image urls.
     final NetworkResult<List<String?>> catImagesResult = result.map(success: (success) {
       final data = success.data;
@@ -199,4 +203,6 @@ class _MyHomePageState extends State<MyHomePage> {
       return NetworkResult<List<String?>>.error(error.error);
     });
   }
+
+
 }

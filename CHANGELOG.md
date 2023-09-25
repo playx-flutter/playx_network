@@ -1,3 +1,8 @@
+#0.0.7
+- Update packages.
+- Bug fix, causing `onUnauthorizedRequestReceived` not called when receiving unauthorized request on certain cases.
+
+
 #0.0.6
 - Add ability to not handle unauthorized requests on each request.
 - [Breaking Change]! : Each Network Exception now takes errorMessage of type String instead of exceptionMessage

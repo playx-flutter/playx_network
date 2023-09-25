@@ -43,12 +43,8 @@ class ApiHandler {
 
       if (response.statusCode == HttpStatus.badRequest ||
           !correctCodes.contains(response.statusCode)) {
-        final NetworkException exception = _handleResponse(response);
+        final NetworkException exception = _handleResponse(response: response, shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
 
-        if (shouldHandleUnauthorizedRequest &&
-            exception is UnauthorizedRequestException) {
-          onUnauthorizedRequestReceived?.call();
-        }
         return NetworkResult.error(exception);
       } else {
         if (isResponseBlank(response) ?? true) {
@@ -100,11 +96,7 @@ class ApiHandler {
 
       if (response.statusCode == HttpStatus.badRequest ||
           !correctCodes.contains(response.statusCode)) {
-        final NetworkException exception = _handleResponse(response);
-        if (shouldHandleUnauthorizedRequest &&
-            exception is UnauthorizedRequestException) {
-          onUnauthorizedRequestReceived?.call();
-        }
+        final NetworkException exception = _handleResponse(response: response, shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
         return NetworkResult.error(exception);
       } else {
         if (isResponseBlank(response) ?? true) {
@@ -149,11 +141,11 @@ class ApiHandler {
     }
   }
 
-  NetworkResult<T> handleDioException<T>(dynamic error) {
-    return NetworkResult.error(_getDioException(error));
+  NetworkResult<T> handleDioException<T>({dynamic error, bool shouldHandleUnauthorizedRequest = true}) {
+    return NetworkResult.error(_getDioException(error: error,shouldHandleUnauthorizedRequest :shouldHandleUnauthorizedRequest));
   }
 
-  NetworkException _handleResponse(Response? response) {
+  NetworkException _handleResponse({Response? response, bool shouldHandleUnauthorizedRequest = true }) {
     final dynamic errorJson = response?.data;
 
     String? errMsg;
@@ -170,7 +162,11 @@ class ApiHandler {
             shouldShowApiError: shouldShowApiErrors);
       case 401:
       case 403:
-        return UnauthorizedRequestException(
+      if (shouldHandleUnauthorizedRequest ) {
+        onUnauthorizedRequestReceived?.call();
+      }
+
+      return UnauthorizedRequestException(
             apiErrorMessage: errMsg,
             errorMessage: exceptionMessages.unauthorizedRequest,
             shouldShowApiError: shouldShowApiErrors);
@@ -212,7 +208,7 @@ class ApiHandler {
     }
   }
 
-  NetworkException _getDioException(dynamic error) {
+  NetworkException _getDioException({dynamic error, bool shouldHandleUnauthorizedRequest = true}) {
     if (error is Exception) {
       try {
         NetworkException networkExceptions = UnexpectedErrorException(
@@ -236,7 +232,7 @@ class ApiHandler {
             DioExceptionType.receiveTimeout => SendTimeoutException(
                 errorMessage: exceptionMessages.sendTimeout,
               ),
-            DioExceptionType.badResponse => _handleResponse(error.response),
+            DioExceptionType.badResponse => _handleResponse(response: error.response,shouldHandleUnauthorizedRequest :shouldHandleUnauthorizedRequest),
             DioExceptionType.sendTimeout => SendTimeoutException(
                 errorMessage: exceptionMessages.sendTimeout,
               ),
