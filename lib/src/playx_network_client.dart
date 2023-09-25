@@ -111,7 +111,7 @@ class PlayxNetworkClient {
           shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
-      return _apiHandler.handleDioException(error);
+      return _apiHandler.handleDioException(error: error, shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
     }
   }
 
@@ -146,7 +146,7 @@ class PlayxNetworkClient {
           shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
-      return _apiHandler.handleDioException(error);
+      return _apiHandler.handleDioException(error: error, shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
     }
   }
 
@@ -190,7 +190,7 @@ class PlayxNetworkClient {
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
-      return _apiHandler.handleDioException(error);
+      return _apiHandler.handleDioException(error: error, shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
     }
   }
 
@@ -234,7 +234,7 @@ class PlayxNetworkClient {
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
-      return _apiHandler.handleDioException(error);
+      return _apiHandler.handleDioException(error: error, shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
     }
   }
 
@@ -274,7 +274,7 @@ class PlayxNetworkClient {
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
-      return _apiHandler.handleDioException(error);
+      return _apiHandler.handleDioException(error: error, shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
     }
   }
 
@@ -314,7 +314,7 @@ class PlayxNetworkClient {
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
-      return _apiHandler.handleDioException(error);
+      return _apiHandler.handleDioException(error: error, shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
     }
   }
 
@@ -356,7 +356,7 @@ class PlayxNetworkClient {
           shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
-      return _apiHandler.handleDioException(error);
+      return _apiHandler.handleDioException(error: error, shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
     }
   }
 
@@ -398,7 +398,7 @@ class PlayxNetworkClient {
           shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
-      return _apiHandler.handleDioException(error);
+      return _apiHandler.handleDioException(error: error, shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
     }
   }
 }
