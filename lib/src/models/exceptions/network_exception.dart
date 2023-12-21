@@ -14,10 +14,15 @@ sealed class NetworkException {
 
 
 class ApiException extends NetworkException {
+  /// Error message from the api.
   final String? apiErrorMessage;
+  /// Status code of the response.
+  /// Returns -1 if the error is not returned from the api.
+  final int statusCode;
 
   const ApiException(
       {this.apiErrorMessage,
+        required this.statusCode,
       required super.errorMessage,
       super.shouldShowApiError});
 
@@ -31,7 +36,8 @@ class UnauthorizedRequestException extends ApiException {
 
   const UnauthorizedRequestException(
       {super.apiErrorMessage,
-      required super.errorMessage,
+        required super.statusCode,
+        required super.errorMessage,
       super.shouldShowApiError});
 
 }
@@ -41,7 +47,8 @@ class NotFoundException extends ApiException {
 
   const NotFoundException(
       {super.apiErrorMessage,
-      required super.errorMessage,
+        required super.statusCode,
+        required super.errorMessage,
       super.shouldShowApiError});
 
   @override
@@ -54,7 +61,8 @@ class ConflictException extends ApiException {
 
   const ConflictException(
       {super.apiErrorMessage,
-      required super.errorMessage,
+        required super.statusCode,
+        required super.errorMessage,
       super.shouldShowApiError});
 
   @override
@@ -67,7 +75,8 @@ class RequestTimeoutException extends ApiException {
 
   const RequestTimeoutException(
       {super.apiErrorMessage,
-      required super.errorMessage,
+        required super.statusCode,
+        required super.errorMessage,
       super.shouldShowApiError});
 
   @override
@@ -82,7 +91,8 @@ class UnableToProcessException extends ApiException {
 
   const UnableToProcessException(
       {super.apiErrorMessage,
-      required super.errorMessage,
+        required super.statusCode,
+        required super.errorMessage,
       super.shouldShowApiError});
 
   @override
@@ -96,7 +106,8 @@ class InternalServerErrorException extends ApiException {
 
   const InternalServerErrorException(
       {super.apiErrorMessage,
-      required super.errorMessage,
+        required super.statusCode,
+        required super.errorMessage,
       super.shouldShowApiError});
 
   @override
@@ -110,7 +121,8 @@ class ServiceUnavailableException extends ApiException {
 
   const ServiceUnavailableException(
       {super.apiErrorMessage,
-      required super.errorMessage,
+        required super.statusCode,
+        required super.errorMessage,
       super.shouldShowApiError});
 
   @override
@@ -123,7 +135,8 @@ class EmptyResponseException extends ApiException {
 
   const EmptyResponseException(
       {super.apiErrorMessage,
-      required super.errorMessage,
+        required super.statusCode,
+        required super.errorMessage,
       super.shouldShowApiError});
 
   @override
@@ -136,7 +149,8 @@ class DefaultApiException extends ApiException {
 
   const DefaultApiException(
       {super.apiErrorMessage,
-      required super.errorMessage,
+        required super.statusCode,
+        required super.errorMessage,
       super.shouldShowApiError});
 
 }

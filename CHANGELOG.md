@@ -1,3 +1,8 @@
+#0.0.8
+- Update packages.
+- Add `statusCode` to `ApiException` to be able to handle different error status codes returned from the api.
+
+
 #0.0.7
 - Update packages.
 - Bug fix, causing `onUnauthorizedRequestReceived` not called when receiving unauthorized request on certain cases.

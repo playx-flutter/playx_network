@@ -57,6 +57,7 @@ class ApiHandler {
           if (data == null) {
             return NetworkResult.error(EmptyResponseException(
                 errorMessage: exceptionMessages.emptyResponse,
+                statusCode: -1,
                 shouldShowApiError: shouldShowApiErrors));
           }
 
@@ -69,6 +70,7 @@ class ApiHandler {
             return NetworkResult.error(
               UnableToProcessException(
                   errorMessage: exceptionMessages.unableToProcess,
+                  statusCode: -1,
                   shouldShowApiError: shouldShowApiErrors),
             );
           }
@@ -109,6 +111,7 @@ class ApiHandler {
           if (data == null) {
             return NetworkResult.error(EmptyResponseException(
                 errorMessage: exceptionMessages.emptyResponse,
+                statusCode: -1,
                 shouldShowApiError: shouldShowApiErrors));
           }
 
@@ -118,7 +121,7 @@ class ApiHandler {
             if (result.isEmpty) {
               return NetworkResult.error(EmptyResponseException(
                   errorMessage: exceptionMessages.emptyResponse,
-                  shouldShowApiError: shouldShowApiErrors));
+                  shouldShowApiError: shouldShowApiErrors, statusCode: -1));
             }
             return NetworkResult.success(result);
             // ignore: avoid_catches_without_on_clauses
@@ -127,6 +130,7 @@ class ApiHandler {
             return NetworkResult.error(
               UnableToProcessException(
                   errorMessage: exceptionMessages.unableToProcess,
+                  statusCode: -1,
                   shouldShowApiError: shouldShowApiErrors),
             );
           }
@@ -158,6 +162,7 @@ class ApiHandler {
       case 400:
         return DefaultApiException(
             apiErrorMessage: errMsg,
+            statusCode: statusCode,
             errorMessage: exceptionMessages.defaultError,
             shouldShowApiError: shouldShowApiErrors);
       case 401:
@@ -168,41 +173,49 @@ class ApiHandler {
 
       return UnauthorizedRequestException(
             apiErrorMessage: errMsg,
-            errorMessage: exceptionMessages.unauthorizedRequest,
+          statusCode: statusCode,
+          errorMessage: exceptionMessages.unauthorizedRequest,
             shouldShowApiError: shouldShowApiErrors);
       case 404:
         return NotFoundException(
             apiErrorMessage: errMsg,
+            statusCode: statusCode,
             errorMessage: exceptionMessages.notFound,
             shouldShowApiError: shouldShowApiErrors);
       case 409:
         return ConflictException(
             apiErrorMessage: errMsg,
+            statusCode: statusCode,
             errorMessage: exceptionMessages.conflict,
             shouldShowApiError: shouldShowApiErrors);
       case 408:
         return RequestTimeoutException(
             apiErrorMessage: errMsg,
+            statusCode: statusCode,
             errorMessage: exceptionMessages.requestTimeout,
             shouldShowApiError: shouldShowApiErrors);
       case 422:
         return UnableToProcessException(
             apiErrorMessage: errMsg,
+            statusCode: statusCode,
             errorMessage: exceptionMessages.unableToProcess,
             shouldShowApiError: shouldShowApiErrors);
       case 500:
         return InternalServerErrorException(
             apiErrorMessage: errMsg,
+            statusCode: statusCode,
             errorMessage: exceptionMessages.internalServerError,
             shouldShowApiError: shouldShowApiErrors);
       case 503:
         return ServiceUnavailableException(
             apiErrorMessage: errMsg,
+            statusCode: statusCode,
             errorMessage: exceptionMessages.serviceUnavailable,
             shouldShowApiError: shouldShowApiErrors);
       default:
         return DefaultApiException(
             apiErrorMessage: errMsg,
+            statusCode: statusCode,
             errorMessage: exceptionMessages.defaultError,
             shouldShowApiError: shouldShowApiErrors);
     }
@@ -221,6 +234,7 @@ class ApiHandler {
               ),
             DioExceptionType.connectionTimeout => RequestTimeoutException(
                 errorMessage: exceptionMessages.requestTimeout,
+                statusCode: -1,
                 shouldShowApiError: shouldShowApiErrors),
             DioExceptionType.unknown => error.error is SocketException
                 ? NoInternetConnectionException(
@@ -266,6 +280,7 @@ class ApiHandler {
       if (error.toString().contains("is not a subtype of")) {
         return UnableToProcessException(
             errorMessage: exceptionMessages.unableToProcess,
+            statusCode: -1,
             shouldShowApiError: false);
       } else {
         return UnexpectedErrorException(
