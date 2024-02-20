@@ -1,3 +1,9 @@
+#0.0.9
+- Update packages.
+- Add unauthorizedRequestCodes to be able to handle different unauthorized request status codes returned from the api and fire onUnauthorizedRequestReceived callback.
+- Add successRequestCodes to be able to handle different success request status codes returned from the api and fire onUnauthorizedRequestReceived callback.
+- Enhance printing non api error messages.
+
 #0.0.8
 - Update packages.
 - Add `statusCode` to `ApiException` to be able to handle different error status codes returned from the api.

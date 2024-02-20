@@ -38,6 +38,11 @@ class PlayxNetworkClient {
     bool shouldShowApiErrors = true,
     ExceptionMessage exceptionMessages = const DefaultEnglishExceptionMessage(),
     VoidCallback? onUnauthorizedRequestReceived,
+    List<int> unauthorizedRequestCodes = const [401, 403],
+    List<int> successRequestCodes = const [
+      200,
+      201,
+    ],
   }) {
     if (kDebugMode && attachLoggerOnDebug) {
       dio.interceptors.add(
@@ -55,11 +60,13 @@ class PlayxNetworkClient {
     }
     _dioClient = DioClient(dio: dio, customHeaders: customHeaders);
     _apiHandler = ApiHandler(
-      errorMapper: errorMapper ?? ApiHandler.getErrorMessageFromResponse,
-      shouldShowApiErrors: shouldShowApiErrors,
-      exceptionMessages: exceptionMessages,
-      onUnauthorizedRequestReceived: onUnauthorizedRequestReceived,
-    );
+        errorMapper: errorMapper ?? ApiHandler.getErrorMessageFromResponse,
+        shouldShowApiErrors: shouldShowApiErrors,
+        exceptionMessages: exceptionMessages,
+        onUnauthorizedRequestReceived: onUnauthorizedRequestReceived,
+        unauthorizedRequestCodes: unauthorizedRequestCodes,
+        successCodes: successRequestCodes,
+        attachLoggerOnDebug: kDebugMode && attachLoggerOnDebug);
   }
 
   static Dio createDefaultDioClient({
@@ -111,7 +118,9 @@ class PlayxNetworkClient {
           shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
-      return _apiHandler.handleDioException(error: error, shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+      return _apiHandler.handleDioException(
+          error: error,
+          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
     }
   }
 
@@ -146,7 +155,9 @@ class PlayxNetworkClient {
           shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
-      return _apiHandler.handleDioException(error: error, shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+      return _apiHandler.handleDioException(
+          error: error,
+          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
     }
   }
 
@@ -183,14 +194,15 @@ class PlayxNetworkClient {
         onReceiveProgress: onReceiveProgress,
       );
       return _apiHandler.handleNetworkResult(
-
         response: res,
         fromJson: fromJson,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
-      return _apiHandler.handleDioException(error: error, shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+      return _apiHandler.handleDioException(
+          error: error,
+          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
     }
   }
 
@@ -227,14 +239,15 @@ class PlayxNetworkClient {
         onReceiveProgress: onReceiveProgress,
       );
       return _apiHandler.handleNetworkResultForList(
-
         response: res,
         fromJson: fromJson,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
-      return _apiHandler.handleDioException(error: error, shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+      return _apiHandler.handleDioException(
+          error: error,
+          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
     }
   }
 
@@ -267,14 +280,15 @@ class PlayxNetworkClient {
         cancelToken: cancelToken,
       );
       return _apiHandler.handleNetworkResult(
-
         response: res,
         fromJson: fromJson,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
-      return _apiHandler.handleDioException(error: error, shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+      return _apiHandler.handleDioException(
+          error: error,
+          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
     }
   }
 
@@ -307,14 +321,15 @@ class PlayxNetworkClient {
         cancelToken: cancelToken,
       );
       return _apiHandler.handleNetworkResultForList(
-
         response: res,
         fromJson: fromJson,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
-      return _apiHandler.handleDioException(error: error, shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+      return _apiHandler.handleDioException(
+          error: error,
+          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
     }
   }
 
@@ -356,7 +371,9 @@ class PlayxNetworkClient {
           shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
-      return _apiHandler.handleDioException(error: error, shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+      return _apiHandler.handleDioException(
+          error: error,
+          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
     }
   }
 
@@ -398,7 +415,9 @@ class PlayxNetworkClient {
           shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
-      return _apiHandler.handleDioException(error: error, shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+      return _apiHandler.handleDioException(
+          error: error,
+          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
     }
   }
 }
