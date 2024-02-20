@@ -40,37 +40,35 @@ class _MyHomePageState extends State<MyHomePage> {
     //Configure your network client based on your needs.
 
     _client = PlayxNetworkClient(
-      // customize your dio options.
-      dio: Dio(
-        BaseOptions(
-          baseUrl: _baseUrl,
-          connectTimeout: const Duration(seconds: 20),
-          sendTimeout: const Duration(seconds: 20),
+        // customize your dio options.
+        dio: Dio(
+          BaseOptions(
+            baseUrl: _baseUrl,
+            connectTimeout: const Duration(seconds: 20),
+            sendTimeout: const Duration(seconds: 20),
+          ),
         ),
-      ),
-      //if you want to attach a token to the client.
-      customHeaders: ()=> getCustomHeaders(),
-      //attach logger to the client to print ongoing requests works only on debug mode.
-      attachLoggerOnDebug: true,
-      logSettings: const LoggerSettings(
-        responseBody: true,
-      ),
-      //converts json to error message.
-      errorMapper: (json) {
-        if (json.containsKey('message')) {
-          return json['message'];
-        }
-        return null;
-      },
-      //Whether you want to show api error message or default message.
-      shouldShowApiErrors: true,
-      //creates custom exception messages to be displayed when error is received.
-      exceptionMessages: const CustomExceptionMessage(),
-      onUnauthorizedRequestReceived: (){
-        print('onUnauthorizedRequestReceived');
-
-      }
-    );
+        //if you want to attach a token to the client.
+        customHeaders: () => getCustomHeaders(),
+        //attach logger to the client to print ongoing requests works only on debug mode.
+        attachLoggerOnDebug: true,
+        logSettings: const LoggerSettings(
+          responseBody: true,
+        ),
+        //converts json to error message.
+        errorMapper: (json) {
+          if (json.containsKey('message')) {
+            return json['message'];
+          }
+          return null;
+        },
+        //Whether you want to show api error message or default message.
+        shouldShowApiErrors: true,
+        //creates custom exception messages to be displayed when error is received.
+        exceptionMessages: const CustomExceptionMessage(),
+        onUnauthorizedRequestReceived: () {
+          print('onUnauthorizedRequestReceived');
+        });
     super.initState();
 
     // Get weather and cats from api.
@@ -78,8 +76,8 @@ class _MyHomePageState extends State<MyHomePage> {
     getCatsFromApi();
   }
 
-  Future<Map<String, dynamic>> getCustomHeaders() async{
-    return { };
+  Future<Map<String, dynamic>> getCustomHeaders() async {
+    return {};
   }
 
   @override
@@ -193,9 +191,10 @@ class _MyHomePageState extends State<MyHomePage> {
       });
     });
 
-      // We can map the result to another type like this example:
+    // We can map the result to another type like this example:
     // As it converts lis of cats to list of cats image urls.
-    final NetworkResult<List<String?>> catImagesResult = result.map(success: (success) {
+    final NetworkResult<List<String?>> catImagesResult =
+        result.map(success: (success) {
       final data = success.data;
       final images = data.map((e) => e.url).toList();
       return NetworkResult.success(images);
@@ -203,6 +202,4 @@ class _MyHomePageState extends State<MyHomePage> {
       return NetworkResult<List<String?>>.error(error.error);
     });
   }
-
-
 }

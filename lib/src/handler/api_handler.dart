@@ -1,4 +1,3 @@
-import 'dart:developer';
 import 'dart:io';
 import 'dart:ui';
 
@@ -7,10 +6,11 @@ import 'package:flutter/cupertino.dart';
 import 'package:playx_network/src/models/exceptions/message/english_exception_message.dart';
 import 'package:playx_network/src/models/exceptions/message/exception_message.dart';
 import 'package:playx_network/src/utils/utils.dart';
-import '../playx_network_client.dart';
+
 import '../models/error/api_error.dart';
 import '../models/exceptions/network_exception.dart';
 import '../models/network_result.dart';
+import '../playx_network_client.dart';
 
 // ignore: avoid_classes_with_only_static_members
 /// This class is responsible for handling the network response and extract error from it.
@@ -22,12 +22,18 @@ class ApiHandler {
   final bool shouldShowApiErrors;
   final ExceptionMessage exceptionMessages;
   final VoidCallback? onUnauthorizedRequestReceived;
+  final List<int> unauthorizedRequestCodes;
+  final List<int> successCodes;
+  final bool attachLoggerOnDebug;
 
   ApiHandler({
     required this.errorMapper,
     this.shouldShowApiErrors = true,
     this.exceptionMessages = const DefaultEnglishExceptionMessage(),
     this.onUnauthorizedRequestReceived,
+    this.unauthorizedRequestCodes = const [401, 403],
+    this.successCodes = const [200, 201],
+    this.attachLoggerOnDebug = true,
   });
 
   Future<NetworkResult<T>> handleNetworkResult<T>({
@@ -36,14 +42,11 @@ class ApiHandler {
     bool shouldHandleUnauthorizedRequest = true,
   }) async {
     try {
-      final correctCodes = [
-        200,
-        201,
-      ];
-
       if (response.statusCode == HttpStatus.badRequest ||
-          !correctCodes.contains(response.statusCode)) {
-        final NetworkException exception = _handleResponse(response: response, shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+          !successCodes.contains(response.statusCode)) {
+        final NetworkException exception = _handleResponse(
+            response: response,
+            shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
 
         return NetworkResult.error(exception);
       } else {
@@ -54,7 +57,7 @@ class ApiHandler {
         } else {
           final data = response.data;
 
-          if (data == null) {
+          if (data == null || (data is String && data.isEmpty)) {
             return NetworkResult.error(EmptyResponseException(
                 errorMessage: exceptionMessages.emptyResponse,
                 statusCode: -1,
@@ -65,8 +68,12 @@ class ApiHandler {
             final result = fromJson(data);
             return NetworkResult.success(result);
             // ignore: avoid_catches_without_on_clauses
-          } catch (e) {
-            log('Playx Network Error : ', error: e);
+          } on Exception catch (e, s) {
+            _printError(
+              header: 'Playx Network Error :',
+              text: e.toString(),
+              stackTrace: s.toString(),
+            );
             return NetworkResult.error(
               UnableToProcessException(
                   errorMessage: exceptionMessages.unableToProcess,
@@ -77,8 +84,12 @@ class ApiHandler {
         }
       }
       // ignore: avoid_catches_without_on_clauses
-    } catch (e) {
-      log('Playx Network Error : ', error: e);
+    } on Exception catch (e, s) {
+      _printError(
+        header: 'Playx Network Error :',
+        text: e.toString(),
+        stackTrace: s.toString(),
+      );
       return NetworkResult.error(UnexpectedErrorException(
         errorMessage: exceptionMessages.unexpectedError,
       ));
@@ -91,14 +102,11 @@ class ApiHandler {
     bool shouldHandleUnauthorizedRequest = true,
   }) async {
     try {
-      final correctCodes = [
-        200,
-        201,
-      ];
-
       if (response.statusCode == HttpStatus.badRequest ||
-          !correctCodes.contains(response.statusCode)) {
-        final NetworkException exception = _handleResponse(response: response, shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+          !successCodes.contains(response.statusCode)) {
+        final NetworkException exception = _handleResponse(
+            response: response,
+            shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
         return NetworkResult.error(exception);
       } else {
         if (isResponseBlank(response) ?? true) {
@@ -108,7 +116,7 @@ class ApiHandler {
         } else {
           final data = response.data;
 
-          if (data == null) {
+          if (data == null || (data is String && data.isEmpty)) {
             return NetworkResult.error(EmptyResponseException(
                 errorMessage: exceptionMessages.emptyResponse,
                 statusCode: -1,
@@ -121,12 +129,17 @@ class ApiHandler {
             if (result.isEmpty) {
               return NetworkResult.error(EmptyResponseException(
                   errorMessage: exceptionMessages.emptyResponse,
-                  shouldShowApiError: shouldShowApiErrors, statusCode: -1));
+                  shouldShowApiError: shouldShowApiErrors,
+                  statusCode: -1));
             }
             return NetworkResult.success(result);
             // ignore: avoid_catches_without_on_clauses
-          } catch (e) {
-            log('Playx Network Error : ', error: e);
+          } on Exception catch (e, s) {
+            _printError(
+              header: 'Playx Network Error :',
+              text: e.toString(),
+              stackTrace: s.toString(),
+            );
             return NetworkResult.error(
               UnableToProcessException(
                   errorMessage: exceptionMessages.unableToProcess,
@@ -137,19 +150,27 @@ class ApiHandler {
         }
       }
       // ignore: avoid_catches_without_on_clauses
-    } catch (e) {
-      log('Playx Network Error : ', error: e);
+    } on Exception catch (e, s) {
+      _printError(
+        header: 'Playx Network Error :',
+        text: e.toString(),
+        stackTrace: s.toString(),
+      );
       return NetworkResult.error(UnexpectedErrorException(
         errorMessage: exceptionMessages.unexpectedError,
       ));
     }
   }
 
-  NetworkResult<T> handleDioException<T>({dynamic error, bool shouldHandleUnauthorizedRequest = true}) {
-    return NetworkResult.error(_getDioException(error: error,shouldHandleUnauthorizedRequest :shouldHandleUnauthorizedRequest));
+  NetworkResult<T> handleDioException<T>(
+      {dynamic error, bool shouldHandleUnauthorizedRequest = true}) {
+    return NetworkResult.error(_getDioException(
+        error: error,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest));
   }
 
-  NetworkException _handleResponse({Response? response, bool shouldHandleUnauthorizedRequest = true }) {
+  NetworkException _handleResponse(
+      {Response? response, bool shouldHandleUnauthorizedRequest = true}) {
     final dynamic errorJson = response?.data;
 
     String? errMsg;
@@ -158,23 +179,24 @@ class ApiHandler {
     } catch (_) {}
 
     final int statusCode = response?.statusCode ?? -1;
+
+    if (unauthorizedRequestCodes.contains(statusCode)) {
+      if (shouldHandleUnauthorizedRequest) {
+        onUnauthorizedRequestReceived?.call();
+      }
+      return UnauthorizedRequestException(
+          apiErrorMessage: errMsg,
+          statusCode: statusCode,
+          errorMessage: exceptionMessages.unauthorizedRequest,
+          shouldShowApiError: shouldShowApiErrors);
+    }
+
     switch (statusCode) {
       case 400:
         return DefaultApiException(
             apiErrorMessage: errMsg,
             statusCode: statusCode,
             errorMessage: exceptionMessages.defaultError,
-            shouldShowApiError: shouldShowApiErrors);
-      case 401:
-      case 403:
-      if (shouldHandleUnauthorizedRequest ) {
-        onUnauthorizedRequestReceived?.call();
-      }
-
-      return UnauthorizedRequestException(
-            apiErrorMessage: errMsg,
-          statusCode: statusCode,
-          errorMessage: exceptionMessages.unauthorizedRequest,
             shouldShowApiError: shouldShowApiErrors);
       case 404:
         return NotFoundException(
@@ -221,7 +243,8 @@ class ApiHandler {
     }
   }
 
-  NetworkException _getDioException({dynamic error, bool shouldHandleUnauthorizedRequest = true}) {
+  NetworkException _getDioException(
+      {dynamic error, bool shouldHandleUnauthorizedRequest = true}) {
     if (error is Exception) {
       try {
         NetworkException networkExceptions = UnexpectedErrorException(
@@ -246,7 +269,10 @@ class ApiHandler {
             DioExceptionType.receiveTimeout => SendTimeoutException(
                 errorMessage: exceptionMessages.sendTimeout,
               ),
-            DioExceptionType.badResponse => _handleResponse(response: error.response,shouldHandleUnauthorizedRequest :shouldHandleUnauthorizedRequest),
+            DioExceptionType.badResponse => _handleResponse(
+                response: error.response,
+                shouldHandleUnauthorizedRequest:
+                    shouldHandleUnauthorizedRequest),
             DioExceptionType.sendTimeout => SendTimeoutException(
                 errorMessage: exceptionMessages.sendTimeout,
               ),
@@ -294,5 +320,26 @@ class ApiHandler {
     final DefaultApiError? error =
         json != null ? DefaultApiError.fromJson(json) : null;
     return error?.message;
+  }
+
+  void _printError({String? header, String? text, String? stackTrace}) {
+    if (attachLoggerOnDebug) {
+      const maxWidth = 90;
+      print('');
+      print('╔╣ $header');
+      final error = '\x1B[31m$text\x1B[0m';
+      print('║  $error');
+      _printStackTrace(stackTrace ?? '');
+      print('╚${'═' * (maxWidth - 1)}╝');
+    }
+  }
+
+  void _printStackTrace(String msg) {
+    final lines = msg.split('\n');
+    for (var i = 0; i < lines.length; ++i) {
+      final text = lines[i];
+      final error = '\x1B[31m$text\x1B[0m';
+      print((i >= 0 ? '║ ' : '') + error);
+    }
   }
 }
