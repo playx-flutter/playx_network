@@ -1,8 +1,6 @@
 import 'dart:io';
-import 'dart:ui';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:playx_network/src/models/exceptions/message/english_exception_message.dart';
 import 'package:playx_network/src/models/exceptions/message/exception_message.dart';
 import 'package:playx_network/src/utils/utils.dart';
@@ -21,7 +19,7 @@ class ApiHandler {
   /// Whether or not it should show the error from the api response.
   final bool shouldShowApiErrors;
   final ExceptionMessage exceptionMessages;
-  final VoidCallback? onUnauthorizedRequestReceived;
+  final UnauthorizedRequestHandler? onUnauthorizedRequestReceived;
   final List<int> unauthorizedRequestCodes;
   final List<int> successCodes;
   final bool attachLoggerOnDebug;
@@ -47,10 +45,18 @@ class ApiHandler {
         final NetworkException exception = _handleResponse(
             response: response,
             shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
-
+        _printError(
+          header: 'Playx Network Error :',
+          text: exception.errorMessage,
+        );
         return NetworkResult.error(exception);
       } else {
         if (isResponseBlank(response) ?? true) {
+          _printError(
+            header: 'Playx Network Error :',
+            text: exceptionMessages.unexpectedError,
+            stackTrace: response.toString(),
+          );
           return NetworkResult.error(UnexpectedErrorException(
             errorMessage: exceptionMessages.unexpectedError,
           ));
@@ -58,6 +64,10 @@ class ApiHandler {
           final data = response.data;
 
           if (data == null || (data is String && data.isEmpty)) {
+            _printError(
+              header: 'Playx Network Error :',
+              text: exceptionMessages.emptyResponse,
+            );
             return NetworkResult.error(EmptyResponseException(
                 errorMessage: exceptionMessages.emptyResponse,
                 statusCode: -1,
@@ -107,9 +117,18 @@ class ApiHandler {
         final NetworkException exception = _handleResponse(
             response: response,
             shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+        _printError(
+          header: 'Playx Network Error :',
+          text: exception.errorMessage,
+        );
         return NetworkResult.error(exception);
       } else {
         if (isResponseBlank(response) ?? true) {
+          _printError(
+            header: 'Playx Network Error :',
+            text: exceptionMessages.unexpectedError,
+            stackTrace: response.toString(),
+          );
           return NetworkResult.error(UnexpectedErrorException(
             errorMessage: exceptionMessages.unexpectedError,
           ));
@@ -117,6 +136,10 @@ class ApiHandler {
           final data = response.data;
 
           if (data == null || (data is String && data.isEmpty)) {
+            _printError(
+              header: 'Playx Network Error :',
+              text: exceptionMessages.emptyResponse,
+            );
             return NetworkResult.error(EmptyResponseException(
                 errorMessage: exceptionMessages.emptyResponse,
                 statusCode: -1,
@@ -127,6 +150,10 @@ class ApiHandler {
             final List<T> result =
                 (data as List).map((item) => fromJson(item)).toList();
             if (result.isEmpty) {
+              _printError(
+                header: 'Playx Network Error :',
+                text: exceptionMessages.emptyResponse,
+              );
               return NetworkResult.error(EmptyResponseException(
                   errorMessage: exceptionMessages.emptyResponse,
                   shouldShowApiError: shouldShowApiErrors,
@@ -163,7 +190,14 @@ class ApiHandler {
   }
 
   NetworkResult<T> handleDioException<T>(
-      {dynamic error, bool shouldHandleUnauthorizedRequest = true}) {
+      {dynamic error,
+      dynamic stackTrace,
+      bool shouldHandleUnauthorizedRequest = true}) {
+    _printError(
+      header: 'Playx Network (Dio) Error :',
+      text: error.toString(),
+      stackTrace: stackTrace.toString(),
+    );
     return NetworkResult.error(_getDioException(
         error: error,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest));
@@ -176,13 +210,19 @@ class ApiHandler {
     String? errMsg;
     try {
       errMsg = errorMapper(errorJson);
-    } catch (_) {}
+    } catch (e, s) {
+      _printError(
+        header: 'Playx Network Error :',
+        text: 'Error while parsing error message $e',
+        stackTrace: s.toString(),
+      );
+    }
 
     final int statusCode = response?.statusCode ?? -1;
 
     if (unauthorizedRequestCodes.contains(statusCode)) {
       if (shouldHandleUnauthorizedRequest) {
-        onUnauthorizedRequestReceived?.call();
+        onUnauthorizedRequestReceived?.call(response);
       }
       return UnauthorizedRequestException(
           apiErrorMessage: errMsg,
@@ -325,11 +365,15 @@ class ApiHandler {
   void _printError({String? header, String? text, String? stackTrace}) {
     if (attachLoggerOnDebug) {
       const maxWidth = 90;
+      //ignore: avoid_print
       print('');
+      //ignore: avoid_print
       print('╔╣ $header');
       final error = '\x1B[31m$text\x1B[0m';
+      //ignore: avoid_print
       print('║  $error');
       _printStackTrace(stackTrace ?? '');
+      //ignore: avoid_print
       print('╚${'═' * (maxWidth - 1)}╝');
     }
   }
@@ -339,6 +383,7 @@ class ApiHandler {
     for (var i = 0; i < lines.length; ++i) {
       final text = lines[i];
       final error = '\x1B[31m$text\x1B[0m';
+      //ignore: avoid_print
       print((i >= 0 ? '║ ' : '') + error);
     }
   }
