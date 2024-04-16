@@ -1,3 +1,10 @@
+#0.1.0
+> Note: This version contains breaking changes.
+
+- Update packages.
+- Update `onUnauthorizedRequestReceived` callback to take `Response` instead of `void` to be able to customize unauthorized error handling based on response.
+- Add `name` field for default error model.
+
 #0.0.9
 - Update packages.
 - Add unauthorizedRequestCodes to be able to handle different unauthorized request status codes returned from the api and fire onUnauthorizedRequestReceived callback.

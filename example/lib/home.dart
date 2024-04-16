@@ -66,8 +66,9 @@ class _MyHomePageState extends State<MyHomePage> {
         shouldShowApiErrors: true,
         //creates custom exception messages to be displayed when error is received.
         exceptionMessages: const CustomExceptionMessage(),
-        onUnauthorizedRequestReceived: () {
-          print('onUnauthorizedRequestReceived');
+        onUnauthorizedRequestReceived: (response) {
+          final code = response?.statusCode;
+          print('onUnauthorizedRequestReceived code :${code}');
         });
     super.initState();
 

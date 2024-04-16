@@ -15,6 +15,8 @@ typedef JsonMapper<T> = T Function(dynamic json);
 ///Function that converts json error response from api to error message.
 typedef ErrorMapper = String? Function(dynamic json);
 
+typedef UnauthorizedRequestHandler = void Function(Response? response);
+
 /// PlayxNetworkClient is a Wrapper around [Dio] that can perform api request
 /// With better error handling and easily get the result of any api request.
 class PlayxNetworkClient {
@@ -37,7 +39,7 @@ class PlayxNetworkClient {
     ErrorMapper? errorMapper,
     bool shouldShowApiErrors = true,
     ExceptionMessage exceptionMessages = const DefaultEnglishExceptionMessage(),
-    VoidCallback? onUnauthorizedRequestReceived,
+    UnauthorizedRequestHandler? onUnauthorizedRequestReceived,
     List<int> unauthorizedRequestCodes = const [401, 403],
     List<int> successRequestCodes = const [
       200,
@@ -117,9 +119,10 @@ class PlayxNetworkClient {
           fromJson: fromJson,
           shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
       // ignore: avoid_catches_without_on_clauses
-    } catch (error) {
+    } catch (error, stackTrace) {
       return _apiHandler.handleDioException(
           error: error,
+          stackTrace: stackTrace,
           shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
     }
   }
