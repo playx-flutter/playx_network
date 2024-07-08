@@ -1,5 +1,3 @@
-
-
 bool? isResponseBlank(dynamic value) {
   if (value is String) {
     return value.toString().trim().isEmpty;
