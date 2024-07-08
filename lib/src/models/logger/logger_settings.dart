@@ -1,4 +1,3 @@
-
 /// Logger settings used to customize what should be logged by the application when performing a request.
 class LoggerSettings {
   /// Print request [Options]
@@ -38,13 +37,12 @@ class LoggerSettings {
 
   const LoggerSettings(
       {this.request = true,
-        this.requestHeader = true,
-        this.requestBody = true,
-        this.responseHeader = false,
-        this.responseBody = false,
-        this.error = true,
-        this.maxWidth = 90,
-        this.compact = true,
-        this.logPrint = print});
-
+      this.requestHeader = true,
+      this.requestBody = true,
+      this.responseHeader = false,
+      this.responseBody = false,
+      this.error = true,
+      this.maxWidth = 90,
+      this.compact = true,
+      this.logPrint = print});
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:playx_network/playx_network.dart';
 import 'package:playx_network_example/model/Weather.dart';
@@ -68,7 +69,9 @@ class _MyHomePageState extends State<MyHomePage> {
         exceptionMessages: const CustomExceptionMessage(),
         onUnauthorizedRequestReceived: (response) {
           final code = response?.statusCode;
-          print('onUnauthorizedRequestReceived code :${code}');
+          if (kDebugMode) {
+            print('onUnauthorizedRequestReceived code :$code');
+          }
         });
     super.initState();
 

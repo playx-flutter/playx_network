@@ -7,7 +7,6 @@ class DioClient {
 
   DioClient({required this.dio, this.customHeaders});
 
-
   /// sends a [GET] request to the given [url]
   Future<Response> get<T>(
     String path, {
@@ -23,7 +22,8 @@ class DioClient {
         options: options ??
             Options(
               headers: {
-                if (attachCustomHeaders && customHeaders != null) ...?await customHeaders?.call(),
+                if (attachCustomHeaders && customHeaders != null)
+                  ...?await customHeaders?.call(),
                 ...headers,
               },
             ),
@@ -50,7 +50,8 @@ class DioClient {
       options: options ??
           Options(
             headers: {
-              if (attachCustomHeaders && customHeaders != null) ...?await customHeaders?.call(),
+              if (attachCustomHeaders && customHeaders != null)
+                ...?await customHeaders?.call(),
               ...headers,
             },
             contentType: contentType,
@@ -78,7 +79,8 @@ class DioClient {
       options: options ??
           Options(
             headers: {
-              if (attachCustomHeaders && customHeaders != null) ...?await customHeaders?.call(),
+              if (attachCustomHeaders && customHeaders != null)
+                ...?await customHeaders?.call(),
               ...headers,
             },
             contentType: contentType,
@@ -96,10 +98,9 @@ class DioClient {
     String? contentType,
     bool attachCustomHeaders = true,
     CancelToken? cancelToken,
-        ProgressCallback? onSendProgress,
-        ProgressCallback? onReceiveProgress,
-
-      }) async {
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+  }) async {
     return dio.put(
       path,
       data: body,
@@ -107,7 +108,8 @@ class DioClient {
       options: options ??
           Options(
             headers: {
-              if (attachCustomHeaders && customHeaders != null) ...?await customHeaders?.call(),
+              if (attachCustomHeaders && customHeaders != null)
+                ...?await customHeaders?.call(),
               ...headers,
             },
             contentType: contentType,
@@ -115,7 +117,6 @@ class DioClient {
       cancelToken: cancelToken,
       onSendProgress: onSendProgress,
       onReceiveProgress: onReceiveProgress,
-
     );
   }
 }

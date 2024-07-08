@@ -1,25 +1,20 @@
-
 /// Class that can be extended to implement your own custom errors message.
 abstract class ExceptionMessage {
-
- const ExceptionMessage();
+  const ExceptionMessage();
 
   String get requestCancelled;
 
   String get unauthorizedRequest;
 
-
   String get badRequest;
 
   String get notFound;
-
 
   String get notAcceptable;
 
   String get requestTimeout;
 
   String get sendTimeout;
-
 
   String get conflict;
 
@@ -38,5 +33,4 @@ abstract class ExceptionMessage {
   String get unexpectedError;
 
   String get emptyResponse;
-
 }
