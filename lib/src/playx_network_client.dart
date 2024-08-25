@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:playx_network/src/models/exceptions/message/english_exception_message.dart';
@@ -10,11 +12,12 @@ import 'handler/api_handler.dart';
 import 'models/network_result.dart';
 
 ///Function that converts json response to the required model.
-typedef JsonMapper<T> = T Function(dynamic json);
+typedef JsonMapper<T> = FutureOr<T> Function(dynamic json);
 
 ///Function that converts json error response from api to error message.
 typedef ErrorMapper = String? Function(dynamic json);
 
+/// Function that handles unauthorized request.
 typedef UnauthorizedRequestHandler = void Function(Response? response);
 
 /// PlayxNetworkClient is a Wrapper around [Dio] that can perform api request

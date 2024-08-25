@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:playx_network/src/models/exceptions/message/english_exception_message.dart';
 import 'package:playx_network/src/models/exceptions/message/exception_message.dart';
 import 'package:playx_network/src/utils/utils.dart';
@@ -9,6 +10,20 @@ import '../models/error/api_error.dart';
 import '../models/exceptions/network_exception.dart';
 import '../models/network_result.dart';
 import '../playx_network_client.dart';
+
+/// parses json to object in isolate.
+Future<T> _parseJsonInIsolate<T>(List<dynamic> args) async {
+  final data = args[0];
+  final JsonMapper<T> fromJson = args[1];
+  return fromJson(data);
+}
+
+/// parses json list to list of objects in isolate.
+Future<List<T>> _parseJsonListInIsolate<T>(List<dynamic> args) async {
+  final data = args[0] as List;
+  final JsonMapper<T> fromJson = args[1];
+  return await Future.wait(data.map((item) async => await fromJson(item)));
+}
 
 // ignore: avoid_classes_with_only_static_members
 /// This class is responsible for handling the network response and extract error from it.
@@ -75,7 +90,7 @@ class ApiHandler {
           }
 
           try {
-            final result = fromJson(data);
+            final result = await compute(_parseJsonInIsolate, [data, fromJson]);
             return NetworkResult.success(result);
             // ignore: avoid_catches_without_on_clauses
           } on Exception catch (e, s) {
@@ -147,19 +162,31 @@ class ApiHandler {
           }
 
           try {
-            final List<T> result =
-                (data as List).map((item) => fromJson(item)).toList();
-            if (result.isEmpty) {
+            if (data is List) {
+              final result =
+                  await compute(_parseJsonListInIsolate<T>, [data, fromJson]);
+
+              if (result.isEmpty) {
+                _printError(
+                  header: 'Playx Network Error :',
+                  text: exceptionMessages.emptyResponse,
+                );
+                return NetworkResult.error(EmptyResponseException(
+                    errorMessage: exceptionMessages.emptyResponse,
+                    shouldShowApiError: shouldShowApiErrors,
+                    statusCode: -1));
+              }
+              return NetworkResult.success(result);
+            } else {
               _printError(
                 header: 'Playx Network Error :',
-                text: exceptionMessages.emptyResponse,
+                text: exceptionMessages.unableToProcess,
               );
-              return NetworkResult.error(EmptyResponseException(
-                  errorMessage: exceptionMessages.emptyResponse,
+              return NetworkResult.error(UnableToProcessException(
+                  errorMessage: exceptionMessages.unableToProcess,
                   shouldShowApiError: shouldShowApiErrors,
                   statusCode: -1));
             }
-            return NetworkResult.success(result);
             // ignore: avoid_catches_without_on_clauses
           } on Exception catch (e, s) {
             _printError(
