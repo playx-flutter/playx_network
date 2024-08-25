@@ -15,10 +15,6 @@
 ##### Bug Fixes
     - Fixed an issue where `getList` and `postList` methods did not return results when the API response was not a list. Now, proper error handling ensures that non-list responses are processed correctly, preventing potential runtime errors.
 
----
-
-This changelog highlights the new isolate integration, improvements in the `JsonMapper` function signature, and the bug fix related to list response handling.
-
 ## 0.1.1
 - Update packages.
 

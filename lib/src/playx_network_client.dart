@@ -17,6 +17,7 @@ typedef JsonMapper<T> = FutureOr<T> Function(dynamic json);
 ///Function that converts json error response from api to error message.
 typedef ErrorMapper = String? Function(dynamic json);
 
+/// Function that handles unauthorized request.
 typedef UnauthorizedRequestHandler = void Function(Response? response);
 
 /// PlayxNetworkClient is a Wrapper around [Dio] that can perform api request
