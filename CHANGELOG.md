@@ -4,7 +4,7 @@
 
 ##### New Features
 - **Isolate-Based Data Processing:**
-    - Integrated Dart's `Isolate` to handle data processing in network responses, offloading CPU-intensive tasks to separate threads, which improves app performance, particularly in scenarios involving large datasets. 
+    - Integrated Dart's `Isolate` to handle data processing in network responses, offloading CPU-intensive tasks to separate threads, which improves app performance, particularly in scenarios involving large datasets.
 - **Sentry Dio Integration:**
     - Added the Sentry Dio package to automatically capture and report errors in network requests to Sentry. This integration provides better monitoring and error tracking for network-related issues.
 
@@ -13,7 +13,7 @@
     - The `JsonMapper<T>` signature has been updated from `T Function(dynamic json)` to `FutureOr<T> Function(dynamic json)` to support both synchronous and asynchronous JSON processing. This allows for more flexible and efficient handling of JSON data.
 
 ##### Bug Fixes
-    - Fixed an issue where `getList` and `postList` methods did not return results when the API response was not a list. Now, proper error handling ensures that non-list responses are processed correctly, preventing potential runtime errors.
+- Fixed an issue where `getList` and `postList` methods did not return results when the API response was not a list. Now, proper error handling ensures that non-list responses are processed correctly, preventing potential runtime errors.
 
 ## 0.1.1
 - Update packages.
