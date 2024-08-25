@@ -19,18 +19,6 @@ class Weather {
     this.currentWeather,
   });
 
-  Weather.fromJson(dynamic json) {
-    latitude = json['latitude'];
-    longitude = json['longitude'];
-    generationtimeMs = json['generationtime_ms'];
-    utcOffsetSeconds = json['utc_offset_seconds'];
-    timezone = json['timezone'];
-    timezoneAbbreviation = json['timezone_abbreviation'];
-    elevation = json['elevation'];
-    currentWeather = json['current_weather'] != null
-        ? CurrentWeather.fromJson(json['current_weather'])
-        : null;
-  }
   num? latitude;
   num? longitude;
   num? generationtimeMs;
@@ -39,6 +27,37 @@ class Weather {
   String? timezoneAbbreviation;
   num? elevation;
   CurrentWeather? currentWeather;
+
+  factory Weather.fromJson(dynamic json) {
+    return Weather(
+      latitude: json['latitude'],
+      longitude: json['longitude'],
+      generationtimeMs: json['generationtime_ms'],
+      utcOffsetSeconds: json['utc_offset_seconds'],
+      timezone: json['timezone'],
+      timezoneAbbreviation: json['timezone_abbreviation'],
+      elevation: json['elevation'],
+      currentWeather: json['current_weather'] != null
+          ? CurrentWeather.fromJson(json['current_weather'])
+          : null,
+    );
+  }
+
+  static Future<Weather> fromJsonAsync(dynamic json) async {
+    await Future.delayed(const Duration(seconds: 3));
+    return Weather(
+      latitude: json['latitude'],
+      longitude: json['longitude'],
+      generationtimeMs: json['generationtime_ms'],
+      utcOffsetSeconds: json['utc_offset_seconds'],
+      timezone: json['timezone'],
+      timezoneAbbreviation: json['timezone_abbreviation'],
+      elevation: json['elevation'],
+      currentWeather: json['current_weather'] != null
+          ? CurrentWeather.fromJson(json['current_weather'])
+          : null,
+    );
+  }
 
   Map<String, dynamic> toJson() {
     final map = <String, dynamic>{};
