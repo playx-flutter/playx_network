@@ -54,6 +54,7 @@ class DioClient {
   }) async {
     return dio.post(
       path,
+      data: body,
       queryParameters: {
         if (attachCustomQuery && customQuery != null)
           ...?await customQuery?.call(),
