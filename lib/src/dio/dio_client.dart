@@ -1,11 +1,14 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 
 // ignore: avoid_classes_with_only_static_members
 class DioClient {
   final Dio dio;
-  final Future<Map<String, dynamic>> Function()? customHeaders;
+  final FutureOr<Map<String, dynamic>> Function()? customHeaders;
+  final FutureOr<Map<String, dynamic>> Function()? customQuery;
 
-  DioClient({required this.dio, this.customHeaders});
+  DioClient({required this.dio, this.customHeaders, this.customQuery});
 
   /// sends a [GET] request to the given [url]
   Future<Response> get<T>(
@@ -14,11 +17,16 @@ class DioClient {
     Map<String, dynamic> query = const {},
     Options? options,
     bool attachCustomHeaders = true,
+    bool attachCustomQuery = true,
     CancelToken? cancelToken,
     ProgressCallback? onReceiveProgress,
   }) async {
     return dio.get(path,
-        queryParameters: query,
+        queryParameters: {
+          if (attachCustomQuery && customQuery != null)
+            ...?await customQuery?.call(),
+          ...query,
+        },
         options: options ??
             Options(
               headers: {
@@ -39,14 +47,18 @@ class DioClient {
     Options? options,
     String? contentType,
     bool attachCustomHeaders = true,
+    bool attachCustomQuery = true,
     CancelToken? cancelToken,
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
   }) async {
     return dio.post(
       path,
-      data: body,
-      queryParameters: query,
+      queryParameters: {
+        if (attachCustomQuery && customQuery != null)
+          ...?await customQuery?.call(),
+        ...query,
+      },
       options: options ??
           Options(
             headers: {
@@ -70,12 +82,17 @@ class DioClient {
     Options? options,
     String? contentType,
     bool attachCustomHeaders = true,
+    bool attachCustomQuery = true,
     CancelToken? cancelToken,
   }) async {
     return dio.delete(
       path,
       data: body,
-      queryParameters: query,
+      queryParameters: {
+        if (attachCustomQuery && customQuery != null)
+          ...?await customQuery?.call(),
+        ...query,
+      },
       options: options ??
           Options(
             headers: {
@@ -97,6 +114,7 @@ class DioClient {
     Options? options,
     String? contentType,
     bool attachCustomHeaders = true,
+    bool attachCustomQuery = true,
     CancelToken? cancelToken,
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
@@ -104,7 +122,11 @@ class DioClient {
     return dio.put(
       path,
       data: body,
-      queryParameters: query,
+      queryParameters: {
+        if (attachCustomQuery && customQuery != null)
+          ...?await customQuery?.call(),
+        ...query,
+      },
       options: options ??
           Options(
             headers: {

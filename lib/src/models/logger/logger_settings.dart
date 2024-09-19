@@ -1,5 +1,5 @@
 /// Logger settings used to customize what should be logged by the application when performing a request.
-class LoggerSettings {
+class PlayxNetworkLoggerSettings {
   /// Print request [Options]
   final bool request;
 
@@ -35,12 +35,18 @@ class LoggerSettings {
   /// you can also write log in a file.
   final void Function(Object object) logPrint;
 
-  const LoggerSettings(
+  final bool attachLoggerOnDebug;
+
+  final bool attachLoggerOnRelease;
+
+  const PlayxNetworkLoggerSettings(
       {this.request = true,
       this.requestHeader = true,
       this.requestBody = true,
       this.responseHeader = false,
       this.responseBody = false,
+      this.attachLoggerOnDebug = true,
+      this.attachLoggerOnRelease = false,
       this.error = true,
       this.maxWidth = 90,
       this.compact = true,

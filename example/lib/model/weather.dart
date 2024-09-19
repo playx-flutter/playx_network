@@ -1,12 +1,3 @@
-/// latitude : 52.52
-/// longitude : 13.419998
-/// generationtime_ms : 0.5710124969482422
-/// utc_offset_seconds : 0
-/// timezone : "GMT"
-/// timezone_abbreviation : "GMT"
-/// elevation : 38.0
-/// current_weather : {"temperature":14.9,"windspeed":10.5,"winddirection":262.0,"weathercode":0,"is_day":0,"time":"2023-07-18T01:00"}
-
 class Weather {
   Weather({
     this.latitude,
