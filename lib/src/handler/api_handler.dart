@@ -1,15 +1,8 @@
 import 'dart:io';
 
-import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:playx_network/src/models/exceptions/message/english_exception_message.dart';
-import 'package:playx_network/src/models/exceptions/message/exception_message.dart';
+import 'package:playx_network/playx_network.dart';
 import 'package:playx_network/src/utils/utils.dart';
-
-import '../models/error/api_error.dart';
-import '../models/exceptions/network_exception.dart';
-import '../models/network_result.dart';
-import '../playx_network_client.dart';
 
 /// parses json to object in isolate.
 Future<T> _parseJsonInIsolate<T>(List<dynamic> args) async {
@@ -30,24 +23,26 @@ Future<List<T>> _parseJsonListInIsolate<T>(List<dynamic> args) async {
 /// and return the result whether it was successful or not.
 class ApiHandler {
   final ErrorMapper errorMapper;
-
-  /// Whether or not it should show the error from the api response.
-  final bool shouldShowApiErrors;
-  final ExceptionMessage exceptionMessages;
+  final PlayxNetworkClientSettings settings;
   final UnauthorizedRequestHandler? onUnauthorizedRequestReceived;
-  final List<int> unauthorizedRequestCodes;
-  final List<int> successCodes;
-  final bool attachLoggerOnDebug;
 
   ApiHandler({
     required this.errorMapper,
-    this.shouldShowApiErrors = true,
-    this.exceptionMessages = const DefaultEnglishExceptionMessage(),
+    required this.settings,
     this.onUnauthorizedRequestReceived,
-    this.unauthorizedRequestCodes = const [401, 403],
-    this.successCodes = const [200, 201],
-    this.attachLoggerOnDebug = true,
   });
+
+  ExceptionMessage get exceptionMessages => settings.exceptionMessages;
+
+  bool get shouldShowApiErrors => settings.shouldShowApiErrors;
+
+  bool get attachLogSettings =>
+      kDebugMode && settings.logSettings.attachLoggerOnDebug ||
+      kReleaseMode && settings.logSettings.attachLoggerOnRelease;
+
+  List<int> get unauthorizedRequestCodes => settings.unauthorizedRequestCodes;
+
+  List<int> get successCodes => settings.successRequestCodes;
 
   Future<NetworkResult<T>> handleNetworkResult<T>({
     required Response response,
@@ -390,7 +385,7 @@ class ApiHandler {
   }
 
   void _printError({String? header, String? text, String? stackTrace}) {
-    if (attachLoggerOnDebug) {
+    if (attachLogSettings) {
       const maxWidth = 90;
       //ignore: avoid_print
       print('');
@@ -405,7 +400,7 @@ class ApiHandler {
     }
   }
 
-  void _printStackTrace(String msg) {
+  static void _printStackTrace(String msg) {
     final lines = msg.split('\n');
     for (var i = 0; i < lines.length; ++i) {
       final text = lines[i];
@@ -413,5 +408,19 @@ class ApiHandler {
       //ignore: avoid_print
       print((i >= 0 ? '║ ' : '') + error);
     }
+  }
+
+  static void printError({String? header, String? text, String? stackTrace}) {
+    const maxWidth = 90;
+    //ignore: avoid_print
+    print('');
+    //ignore: avoid_print
+    print('╔╣ $header');
+    final error = '\x1B[31m$text\x1B[0m';
+    //ignore: avoid_print
+    print('║  $error');
+    _printStackTrace(stackTrace ?? '');
+    //ignore: avoid_print
+    print('╚${'═' * (maxWidth - 1)}╝');
   }
 }

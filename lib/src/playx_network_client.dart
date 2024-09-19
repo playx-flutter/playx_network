@@ -2,9 +2,7 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:playx_network/src/models/exceptions/message/english_exception_message.dart';
-import 'package:playx_network/src/models/exceptions/message/exception_message.dart';
-import 'package:playx_network/src/models/logger/logger_settings.dart';
+import 'package:playx_network/src/models/settings/playx_network_client_settings.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
 import 'dio/dio_client.dart';
@@ -29,49 +27,46 @@ class PlayxNetworkClient {
   ///Creates an instance of [PlayxNetworkClient]
   ///takes [Dio] object so u can easily customize your dio options.
   /// [customHeaders] which is custom headers that can included in each request like authorization token.
-  /// You can attach logger to [Dio] to pretty print request using [attachLoggerOnDebug] and customize what is printed by customizing [LoggerSettings].
-  /// You can customize whether The client should show api errors or use the default messages by using [shouldShowApiErrors].
-  /// and you can decide how to get the error message from the api response by using [ErrorMapper].
-  /// also you can customize the error messages for each network exception by creating a class that extends the [ExceptionMessage] by default [DefaultEnglishExceptionMessage].
-  /// also you can handle when un authorized request is received by using [onUnauthorizedRequestReceived].
+  /// [customQuery] which is custom query that can included in each request.
+  /// [onUnauthorizedRequestReceived] which is a function that is called when unauthorized request is received.
+  /// [errorMapper] which is a function that converts json error response from api to error message.
+  /// [settings] which is a settings object that can be used to customize the client.
   PlayxNetworkClient({
     required Dio dio,
-    final Future<Map<String, dynamic>> Function()? customHeaders,
-    bool attachLoggerOnDebug = true,
-    LoggerSettings logSettings = const LoggerSettings(),
-    ErrorMapper? errorMapper,
-    bool shouldShowApiErrors = true,
-    ExceptionMessage exceptionMessages = const DefaultEnglishExceptionMessage(),
+    FutureOr<Map<String, dynamic>> Function()? customHeaders,
+    FutureOr<Map<String, dynamic>> Function()? customQuery,
     UnauthorizedRequestHandler? onUnauthorizedRequestReceived,
-    List<int> unauthorizedRequestCodes = const [401, 403],
-    List<int> successRequestCodes = const [
-      200,
-      201,
-    ],
+    ErrorMapper? errorMapper,
+    PlayxNetworkClientSettings settings = const PlayxNetworkClientSettings(),
   }) {
-    if (kDebugMode && attachLoggerOnDebug) {
+    final attachLogSettings =
+        kDebugMode && settings.logSettings.attachLoggerOnDebug ||
+            kReleaseMode && settings.logSettings.attachLoggerOnRelease;
+
+    if (attachLogSettings) {
       dio.interceptors.add(
         PrettyDioLogger(
-            requestHeader: logSettings.requestHeader,
-            requestBody: logSettings.requestBody,
-            responseBody: logSettings.responseBody,
-            request: logSettings.request,
-            responseHeader: logSettings.responseHeader,
-            error: logSettings.error,
-            maxWidth: logSettings.maxWidth,
-            compact: logSettings.compact,
-            logPrint: logSettings.logPrint),
+            requestHeader: settings.logSettings.requestHeader,
+            requestBody: settings.logSettings.requestBody,
+            responseBody: settings.logSettings.responseBody,
+            request: settings.logSettings.request,
+            responseHeader: settings.logSettings.responseHeader,
+            error: settings.logSettings.error,
+            maxWidth: settings.logSettings.maxWidth,
+            compact: settings.logSettings.compact,
+            logPrint: settings.logSettings.logPrint),
       );
     }
-    _dioClient = DioClient(dio: dio, customHeaders: customHeaders);
+    _dioClient = DioClient(
+      dio: dio,
+      customHeaders: customHeaders,
+      customQuery: customQuery,
+    );
     _apiHandler = ApiHandler(
-        errorMapper: errorMapper ?? ApiHandler.getErrorMessageFromResponse,
-        shouldShowApiErrors: shouldShowApiErrors,
-        exceptionMessages: exceptionMessages,
-        onUnauthorizedRequestReceived: onUnauthorizedRequestReceived,
-        unauthorizedRequestCodes: unauthorizedRequestCodes,
-        successCodes: successRequestCodes,
-        attachLoggerOnDebug: kDebugMode && attachLoggerOnDebug);
+      errorMapper: errorMapper ?? ApiHandler.getErrorMessageFromResponse,
+      settings: settings,
+      onUnauthorizedRequestReceived: onUnauthorizedRequestReceived,
+    );
   }
 
   static Dio createDefaultDioClient({
@@ -87,7 +82,6 @@ class PlayxNetworkClient {
         contentType: Headers.jsonContentType,
       ),
     );
-
     return dio;
   }
 

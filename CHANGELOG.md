@@ -1,16 +1,37 @@
 # Changelog
 
+## 0.2.0
+> Note: This version contains breaking changes.
+
+##### Breaking Changes
+- **Combined `PlayxNetworkClient` Settings:**
+  - Merged settings for `PlayxNetworkClient` into a new `PlayxNetworkClientSettings` class.
+  - Renamed `LoggerSettings` to `PlayxNetworkLoggerSettings`.
+
+##### New Features
+- **Custom Queries Support:**
+  - Added the ability to include custom queries in network requests, enhancing flexibility for API interactions.
+  - Users can decide whether to use custom queries on a per-request basis by using the `attachCustomQuery` option.
+
+##### Improvements
+- **Enhanced `PlayxNetworkLoggerSettings`:**
+  - Added options for attaching a logger in debug and release modes (`attachLoggerOnDebug` and `attachLoggerOnRelease`).
+
+- **Updated Dio Package:**
+  - Upgraded Dio package to v5.7.0 for improved performance and features.
+
+
 ## 0.1.2
 
 ##### New Features
 - **Isolate-Based Data Processing:**
-    - Integrated Dart's `Isolate` to handle data processing in network responses, offloading CPU-intensive tasks to separate threads, which improves app performance, particularly in scenarios involving large datasets.
+  - Integrated Dart's `Isolate` to handle data processing in network responses, offloading CPU-intensive tasks to separate threads, which improves app performance, particularly in scenarios involving large datasets.
 - **Sentry Dio Integration:**
-    - Added the Sentry Dio package to automatically capture and report errors in network requests to Sentry. This integration provides better monitoring and error tracking for network-related issues.
+  - Added the Sentry Dio package to automatically capture and report errors in network requests to Sentry. This integration provides better monitoring and error tracking for network-related issues.
 
 ##### Improvements
 - **Updated `JsonMapper` Signature:**
-    - The `JsonMapper<T>` signature has been updated from `T Function(dynamic json)` to `FutureOr<T> Function(dynamic json)` to support both synchronous and asynchronous JSON processing. This allows for more flexible and efficient handling of JSON data.
+  - The `JsonMapper<T>` signature has been updated from `T Function(dynamic json)` to `FutureOr<T> Function(dynamic json)` to support both synchronous and asynchronous JSON processing. This allows for more flexible and efficient handling of JSON data.
 
 ##### Bug Fixes
 - Fixed an issue where `getList` and `postList` methods did not return results when the API response was not a list. Now, proper error handling ensures that non-list responses are processed correctly, preventing potential runtime errors.
@@ -35,17 +56,15 @@
 - Update packages.
 - Add `statusCode` to `ApiException` to be able to handle different error status codes returned from the api.
 
-
 ## 0.0.7
 - Update packages.
 - Bug fix, causing `onUnauthorizedRequestReceived` not called when receiving unauthorized request on certain cases.
-
 
 ## 0.0.6
 - Add ability to not handle unauthorized requests on each request.
 - [Breaking Change]! : Each Network Exception now takes errorMessage of type String instead of exceptionMessage
 
-## 0.0.5 
+## 0.0.5
 - Enhancements for default error model.
 
 ## 0.0.4
@@ -57,5 +76,5 @@
 ## 0.0.2
 - update from json to take dynamic json instead of map.
 
-## 0.0.1 
+## 0.0.1
 - initial release

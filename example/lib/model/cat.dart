@@ -1,8 +1,3 @@
-/// id : "3ho"
-/// url : "https://cdn2.thecatapi.com/images/3ho.png"
-/// width : 483
-/// height : 322
-
 class Cat {
   Cat({
     this.id,

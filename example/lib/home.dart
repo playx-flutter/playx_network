@@ -51,10 +51,19 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
         //if you want to attach a token to the client.
         customHeaders: () => getCustomHeaders(),
+        customQuery: () => {
+              'locale': 'ar',
+            },
         //attach logger to the client to print ongoing requests works only on debug mode.
-        attachLoggerOnDebug: true,
-        logSettings: const LoggerSettings(
-          responseBody: true,
+        settings: const PlayxNetworkClientSettings(
+          logSettings: PlayxNetworkLoggerSettings(
+            responseBody: true,
+            attachLoggerOnDebug: true,
+          ),
+          //Whether you want to show api error message or default message.
+          shouldShowApiErrors: true,
+          //creates custom exception messages to be displayed when error is received.
+          exceptionMessages: CustomExceptionMessage(),
         ),
         //converts json to error message.
         errorMapper: (json) {
@@ -63,10 +72,6 @@ class _MyHomePageState extends State<MyHomePage> {
           }
           return null;
         },
-        //Whether you want to show api error message or default message.
-        shouldShowApiErrors: true,
-        //creates custom exception messages to be displayed when error is received.
-        exceptionMessages: const CustomExceptionMessage(),
         onUnauthorizedRequestReceived: (response) {
           final code = response?.statusCode;
           if (kDebugMode) {
