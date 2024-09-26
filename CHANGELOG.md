@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.2
+- Add ability to download content using dio `download` method.
+
 ## 0.2.0 - 0.2.1
 > Note: This version contains breaking changes.
 
