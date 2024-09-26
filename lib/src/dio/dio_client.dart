@@ -39,6 +39,46 @@ class DioClient {
         onReceiveProgress: onReceiveProgress);
   }
 
+  /// Download file from the given [url]
+  Future<Response> download<T>(
+    String path, {
+    required dynamic savePath,
+    Map<String, dynamic> headers = const {},
+    Map<String, dynamic> query = const {},
+    Options? options,
+    bool attachCustomHeaders = true,
+    bool attachCustomQuery = true,
+    CancelToken? cancelToken,
+    ProgressCallback? onReceiveProgress,
+    bool deleteOnError = true,
+    String lengthHeader = Headers.contentLengthHeader,
+    Object? data,
+  }) async {
+    return dio.download(
+      path,
+      savePath,
+      queryParameters: {
+        if (attachCustomQuery && customQuery != null)
+          ...?await customQuery?.call(),
+        ...query,
+      },
+      options: options ??
+          Options(
+            headers: {
+              if (attachCustomHeaders && customHeaders != null)
+                ...?await customHeaders?.call(),
+              ...headers,
+            },
+          ),
+      cancelToken: cancelToken,
+      onReceiveProgress: onReceiveProgress,
+      deleteOnError: deleteOnError,
+      lengthHeader: lengthHeader,
+      data: data,
+    );
+  }
+
+  /// sends a [POST] request to the given [url]
   Future<Response> post<T>(
     String path, {
     Object body = const {},

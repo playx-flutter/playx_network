@@ -211,6 +211,47 @@ class ApiHandler {
     }
   }
 
+  Future<NetworkResult<Response>> handleNetworkResultForDownload(
+      {required Response<dynamic> response,
+      required bool shouldHandleUnauthorizedRequest}) async {
+    try {
+      if (response.statusCode == HttpStatus.badRequest ||
+          !successCodes.contains(response.statusCode)) {
+        final NetworkException exception = _handleResponse(
+            response: response,
+            shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+        _printError(
+          header: 'Playx Network Error :',
+          text: exception.errorMessage,
+        );
+        return NetworkResult.error(exception);
+      } else {
+        if (isResponseBlank(response) ?? true) {
+          _printError(
+            header: 'Playx Network Error :',
+            text: exceptionMessages.unexpectedError,
+            stackTrace: response.toString(),
+          );
+          return NetworkResult.error(UnexpectedErrorException(
+            errorMessage: exceptionMessages.unexpectedError,
+          ));
+        } else {
+          return NetworkResult.success(response);
+        }
+      }
+      // ignore: avoid_catches_without_on_clauses
+    } on Exception catch (e, s) {
+      _printError(
+        header: 'Playx Network Error :',
+        text: e.toString(),
+        stackTrace: s.toString(),
+      );
+      return NetworkResult.error(UnexpectedErrorException(
+        errorMessage: exceptionMessages.unexpectedError,
+      ));
+    }
+  }
+
   NetworkResult<T> handleDioException<T>(
       {dynamic error,
       dynamic stackTrace,

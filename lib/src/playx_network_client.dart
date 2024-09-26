@@ -131,7 +131,6 @@ class PlayxNetworkClient {
   /// You can pass your own queries, headers weather to attach custom headers or not.
   /// Or add custom options which overrides headers and custom headers.
   /// Or add cancel token to cancel the request.
-
   Future<NetworkResult<List<T>>> getList<T>(
     String path, {
     Map<String, dynamic> headers = const {},
@@ -156,6 +155,50 @@ class PlayxNetworkClient {
       return _apiHandler.handleNetworkResultForList(
           response: res,
           fromJson: fromJson,
+          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+      // ignore: avoid_catches_without_on_clauses
+    } catch (error) {
+      return _apiHandler.handleDioException(
+          error: error,
+          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+    }
+  }
+
+  /// Download file from the given [url]
+  /// and returns [NetworkResult] of [Response].
+  Future<NetworkResult<Response>> download(
+    String path, {
+    required dynamic savePath,
+    Map<String, dynamic> headers = const {},
+    Map<String, dynamic> query = const {},
+    Options? options,
+    bool attachCustomHeaders = true,
+    bool attachCustomQuery = true,
+    CancelToken? cancelToken,
+    ProgressCallback? onReceiveProgress,
+    JsonMapper? fromJson,
+    bool shouldHandleUnauthorizedRequest = true,
+    bool deleteOnError = true,
+    String lengthHeader = Headers.contentLengthHeader,
+    Object? data,
+  }) async {
+    try {
+      final res = await _dioClient.download(
+        path,
+        savePath: savePath,
+        headers: headers,
+        query: query,
+        options: options,
+        attachCustomHeaders: attachCustomHeaders,
+        attachCustomQuery: attachCustomQuery,
+        cancelToken: cancelToken,
+        onReceiveProgress: onReceiveProgress,
+        data: data,
+        deleteOnError: deleteOnError,
+        lengthHeader: lengthHeader,
+      );
+      return _apiHandler.handleNetworkResultForDownload(
+          response: res,
           shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
