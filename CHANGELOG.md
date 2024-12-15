@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.3
+- fix: Bug causing error not being reported successfully.
+- feat: Update `sentry_dio`package to v8.11.0.
+
 ## 0.2.2
 - Add ability to download content using dio `download` method.
 
