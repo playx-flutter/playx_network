@@ -1,4 +1,4 @@
-library playx_network;
+library;
 
 export 'package:dio/dio.dart';
 export 'package:dio/io.dart';

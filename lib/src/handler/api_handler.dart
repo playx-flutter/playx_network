@@ -6,16 +6,26 @@ import 'package:playx_network/src/utils/utils.dart';
 
 /// parses json to object in isolate.
 Future<T> _parseJsonInIsolate<T>(List<dynamic> args) async {
-  final data = args[0];
-  final JsonMapper<T> fromJson = args[1];
-  return fromJson(data);
+  try {
+    final data = args[0];
+    final JsonMapper<T> fromJson = args[1];
+    return fromJson(data);
+  } catch (e, s) {
+    ApiHandler.printError(text: e.toString(), stackTrace: s.toString());
+    rethrow;
+  }
 }
 
 /// parses json list to list of objects in isolate.
 Future<List<T>> _parseJsonListInIsolate<T>(List<dynamic> args) async {
-  final data = args[0] as List;
-  final JsonMapper<T> fromJson = args[1];
-  return await Future.wait(data.map((item) async => await fromJson(item)));
+  try {
+    final data = args[0] as List;
+    final JsonMapper<T> fromJson = args[1];
+    return await Future.wait(data.map((item) async => await fromJson(item)));
+  } catch (e, s) {
+    ApiHandler.printError(text: e.toString(), stackTrace: s.toString());
+    rethrow;
+  }
 }
 
 // ignore: avoid_classes_with_only_static_members
@@ -88,7 +98,7 @@ class ApiHandler {
             final result = await compute(_parseJsonInIsolate, [data, fromJson]);
             return NetworkResult.success(result);
             // ignore: avoid_catches_without_on_clauses
-          } on Exception catch (e, s) {
+          } catch (e, s) {
             _printError(
               header: 'Playx Network Error :',
               text: e.toString(),
@@ -104,7 +114,7 @@ class ApiHandler {
         }
       }
       // ignore: avoid_catches_without_on_clauses
-    } on Exception catch (e, s) {
+    } catch (e, s) {
       _printError(
         header: 'Playx Network Error :',
         text: e.toString(),
@@ -183,7 +193,7 @@ class ApiHandler {
                   statusCode: -1));
             }
             // ignore: avoid_catches_without_on_clauses
-          } on Exception catch (e, s) {
+          } catch (e, s) {
             _printError(
               header: 'Playx Network Error :',
               text: e.toString(),
@@ -199,7 +209,7 @@ class ApiHandler {
         }
       }
       // ignore: avoid_catches_without_on_clauses
-    } on Exception catch (e, s) {
+    } catch (e, s) {
       _printError(
         header: 'Playx Network Error :',
         text: e.toString(),
@@ -452,6 +462,7 @@ class ApiHandler {
   }
 
   static void printError({String? header, String? text, String? stackTrace}) {
+    if (kReleaseMode) return;
     const maxWidth = 90;
     //ignore: avoid_print
     print('');
