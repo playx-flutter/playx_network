@@ -42,23 +42,34 @@ class ApiHandler {
     this.onUnauthorizedRequestReceived,
   });
 
-  ExceptionMessage get exceptionMessages => settings.exceptionMessages;
+  ExceptionMessage buildExceptionMessages(
+          PlayxNetworkClientSettings settings) =>
+      settings.exceptionMessages;
 
-  bool get shouldShowApiErrors => settings.shouldShowApiErrors;
+  bool buildShouldShowApiErrors(PlayxNetworkClientSettings settings) =>
+      settings.shouldShowApiErrors;
 
-  bool get attachLogSettings =>
+  bool buildAttachLogSettings(PlayxNetworkClientSettings settings) =>
       kDebugMode && settings.logSettings.attachLoggerOnDebug ||
       kReleaseMode && settings.logSettings.attachLoggerOnRelease;
 
-  List<int> get unauthorizedRequestCodes => settings.unauthorizedRequestCodes;
+  List<int> buildUnauthorizedRequestCodes(
+          PlayxNetworkClientSettings settings) =>
+      settings.unauthorizedRequestCodes;
 
-  List<int> get successCodes => settings.successRequestCodes;
+  List<int> buildSuccessCodes(PlayxNetworkClientSettings settings) =>
+      settings.successRequestCodes;
 
   Future<NetworkResult<T>> handleNetworkResult<T>({
     required Response response,
     required JsonMapper<T> fromJson,
     bool shouldHandleUnauthorizedRequest = true,
+    PlayxNetworkClientSettings? settings,
   }) async {
+    final exceptionMessages = buildExceptionMessages(settings ?? this.settings);
+    final shouldShowApiErrors =
+        buildShouldShowApiErrors(settings ?? this.settings);
+    final successCodes = buildSuccessCodes(settings ?? this.settings);
     try {
       if (response.statusCode == HttpStatus.badRequest ||
           !successCodes.contains(response.statusCode)) {
@@ -130,7 +141,13 @@ class ApiHandler {
     required Response response,
     required JsonMapper<T> fromJson,
     bool shouldHandleUnauthorizedRequest = true,
+    PlayxNetworkClientSettings? settings,
   }) async {
+    final exceptionMessages = buildExceptionMessages(settings ?? this.settings);
+    final shouldShowApiErrors =
+        buildShouldShowApiErrors(settings ?? this.settings);
+    final successCodes = buildSuccessCodes(settings ?? this.settings);
+
     try {
       if (response.statusCode == HttpStatus.badRequest ||
           !successCodes.contains(response.statusCode)) {
@@ -221,9 +238,14 @@ class ApiHandler {
     }
   }
 
-  Future<NetworkResult<Response>> handleNetworkResultForDownload(
-      {required Response<dynamic> response,
-      required bool shouldHandleUnauthorizedRequest}) async {
+  Future<NetworkResult<Response>> handleNetworkResultForDownload({
+    required Response<dynamic> response,
+    required bool shouldHandleUnauthorizedRequest,
+    PlayxNetworkClientSettings? settings,
+  }) async {
+    final exceptionMessages = buildExceptionMessages(settings ?? this.settings);
+    final successCodes = buildSuccessCodes(settings ?? this.settings);
+
     try {
       if (response.statusCode == HttpStatus.badRequest ||
           !successCodes.contains(response.statusCode)) {
@@ -262,10 +284,12 @@ class ApiHandler {
     }
   }
 
-  NetworkResult<T> handleDioException<T>(
-      {dynamic error,
-      dynamic stackTrace,
-      bool shouldHandleUnauthorizedRequest = true}) {
+  NetworkResult<T> handleDioException<T>({
+    dynamic error,
+    dynamic stackTrace,
+    bool shouldHandleUnauthorizedRequest = true,
+    PlayxNetworkClientSettings? settings,
+  }) {
     _printError(
       header: 'Playx Network (Dio) Error :',
       text: error.toString(),
@@ -277,7 +301,15 @@ class ApiHandler {
   }
 
   NetworkException _handleResponse(
-      {Response? response, bool shouldHandleUnauthorizedRequest = true}) {
+      {Response? response,
+      bool shouldHandleUnauthorizedRequest = true,
+      PlayxNetworkClientSettings? settings}) {
+    final exceptionMessages = buildExceptionMessages(settings ?? this.settings);
+    final shouldShowApiErrors =
+        buildShouldShowApiErrors(settings ?? this.settings);
+    final unauthorizedRequestCodes =
+        buildUnauthorizedRequestCodes(settings ?? this.settings);
+
     final dynamic errorJson = response?.data;
 
     String? errMsg;
@@ -357,7 +389,13 @@ class ApiHandler {
   }
 
   NetworkException _getDioException(
-      {dynamic error, bool shouldHandleUnauthorizedRequest = true}) {
+      {dynamic error,
+      bool shouldHandleUnauthorizedRequest = true,
+      PlayxNetworkClientSettings? settings}) {
+    final exceptionMessages = buildExceptionMessages(settings ?? this.settings);
+    final shouldShowApiErrors =
+        buildShouldShowApiErrors(settings ?? this.settings);
+
     if (error is Exception) {
       try {
         NetworkException networkExceptions = UnexpectedErrorException(
@@ -435,7 +473,14 @@ class ApiHandler {
     return error?.message;
   }
 
-  void _printError({String? header, String? text, String? stackTrace}) {
+  void _printError(
+      {String? header,
+      String? text,
+      String? stackTrace,
+      PlayxNetworkClientSettings? settings}) {
+    final bool attachLogSettings =
+        buildAttachLogSettings(settings ?? this.settings);
+
     if (attachLogSettings) {
       const maxWidth = 90;
       //ignore: avoid_print

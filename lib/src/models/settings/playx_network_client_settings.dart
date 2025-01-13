@@ -30,4 +30,21 @@ class PlayxNetworkClientSettings {
     this.unauthorizedRequestCodes = const [401, 403],
     this.successRequestCodes = const [200, 201],
   });
+
+  PlayxNetworkClientSettings copyWith({
+    PlayxNetworkLoggerSettings? logSettings,
+    bool? shouldShowApiErrors,
+    ExceptionMessage? exceptionMessages,
+    List<int>? unauthorizedRequestCodes,
+    List<int>? successRequestCodes,
+  }) {
+    return PlayxNetworkClientSettings(
+      logSettings: logSettings ?? this.logSettings,
+      shouldShowApiErrors: shouldShowApiErrors ?? this.shouldShowApiErrors,
+      exceptionMessages: exceptionMessages ?? this.exceptionMessages,
+      unauthorizedRequestCodes:
+          unauthorizedRequestCodes ?? this.unauthorizedRequestCodes,
+      successRequestCodes: successRequestCodes ?? this.successRequestCodes,
+    );
+  }
 }
