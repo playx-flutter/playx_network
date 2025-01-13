@@ -36,6 +36,17 @@ class _MyHomePageState extends State<MyHomePage> {
   //you should create only one instance of this network client to be used for the app depending on your use case.
   late PlayxNetworkClient _client;
 
+  final settings = const PlayxNetworkClientSettings(
+    logSettings: PlayxNetworkLoggerSettings(
+      responseBody: false,
+      attachLoggerOnDebug: false,
+    ),
+    //Whether you want to show api error message or default message.
+    shouldShowApiErrors: true,
+    //creates custom exception messages to be displayed when error is received.
+    exceptionMessages: CustomExceptionMessage(),
+  );
+
   @override
   void initState() {
     //Configure your network client based on your needs.
@@ -55,16 +66,7 @@ class _MyHomePageState extends State<MyHomePage> {
               'locale': 'ar',
             },
         //attach logger to the client to print ongoing requests works only on debug mode.
-        settings: const PlayxNetworkClientSettings(
-          logSettings: PlayxNetworkLoggerSettings(
-            responseBody: true,
-            attachLoggerOnDebug: true,
-          ),
-          //Whether you want to show api error message or default message.
-          shouldShowApiErrors: true,
-          //creates custom exception messages to be displayed when error is received.
-          exceptionMessages: CustomExceptionMessage(),
-        ),
+        settings: settings,
         //converts json to error message.
         errorMapper: (json) {
           if (json.containsKey('message')) {
@@ -185,7 +187,13 @@ class _MyHomePageState extends State<MyHomePage> {
         query: {
           'limit': '10',
         },
-        fromJson: Cat.fromJson);
+        fromJson: Cat.fromJson,
+        settings: settings.copyWith(
+          logSettings: const PlayxNetworkLoggerSettings(
+            responseBody: true,
+            attachLoggerOnDebug: true,
+          ),
+        ));
 
     result.when(success: (cats) {
       setState(() {
