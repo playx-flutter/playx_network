@@ -43,22 +43,27 @@ class ApiHandler {
   });
 
   ExceptionMessage buildExceptionMessages(
-          PlayxNetworkClientSettings settings) =>
-      settings.exceptionMessages;
+          PlayxNetworkClientSettings? settings) =>
+      (settings ?? this.settings).exceptionMessages;
 
-  bool buildShouldShowApiErrors(PlayxNetworkClientSettings settings) =>
-      settings.shouldShowApiErrors;
+  bool buildShouldShowApiErrors(PlayxNetworkClientSettings? settings) =>
+      (settings ?? this.settings).shouldShowApiErrors;
 
-  bool buildAttachLogSettings(PlayxNetworkClientSettings settings) =>
-      kDebugMode && settings.logSettings.attachLoggerOnDebug ||
-      kReleaseMode && settings.logSettings.attachLoggerOnRelease;
+  bool buildAttachLogSettings(PlayxNetworkClientSettings? settings) =>
+      kDebugMode &&
+          (settings ?? this.settings).logSettings.attachLoggerOnDebug ||
+      kReleaseMode &&
+          (settings ?? this.settings).logSettings.attachLoggerOnRelease;
 
   List<int> buildUnauthorizedRequestCodes(
-          PlayxNetworkClientSettings settings) =>
-      settings.unauthorizedRequestCodes;
+          PlayxNetworkClientSettings? settings) =>
+      (settings ?? this.settings).unauthorizedRequestCodes;
 
-  List<int> buildSuccessCodes(PlayxNetworkClientSettings settings) =>
-      settings.successRequestCodes;
+  List<int> buildSuccessCodes(PlayxNetworkClientSettings? settings) =>
+      (settings ?? this.settings).successRequestCodes;
+
+  bool useIsolateForMappingJson(PlayxNetworkClientSettings? settings) =>
+      (settings ?? this.settings).useIsolateForMappingJson;
 
   Future<NetworkResult<T>> handleNetworkResult<T>({
     required Response response,
@@ -66,10 +71,9 @@ class ApiHandler {
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
-    final exceptionMessages = buildExceptionMessages(settings ?? this.settings);
-    final shouldShowApiErrors =
-        buildShouldShowApiErrors(settings ?? this.settings);
-    final successCodes = buildSuccessCodes(settings ?? this.settings);
+    final exceptionMessages = buildExceptionMessages(settings);
+    final shouldShowApiErrors = buildShouldShowApiErrors(settings);
+    final successCodes = buildSuccessCodes(settings);
     try {
       if (response.statusCode == HttpStatus.badRequest ||
           !successCodes.contains(response.statusCode)) {
@@ -106,7 +110,10 @@ class ApiHandler {
           }
 
           try {
-            final result = await compute(_parseJsonInIsolate, [data, fromJson]);
+            bool useIsolate = useIsolateForMappingJson(settings);
+            final result = useIsolate
+                ? await compute(_parseJsonInIsolate, [data, fromJson])
+                : fromJson(data);
             return NetworkResult.success(result);
             // ignore: avoid_catches_without_on_clauses
           } catch (e, s) {
@@ -143,10 +150,9 @@ class ApiHandler {
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
-    final exceptionMessages = buildExceptionMessages(settings ?? this.settings);
-    final shouldShowApiErrors =
-        buildShouldShowApiErrors(settings ?? this.settings);
-    final successCodes = buildSuccessCodes(settings ?? this.settings);
+    final exceptionMessages = buildExceptionMessages(settings);
+    final shouldShowApiErrors = buildShouldShowApiErrors(settings);
+    final successCodes = buildSuccessCodes(settings);
 
     try {
       if (response.statusCode == HttpStatus.badRequest ||
@@ -185,8 +191,11 @@ class ApiHandler {
 
           try {
             if (data is List) {
-              final result =
-                  await compute(_parseJsonListInIsolate<T>, [data, fromJson]);
+              bool useIsolate = useIsolateForMappingJson(settings);
+              final result = useIsolate
+                  ? await compute(_parseJsonListInIsolate<T>, [data, fromJson])
+                  : await Future.wait(
+                      data.map((item) async => await fromJson(item)));
 
               if (result.isEmpty) {
                 _printError(
@@ -243,8 +252,8 @@ class ApiHandler {
     required bool shouldHandleUnauthorizedRequest,
     PlayxNetworkClientSettings? settings,
   }) async {
-    final exceptionMessages = buildExceptionMessages(settings ?? this.settings);
-    final successCodes = buildSuccessCodes(settings ?? this.settings);
+    final exceptionMessages = buildExceptionMessages(settings);
+    final successCodes = buildSuccessCodes(settings);
 
     try {
       if (response.statusCode == HttpStatus.badRequest ||
@@ -304,11 +313,9 @@ class ApiHandler {
       {Response? response,
       bool shouldHandleUnauthorizedRequest = true,
       PlayxNetworkClientSettings? settings}) {
-    final exceptionMessages = buildExceptionMessages(settings ?? this.settings);
-    final shouldShowApiErrors =
-        buildShouldShowApiErrors(settings ?? this.settings);
-    final unauthorizedRequestCodes =
-        buildUnauthorizedRequestCodes(settings ?? this.settings);
+    final exceptionMessages = buildExceptionMessages(settings);
+    final shouldShowApiErrors = buildShouldShowApiErrors(settings);
+    final unauthorizedRequestCodes = buildUnauthorizedRequestCodes(settings);
 
     final dynamic errorJson = response?.data;
 
@@ -392,9 +399,8 @@ class ApiHandler {
       {dynamic error,
       bool shouldHandleUnauthorizedRequest = true,
       PlayxNetworkClientSettings? settings}) {
-    final exceptionMessages = buildExceptionMessages(settings ?? this.settings);
-    final shouldShowApiErrors =
-        buildShouldShowApiErrors(settings ?? this.settings);
+    final exceptionMessages = buildExceptionMessages(settings);
+    final shouldShowApiErrors = buildShouldShowApiErrors(settings);
 
     if (error is Exception) {
       try {
@@ -478,8 +484,7 @@ class ApiHandler {
       String? text,
       String? stackTrace,
       PlayxNetworkClientSettings? settings}) {
-    final bool attachLogSettings =
-        buildAttachLogSettings(settings ?? this.settings);
+    final bool attachLogSettings = buildAttachLogSettings(settings);
 
     if (attachLogSettings) {
       const maxWidth = 90;

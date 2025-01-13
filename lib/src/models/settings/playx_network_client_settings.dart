@@ -23,12 +23,16 @@ class PlayxNetworkClientSettings {
   /// Used to determine the success request codes.
   final List<int> successRequestCodes;
 
+  /// Used to determine whether to use isolate for mapping json or not.
+  final bool useIsolateForMappingJson;
+
   const PlayxNetworkClientSettings({
     this.logSettings = const PlayxNetworkLoggerSettings(),
     this.shouldShowApiErrors = true,
     this.exceptionMessages = const DefaultEnglishExceptionMessage(),
     this.unauthorizedRequestCodes = const [401, 403],
     this.successRequestCodes = const [200, 201],
+    this.useIsolateForMappingJson = true,
   });
 
   PlayxNetworkClientSettings copyWith({
@@ -37,6 +41,7 @@ class PlayxNetworkClientSettings {
     ExceptionMessage? exceptionMessages,
     List<int>? unauthorizedRequestCodes,
     List<int>? successRequestCodes,
+    bool? useIsolateForMappingJson,
   }) {
     return PlayxNetworkClientSettings(
       logSettings: logSettings ?? this.logSettings,
@@ -45,6 +50,8 @@ class PlayxNetworkClientSettings {
       unauthorizedRequestCodes:
           unauthorizedRequestCodes ?? this.unauthorizedRequestCodes,
       successRequestCodes: successRequestCodes ?? this.successRequestCodes,
+      useIsolateForMappingJson:
+          useIsolateForMappingJson ?? this.useIsolateForMappingJson,
     );
   }
 }
