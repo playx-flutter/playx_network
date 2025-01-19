@@ -201,20 +201,27 @@ class _MyHomePageState extends State<MyHomePage> {
         _isLoading = false;
         _cats = cats;
       });
-      print('Cats are : ${cats.length}');
+
+      if (kDebugMode) {
+        print('Cats are : ${cats.length}');
+      }
     }, error: (error) {
-      print('Error is : ${error.message}');
+      if (kDebugMode) {
+        print('Error is : ${error.message}');
+      }
       //handle error here
       _weatherMsg = "Error is : ${error.message}";
       setState(() {
         _isLoading = false;
       });
     });
+  }
 
-    // We can map the result to another type like this example:
-    // As it converts lis of cats to list of cats image urls.
-    final NetworkResult<List<String?>> catImagesResult =
-        result.map(success: (success) {
+  // We can map the result to another type like this example:
+  // As it converts lis of cats to list of cats image urls.
+  NetworkResult<List<String?>> mapCatToImageUrls(
+      NetworkResult<List<Cat>> result) {
+    return result.map(success: (success) {
       final data = success.data;
       final images = data.map((e) => e.url).toList();
       return NetworkResult.success(images);
