@@ -1,13 +1,13 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
-import 'package:playx_network/src/models/settings/playx_network_client_settings.dart';
-import 'package:pretty_dio_logger/pretty_dio_logger.dart';
+import 'package:playx_core/playx_core.dart';
 
 import 'dio/dio_client.dart';
 import 'handler/api_handler.dart';
+import 'models/exceptions/message/exception_message.dart';
 import 'models/network_result.dart';
+import 'models/settings/playx_network_client_settings.dart';
 
 ///Function that converts json response to the required model.
 typedef JsonMapper<T> = FutureOr<T> Function(dynamic json);
@@ -24,6 +24,9 @@ class PlayxNetworkClient {
   late final DioClient _dioClient;
   late final ApiHandler _apiHandler;
 
+  ///Settings for the client.
+  final PlayxNetworkClientSettings settings;
+
   ///Creates an instance of [PlayxNetworkClient]
   ///takes [Dio] object so u can easily customize your dio options.
   /// [customHeaders] which is custom headers that can included in each request like authorization token.
@@ -37,36 +40,21 @@ class PlayxNetworkClient {
     FutureOr<Map<String, dynamic>> Function()? customQuery,
     UnauthorizedRequestHandler? onUnauthorizedRequestReceived,
     ErrorMapper? errorMapper,
-    PlayxNetworkClientSettings settings = const PlayxNetworkClientSettings(),
+    this.settings = const PlayxNetworkClientSettings(),
   }) {
-    final attachLogSettings =
-        kDebugMode && settings.logSettings.attachLoggerOnDebug ||
-            kReleaseMode && settings.logSettings.attachLoggerOnRelease;
-
-    if (attachLogSettings) {
-      dio.interceptors.add(
-        PrettyDioLogger(
-            requestHeader: settings.logSettings.requestHeader,
-            requestBody: settings.logSettings.requestBody,
-            responseBody: settings.logSettings.responseBody,
-            request: settings.logSettings.request,
-            responseHeader: settings.logSettings.responseHeader,
-            error: settings.logSettings.error,
-            maxWidth: settings.logSettings.maxWidth,
-            compact: settings.logSettings.compact,
-            logPrint: settings.logSettings.logPrint),
-      );
-    }
     _dioClient = DioClient(
       dio: dio,
       customHeaders: customHeaders,
       customQuery: customQuery,
+      settings: settings,
     );
     _apiHandler = ApiHandler(
       errorMapper: errorMapper ?? ApiHandler.getErrorMessageFromResponse,
       settings: settings,
       onUnauthorizedRequestReceived: onUnauthorizedRequestReceived,
     );
+    GetIt.instance
+        .registerSingleton<ExceptionMessage>(settings.exceptionMessages);
   }
 
   static Dio createDefaultDioClient({
@@ -101,6 +89,7 @@ class PlayxNetworkClient {
     ProgressCallback? onReceiveProgress,
     required JsonMapper<T> fromJson,
     bool shouldHandleUnauthorizedRequest = true,
+    PlayxNetworkClientSettings? settings,
   }) async {
     try {
       final res = await _dioClient.get(
@@ -112,17 +101,22 @@ class PlayxNetworkClient {
         attachCustomQuery: attachCustomQuery,
         cancelToken: cancelToken,
         onReceiveProgress: onReceiveProgress,
+        logSettings: settings?.logSettings,
       );
       return _apiHandler.handleNetworkResult(
-          response: res,
-          fromJson: fromJson,
-          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+        response: res,
+        fromJson: fromJson,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
+      );
       // ignore: avoid_catches_without_on_clauses
     } catch (error, stackTrace) {
       return _apiHandler.handleDioException(
-          error: error,
-          stackTrace: stackTrace,
-          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+        error: error,
+        stackTrace: stackTrace,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
+      );
     }
   }
 
@@ -142,25 +136,33 @@ class PlayxNetworkClient {
     ProgressCallback? onReceiveProgress,
     required JsonMapper<T> fromJson,
     bool shouldHandleUnauthorizedRequest = true,
+    PlayxNetworkClientSettings? settings,
   }) async {
     try {
-      final res = await _dioClient.get(path,
-          headers: headers,
-          query: query,
-          options: options,
-          attachCustomHeaders: attachCustomHeaders,
-          attachCustomQuery: attachCustomQuery,
-          cancelToken: cancelToken,
-          onReceiveProgress: onReceiveProgress);
+      final res = await _dioClient.get(
+        path,
+        headers: headers,
+        query: query,
+        options: options,
+        attachCustomHeaders: attachCustomHeaders,
+        attachCustomQuery: attachCustomQuery,
+        cancelToken: cancelToken,
+        onReceiveProgress: onReceiveProgress,
+        logSettings: settings?.logSettings,
+      );
       return _apiHandler.handleNetworkResultForList(
-          response: res,
-          fromJson: fromJson,
-          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+        response: res,
+        fromJson: fromJson,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
+      );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
       return _apiHandler.handleDioException(
-          error: error,
-          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+        error: error,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
+      );
     }
   }
 
@@ -181,6 +183,7 @@ class PlayxNetworkClient {
     bool deleteOnError = true,
     String lengthHeader = Headers.contentLengthHeader,
     Object? data,
+    PlayxNetworkClientSettings? settings,
   }) async {
     try {
       final res = await _dioClient.download(
@@ -196,15 +199,20 @@ class PlayxNetworkClient {
         data: data,
         deleteOnError: deleteOnError,
         lengthHeader: lengthHeader,
+        logSettings: settings?.logSettings,
       );
       return _apiHandler.handleNetworkResultForDownload(
-          response: res,
-          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+        response: res,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
+      );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
       return _apiHandler.handleDioException(
-          error: error,
-          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+        error: error,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
+      );
     }
   }
 
@@ -227,6 +235,7 @@ class PlayxNetworkClient {
     ProgressCallback? onReceiveProgress,
     required JsonMapper<T> fromJson,
     bool shouldHandleUnauthorizedRequest = true,
+    PlayxNetworkClientSettings? settings,
   }) async {
     try {
       final res = await _dioClient.post(
@@ -241,17 +250,21 @@ class PlayxNetworkClient {
         cancelToken: cancelToken,
         onSendProgress: onSendProgress,
         onReceiveProgress: onReceiveProgress,
+        logSettings: settings?.logSettings,
       );
       return _apiHandler.handleNetworkResult(
         response: res,
         fromJson: fromJson,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
       return _apiHandler.handleDioException(
-          error: error,
-          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+        error: error,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
+      );
     }
   }
 
@@ -274,6 +287,7 @@ class PlayxNetworkClient {
     ProgressCallback? onReceiveProgress,
     required JsonMapper<T> fromJson,
     bool shouldHandleUnauthorizedRequest = true,
+    PlayxNetworkClientSettings? settings,
   }) async {
     try {
       final res = await _dioClient.post(
@@ -288,17 +302,21 @@ class PlayxNetworkClient {
         cancelToken: cancelToken,
         onSendProgress: onSendProgress,
         onReceiveProgress: onReceiveProgress,
+        logSettings: settings?.logSettings,
       );
       return _apiHandler.handleNetworkResultForList(
         response: res,
         fromJson: fromJson,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
       return _apiHandler.handleDioException(
-          error: error,
-          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+        error: error,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
+      );
     }
   }
 
@@ -319,6 +337,7 @@ class PlayxNetworkClient {
     CancelToken? cancelToken,
     required JsonMapper<T> fromJson,
     bool shouldHandleUnauthorizedRequest = true,
+    PlayxNetworkClientSettings? settings,
   }) async {
     try {
       final res = await _dioClient.delete(
@@ -331,17 +350,21 @@ class PlayxNetworkClient {
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
         cancelToken: cancelToken,
+        logSettings: settings?.logSettings,
       );
       return _apiHandler.handleNetworkResult(
         response: res,
         fromJson: fromJson,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
       return _apiHandler.handleDioException(
-          error: error,
-          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+        error: error,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
+      );
     }
   }
 
@@ -362,6 +385,7 @@ class PlayxNetworkClient {
     CancelToken? cancelToken,
     required JsonMapper<T> fromJson,
     bool shouldHandleUnauthorizedRequest = true,
+    PlayxNetworkClientSettings? settings,
   }) async {
     try {
       final res = await _dioClient.delete(
@@ -374,17 +398,21 @@ class PlayxNetworkClient {
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
         cancelToken: cancelToken,
+        logSettings: settings?.logSettings,
       );
       return _apiHandler.handleNetworkResultForList(
         response: res,
         fromJson: fromJson,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
       return _apiHandler.handleDioException(
-          error: error,
-          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+        error: error,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
+      );
     }
   }
 
@@ -407,6 +435,7 @@ class PlayxNetworkClient {
     ProgressCallback? onReceiveProgress,
     required JsonMapper<T> fromJson,
     bool shouldHandleUnauthorizedRequest = true,
+    PlayxNetworkClientSettings? settings,
   }) async {
     try {
       final res = await _dioClient.put(
@@ -421,16 +450,21 @@ class PlayxNetworkClient {
         cancelToken: cancelToken,
         onSendProgress: onSendProgress,
         onReceiveProgress: onReceiveProgress,
+        logSettings: settings?.logSettings,
       );
       return _apiHandler.handleNetworkResult(
-          response: res,
-          fromJson: fromJson,
-          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+        response: res,
+        fromJson: fromJson,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
+      );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
       return _apiHandler.handleDioException(
-          error: error,
-          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+        error: error,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
+      );
     }
   }
 
@@ -453,6 +487,7 @@ class PlayxNetworkClient {
     ProgressCallback? onReceiveProgress,
     required JsonMapper<T> fromJson,
     bool shouldHandleUnauthorizedRequest = true,
+    PlayxNetworkClientSettings? settings,
   }) async {
     try {
       final res = await _dioClient.put(
@@ -467,16 +502,21 @@ class PlayxNetworkClient {
         cancelToken: cancelToken,
         onSendProgress: onSendProgress,
         onReceiveProgress: onReceiveProgress,
+        logSettings: settings?.logSettings,
       );
       return _apiHandler.handleNetworkResultForList(
-          response: res,
-          fromJson: fromJson,
-          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+        response: res,
+        fromJson: fromJson,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
+      );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
       return _apiHandler.handleDioException(
-          error: error,
-          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+        error: error,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
+      );
     }
   }
 }

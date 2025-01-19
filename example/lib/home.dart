@@ -36,6 +36,20 @@ class _MyHomePageState extends State<MyHomePage> {
   //you should create only one instance of this network client to be used for the app depending on your use case.
   late PlayxNetworkClient _client;
 
+  final settings = const PlayxNetworkClientSettings(
+    logSettings: PlayxNetworkLoggerSettings(
+      responseBody: true,
+      request: true,
+      attachLoggerOnDebug: true,
+    ),
+    //Whether you want to show api error message or default message.
+    shouldShowApiErrors: true,
+    //creates custom exception messages to be displayed when error is received.
+    exceptionMessages: CustomExceptionMessage(),
+    useIsolateForMappingJson: true,
+    useWorkMangerForMappingJsonInIsolate: true,
+  );
+
   @override
   void initState() {
     //Configure your network client based on your needs.
@@ -55,16 +69,7 @@ class _MyHomePageState extends State<MyHomePage> {
               'locale': 'ar',
             },
         //attach logger to the client to print ongoing requests works only on debug mode.
-        settings: const PlayxNetworkClientSettings(
-          logSettings: PlayxNetworkLoggerSettings(
-            responseBody: true,
-            attachLoggerOnDebug: true,
-          ),
-          //Whether you want to show api error message or default message.
-          shouldShowApiErrors: true,
-          //creates custom exception messages to be displayed when error is received.
-          exceptionMessages: CustomExceptionMessage(),
-        ),
+        settings: settings,
         //converts json to error message.
         errorMapper: (json) {
           if (json.containsKey('message')) {
@@ -185,25 +190,38 @@ class _MyHomePageState extends State<MyHomePage> {
         query: {
           'limit': '10',
         },
-        fromJson: Cat.fromJson);
+        fromJson: Cat.fromJson,
+        settings: settings.copyWith(
+          logSettings: const PlayxNetworkLoggerSettings(
+              responseBody: false, attachLoggerOnDebug: true),
+        ));
 
     result.when(success: (cats) {
       setState(() {
         _isLoading = false;
         _cats = cats;
       });
+
+      if (kDebugMode) {
+        print('Cats are : ${cats.length}');
+      }
     }, error: (error) {
+      if (kDebugMode) {
+        print('Error is : ${error.message}');
+      }
       //handle error here
       _weatherMsg = "Error is : ${error.message}";
       setState(() {
         _isLoading = false;
       });
     });
+  }
 
-    // We can map the result to another type like this example:
-    // As it converts lis of cats to list of cats image urls.
-    final NetworkResult<List<String?>> catImagesResult =
-        result.map(success: (success) {
+  // We can map the result to another type like this example:
+  // As it converts lis of cats to list of cats image urls.
+  NetworkResult<List<String?>> mapCatToImageUrls(
+      NetworkResult<List<Cat>> result) {
+    return result.map(success: (success) {
       final data = success.data;
       final images = data.map((e) => e.url).toList();
       return NetworkResult.success(images);

@@ -1,32 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:playx_core/playx_core.dart';
 import 'package:playx_network/playx_network.dart';
 import 'package:playx_network/src/utils/utils.dart';
-
-/// parses json to object in isolate.
-Future<T> _parseJsonInIsolate<T>(List<dynamic> args) async {
-  try {
-    final data = args[0];
-    final JsonMapper<T> fromJson = args[1];
-    return fromJson(data);
-  } catch (e, s) {
-    ApiHandler.printError(text: e.toString(), stackTrace: s.toString());
-    rethrow;
-  }
-}
-
-/// parses json list to list of objects in isolate.
-Future<List<T>> _parseJsonListInIsolate<T>(List<dynamic> args) async {
-  try {
-    final data = args[0] as List;
-    final JsonMapper<T> fromJson = args[1];
-    return await Future.wait(data.map((item) async => await fromJson(item)));
-  } catch (e, s) {
-    ApiHandler.printError(text: e.toString(), stackTrace: s.toString());
-    rethrow;
-  }
-}
 
 // ignore: avoid_classes_with_only_static_members
 /// This class is responsible for handling the network response and extract error from it.
@@ -42,23 +19,42 @@ class ApiHandler {
     this.onUnauthorizedRequestReceived,
   });
 
-  ExceptionMessage get exceptionMessages => settings.exceptionMessages;
+  ExceptionMessage buildExceptionMessages(
+          PlayxNetworkClientSettings? settings) =>
+      (settings ?? this.settings).exceptionMessages;
 
-  bool get shouldShowApiErrors => settings.shouldShowApiErrors;
+  bool buildShouldShowApiErrors(PlayxNetworkClientSettings? settings) =>
+      (settings ?? this.settings).shouldShowApiErrors;
 
-  bool get attachLogSettings =>
-      kDebugMode && settings.logSettings.attachLoggerOnDebug ||
-      kReleaseMode && settings.logSettings.attachLoggerOnRelease;
+  bool buildAttachLogSettings(PlayxNetworkClientSettings? settings) =>
+      kDebugMode &&
+          (settings ?? this.settings).logSettings.attachLoggerOnDebug ||
+      kReleaseMode &&
+          (settings ?? this.settings).logSettings.attachLoggerOnRelease;
 
-  List<int> get unauthorizedRequestCodes => settings.unauthorizedRequestCodes;
+  List<int> buildUnauthorizedRequestCodes(
+          PlayxNetworkClientSettings? settings) =>
+      (settings ?? this.settings).unauthorizedRequestCodes;
 
-  List<int> get successCodes => settings.successRequestCodes;
+  List<int> buildSuccessCodes(PlayxNetworkClientSettings? settings) =>
+      (settings ?? this.settings).successRequestCodes;
+
+  bool useIsolateForMappingJson(PlayxNetworkClientSettings? settings) =>
+      (settings ?? this.settings).useIsolateForMappingJson;
+
+  bool useWorkManagerForMappingJsonInIsolate(
+          PlayxNetworkClientSettings? settings) =>
+      (settings ?? this.settings).useWorkMangerForMappingJsonInIsolate;
 
   Future<NetworkResult<T>> handleNetworkResult<T>({
     required Response response,
     required JsonMapper<T> fromJson,
     bool shouldHandleUnauthorizedRequest = true,
+    PlayxNetworkClientSettings? settings,
   }) async {
+    final exceptionMessages = buildExceptionMessages(settings);
+    final shouldShowApiErrors = buildShouldShowApiErrors(settings);
+    final successCodes = buildSuccessCodes(settings);
     try {
       if (response.statusCode == HttpStatus.badRequest ||
           !successCodes.contains(response.statusCode)) {
@@ -95,20 +91,27 @@ class ApiHandler {
           }
 
           try {
-            final result = await compute(_parseJsonInIsolate, [data, fromJson]);
+            bool useIsolate = useIsolateForMappingJson(settings);
+            bool useWorkManager =
+                useWorkManagerForMappingJsonInIsolate(settings);
+
+            final result = useIsolate
+                ? await MapUtils.mapAsyncInIsolate(
+                    data: data,
+                    mapper: fromJson,
+                    useWorkManager: useWorkManager,
+                    printError: false,
+                  )
+                : await fromJson(data);
+
             return NetworkResult.success(result);
             // ignore: avoid_catches_without_on_clauses
           } catch (e, s) {
-            _printError(
-              header: 'Playx Network Error :',
-              text: e.toString(),
-              stackTrace: s.toString(),
-            );
-            return NetworkResult.error(
-              UnableToProcessException(
-                  errorMessage: exceptionMessages.unableToProcess,
-                  statusCode: -1,
-                  shouldShowApiError: shouldShowApiErrors),
+            return ApiHandler.unableToProcessException(
+              e: e,
+              s: s,
+              exceptionMessage: exceptionMessages.unableToProcess,
+              shouldShowApiErrors: shouldShowApiErrors,
             );
           }
         }
@@ -130,7 +133,12 @@ class ApiHandler {
     required Response response,
     required JsonMapper<T> fromJson,
     bool shouldHandleUnauthorizedRequest = true,
+    PlayxNetworkClientSettings? settings,
   }) async {
+    final exceptionMessages = buildExceptionMessages(settings);
+    final shouldShowApiErrors = buildShouldShowApiErrors(settings);
+    final successCodes = buildSuccessCodes(settings);
+
     try {
       if (response.statusCode == HttpStatus.badRequest ||
           !successCodes.contains(response.statusCode)) {
@@ -168,8 +176,18 @@ class ApiHandler {
 
           try {
             if (data is List) {
-              final result =
-                  await compute(_parseJsonListInIsolate<T>, [data, fromJson]);
+              bool useIsolate = useIsolateForMappingJson(settings);
+              bool useWorkManager =
+                  useWorkManagerForMappingJsonInIsolate(settings);
+
+              final result = useIsolate
+                  ? await data.asyncMapInIsolate(
+                      mapper: fromJson,
+                      useWorkManager: useWorkManager,
+                      printError: false,
+                      printEachItemError: false)
+                  : await Future.wait(
+                      data.map((item) async => await fromJson(item)));
 
               if (result.isEmpty) {
                 _printError(
@@ -183,27 +201,19 @@ class ApiHandler {
               }
               return NetworkResult.success(result);
             } else {
-              _printError(
-                header: 'Playx Network Error :',
-                text: exceptionMessages.unableToProcess,
+              return ApiHandler.unableToProcessException(
+                e: ApiHandler.unableToProcessException,
+                exceptionMessage: exceptionMessages.unableToProcess,
+                shouldShowApiErrors: shouldShowApiErrors,
               );
-              return NetworkResult.error(UnableToProcessException(
-                  errorMessage: exceptionMessages.unableToProcess,
-                  shouldShowApiError: shouldShowApiErrors,
-                  statusCode: -1));
             }
             // ignore: avoid_catches_without_on_clauses
           } catch (e, s) {
-            _printError(
-              header: 'Playx Network Error :',
-              text: e.toString(),
-              stackTrace: s.toString(),
-            );
-            return NetworkResult.error(
-              UnableToProcessException(
-                  errorMessage: exceptionMessages.unableToProcess,
-                  statusCode: -1,
-                  shouldShowApiError: shouldShowApiErrors),
+            return ApiHandler.unableToProcessException(
+              e: e,
+              s: s,
+              exceptionMessage: exceptionMessages.unableToProcess,
+              shouldShowApiErrors: shouldShowApiErrors,
             );
           }
         }
@@ -221,9 +231,14 @@ class ApiHandler {
     }
   }
 
-  Future<NetworkResult<Response>> handleNetworkResultForDownload(
-      {required Response<dynamic> response,
-      required bool shouldHandleUnauthorizedRequest}) async {
+  Future<NetworkResult<Response>> handleNetworkResultForDownload({
+    required Response<dynamic> response,
+    required bool shouldHandleUnauthorizedRequest,
+    PlayxNetworkClientSettings? settings,
+  }) async {
+    final exceptionMessages = buildExceptionMessages(settings);
+    final successCodes = buildSuccessCodes(settings);
+
     try {
       if (response.statusCode == HttpStatus.badRequest ||
           !successCodes.contains(response.statusCode)) {
@@ -262,10 +277,12 @@ class ApiHandler {
     }
   }
 
-  NetworkResult<T> handleDioException<T>(
-      {dynamic error,
-      dynamic stackTrace,
-      bool shouldHandleUnauthorizedRequest = true}) {
+  NetworkResult<T> handleDioException<T>({
+    dynamic error,
+    dynamic stackTrace,
+    bool shouldHandleUnauthorizedRequest = true,
+    PlayxNetworkClientSettings? settings,
+  }) {
     _printError(
       header: 'Playx Network (Dio) Error :',
       text: error.toString(),
@@ -277,7 +294,13 @@ class ApiHandler {
   }
 
   NetworkException _handleResponse(
-      {Response? response, bool shouldHandleUnauthorizedRequest = true}) {
+      {Response? response,
+      bool shouldHandleUnauthorizedRequest = true,
+      PlayxNetworkClientSettings? settings}) {
+    final exceptionMessages = buildExceptionMessages(settings);
+    final shouldShowApiErrors = buildShouldShowApiErrors(settings);
+    final unauthorizedRequestCodes = buildUnauthorizedRequestCodes(settings);
+
     final dynamic errorJson = response?.data;
 
     String? errMsg;
@@ -357,7 +380,12 @@ class ApiHandler {
   }
 
   NetworkException _getDioException(
-      {dynamic error, bool shouldHandleUnauthorizedRequest = true}) {
+      {dynamic error,
+      bool shouldHandleUnauthorizedRequest = true,
+      PlayxNetworkClientSettings? settings}) {
+    final exceptionMessages = buildExceptionMessages(settings);
+    final shouldShowApiErrors = buildShouldShowApiErrors(settings);
+
     if (error is Exception) {
       try {
         NetworkException networkExceptions = UnexpectedErrorException(
@@ -435,7 +463,13 @@ class ApiHandler {
     return error?.message;
   }
 
-  void _printError({String? header, String? text, String? stackTrace}) {
+  void _printError(
+      {String? header,
+      String? text,
+      String? stackTrace,
+      PlayxNetworkClientSettings? settings}) {
+    final bool attachLogSettings = buildAttachLogSettings(settings);
+
     if (attachLogSettings) {
       const maxWidth = 90;
       //ignore: avoid_print
@@ -474,5 +508,24 @@ class ApiHandler {
     _printStackTrace(stackTrace ?? '');
     //ignore: avoid_print
     print('╚${'═' * (maxWidth - 1)}╝');
+  }
+
+  static NetworkResult<T> unableToProcessException<T>({
+    dynamic e,
+    dynamic s,
+    required String exceptionMessage,
+    bool shouldShowApiErrors = false,
+  }) {
+    printError(
+      header: 'Playx Network Error :',
+      text: e.toString(),
+      stackTrace: s.toString(),
+    );
+    return NetworkResult<T>.error(
+      UnableToProcessException(
+          errorMessage: exceptionMessage,
+          statusCode: -1,
+          shouldShowApiError: shouldShowApiErrors),
+    );
   }
 }

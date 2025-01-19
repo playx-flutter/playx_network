@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.3.0
+
+- **Mapping Enhancements**:
+  - Enhanced mapping of Dio responses with support for processing in an isolate using the `work_manager` package or the `compute` method.
+  - Added parameters for mapping options in `PlayxNetworkClientSettings`:
+    - `useIsolateForMappingJson`: Determines whether to use an isolate for mapping JSON responses.
+    - `useWorkManagerForMappingJsonInIsolate`: Specifies whether to use `work_manager` or the `compute` function for JSON mapping in an isolate.
+  - Added the ability to override `PlayxNetworkClientSettings` for individual requests, similar to overriding `logSettings` or `exceptionMessages`.
+
+- **NetworkResult Enhancements**:
+  - Added the following convenience getters to the `NetworkResult` class:
+    - `isSuccess`: Checks if the network call is successful.
+    - `isError`: Checks if the network call has failed.
+    - `networkData`: Returns the data if the call is successful, otherwise returns `null`.
+    - `networkError`: Returns the error if the call has failed.
+
+- **Asynchronous Mapping**:
+  - Introduced new mapping methods for `NetworkResult`:
+    - `mapDataAsync`: Maps a network response (success or error) to a desired model asynchronously.
+    - `mapDataAsyncInIsolate`: Maps a network response asynchronously in an isolate, with configurable options:
+      - `mapper`: The function for transforming data.
+      - `exceptionMessage`: A message to display in case of exceptions.
+      - `useWorkManager`: Determines whether to use `work_manager` or `compute` for JSON mapping.
+    - `mapAsyncInIsolate`: Separately maps success and error cases asynchronously in an isolate, with configurable options:
+      - `success`: The function for mapping successful responses.
+      - `error`: The function for mapping error responses.
+      - `useWorkManager`: Determines whether to use `work_manager` or `compute`.
+
+
 ## 0.2.3
 - fix: Bug causing error not being reported successfully.
 - feat: Update `sentry_dio`package to v8.11.0.

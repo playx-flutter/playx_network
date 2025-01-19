@@ -1,3 +1,5 @@
+import 'package:pretty_dio_logger/pretty_dio_logger.dart';
+
 /// Logger settings used to customize what should be logged by the application when performing a request.
 class PlayxNetworkLoggerSettings {
   /// Print request [Options]
@@ -51,4 +53,50 @@ class PlayxNetworkLoggerSettings {
       this.maxWidth = 90,
       this.compact = true,
       this.logPrint = print});
+
+  PrettyDioLogger buildPrettyDioLogger() {
+    return PrettyDioLogger(
+      requestHeader: requestHeader,
+      requestBody: requestBody,
+      responseBody: responseBody,
+      responseHeader: responseHeader,
+      error: error,
+      compact: compact,
+      maxWidth: maxWidth,
+      logPrint: logPrint,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+
+    return other is PlayxNetworkLoggerSettings &&
+        other.request == request &&
+        other.requestHeader == requestHeader &&
+        other.requestBody == requestBody &&
+        other.responseHeader == responseHeader &&
+        other.responseBody == responseBody &&
+        other.error == error &&
+        other.compact == compact &&
+        other.maxWidth == maxWidth &&
+        other.attachLoggerOnDebug == attachLoggerOnDebug &&
+        other.attachLoggerOnRelease == attachLoggerOnRelease &&
+        other.logPrint == logPrint;
+  }
+
+  @override
+  int get hashCode {
+    return request.hashCode ^
+        requestHeader.hashCode ^
+        requestBody.hashCode ^
+        responseBody.hashCode ^
+        responseHeader.hashCode ^
+        error.hashCode ^
+        compact.hashCode ^
+        maxWidth.hashCode ^
+        attachLoggerOnDebug.hashCode ^
+        attachLoggerOnRelease.hashCode ^
+        logPrint.hashCode;
+  }
 }
