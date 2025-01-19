@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
-import 'package:playx_network/src/models/settings/playx_network_client_settings.dart';
+import 'package:playx_core/playx_core.dart';
 
 import 'dio/dio_client.dart';
 import 'handler/api_handler.dart';
+import 'models/exceptions/message/exception_message.dart';
 import 'models/network_result.dart';
+import 'models/settings/playx_network_client_settings.dart';
 
 ///Function that converts json response to the required model.
 typedef JsonMapper<T> = FutureOr<T> Function(dynamic json);
@@ -51,6 +53,8 @@ class PlayxNetworkClient {
       settings: settings,
       onUnauthorizedRequestReceived: onUnauthorizedRequestReceived,
     );
+    GetIt.instance
+        .registerSingleton<ExceptionMessage>(settings.exceptionMessages);
   }
 
   static Dio createDefaultDioClient({

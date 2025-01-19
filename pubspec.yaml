@@ -21,6 +21,7 @@ dependencies:
   dio: ^5.7.0
   pretty_dio_logger: ^1.4.0
   sentry_dio: ^8.12.0
+  playx_core: ^0.6.1
 
 dev_dependencies:
   flutter_test:

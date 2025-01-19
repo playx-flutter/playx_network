@@ -1,32 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:playx_core/playx_core.dart';
 import 'package:playx_network/playx_network.dart';
 import 'package:playx_network/src/utils/utils.dart';
-
-/// parses json to object in isolate.
-Future<T> _parseJsonInIsolate<T>(List<dynamic> args) async {
-  try {
-    final data = args[0];
-    final JsonMapper<T> fromJson = args[1];
-    return fromJson(data);
-  } catch (e, s) {
-    ApiHandler.printError(text: e.toString(), stackTrace: s.toString());
-    rethrow;
-  }
-}
-
-/// parses json list to list of objects in isolate.
-Future<List<T>> _parseJsonListInIsolate<T>(List<dynamic> args) async {
-  try {
-    final data = args[0] as List;
-    final JsonMapper<T> fromJson = args[1];
-    return await Future.wait(data.map((item) async => await fromJson(item)));
-  } catch (e, s) {
-    ApiHandler.printError(text: e.toString(), stackTrace: s.toString());
-    rethrow;
-  }
-}
 
 // ignore: avoid_classes_with_only_static_members
 /// This class is responsible for handling the network response and extract error from it.
@@ -64,6 +41,10 @@ class ApiHandler {
 
   bool useIsolateForMappingJson(PlayxNetworkClientSettings? settings) =>
       (settings ?? this.settings).useIsolateForMappingJson;
+
+  bool useWorkManagerForMappingJsonInIsolate(
+          PlayxNetworkClientSettings? settings) =>
+      (settings ?? this.settings).useWorkMangerForMappingJsonInIsolate;
 
   Future<NetworkResult<T>> handleNetworkResult<T>({
     required Response response,
@@ -111,22 +92,26 @@ class ApiHandler {
 
           try {
             bool useIsolate = useIsolateForMappingJson(settings);
+            bool useWorkManager =
+                useWorkManagerForMappingJsonInIsolate(settings);
+
             final result = useIsolate
-                ? await compute(_parseJsonInIsolate, [data, fromJson])
-                : fromJson(data);
+                ? await MapUtils.mapAsyncInIsolate(
+                    data: data,
+                    mapper: fromJson,
+                    useWorkManager: useWorkManager,
+                    printError: false,
+                  )
+                : await fromJson(data);
+
             return NetworkResult.success(result);
             // ignore: avoid_catches_without_on_clauses
           } catch (e, s) {
-            _printError(
-              header: 'Playx Network Error :',
-              text: e.toString(),
-              stackTrace: s.toString(),
-            );
-            return NetworkResult.error(
-              UnableToProcessException(
-                  errorMessage: exceptionMessages.unableToProcess,
-                  statusCode: -1,
-                  shouldShowApiError: shouldShowApiErrors),
+            return ApiHandler.unableToProcessException(
+              e: e,
+              s: s,
+              exceptionMessage: exceptionMessages.unableToProcess,
+              shouldShowApiErrors: shouldShowApiErrors,
             );
           }
         }
@@ -192,8 +177,15 @@ class ApiHandler {
           try {
             if (data is List) {
               bool useIsolate = useIsolateForMappingJson(settings);
+              bool useWorkManager =
+                  useWorkManagerForMappingJsonInIsolate(settings);
+
               final result = useIsolate
-                  ? await compute(_parseJsonListInIsolate<T>, [data, fromJson])
+                  ? await data.asyncMapInIsolate(
+                      mapper: fromJson,
+                      useWorkManager: useWorkManager,
+                      printError: false,
+                      printEachItemError: false)
                   : await Future.wait(
                       data.map((item) async => await fromJson(item)));
 
@@ -209,27 +201,19 @@ class ApiHandler {
               }
               return NetworkResult.success(result);
             } else {
-              _printError(
-                header: 'Playx Network Error :',
-                text: exceptionMessages.unableToProcess,
+              return ApiHandler.unableToProcessException(
+                e: ApiHandler.unableToProcessException,
+                exceptionMessage: exceptionMessages.unableToProcess,
+                shouldShowApiErrors: shouldShowApiErrors,
               );
-              return NetworkResult.error(UnableToProcessException(
-                  errorMessage: exceptionMessages.unableToProcess,
-                  shouldShowApiError: shouldShowApiErrors,
-                  statusCode: -1));
             }
             // ignore: avoid_catches_without_on_clauses
           } catch (e, s) {
-            _printError(
-              header: 'Playx Network Error :',
-              text: e.toString(),
-              stackTrace: s.toString(),
-            );
-            return NetworkResult.error(
-              UnableToProcessException(
-                  errorMessage: exceptionMessages.unableToProcess,
-                  statusCode: -1,
-                  shouldShowApiError: shouldShowApiErrors),
+            return ApiHandler.unableToProcessException(
+              e: e,
+              s: s,
+              exceptionMessage: exceptionMessages.unableToProcess,
+              shouldShowApiErrors: shouldShowApiErrors,
             );
           }
         }
@@ -524,5 +508,24 @@ class ApiHandler {
     _printStackTrace(stackTrace ?? '');
     //ignore: avoid_print
     print('╚${'═' * (maxWidth - 1)}╝');
+  }
+
+  static NetworkResult<T> unableToProcessException<T>({
+    dynamic e,
+    dynamic s,
+    required String exceptionMessage,
+    bool shouldShowApiErrors = false,
+  }) {
+    printError(
+      header: 'Playx Network Error :',
+      text: e.toString(),
+      stackTrace: s.toString(),
+    );
+    return NetworkResult<T>.error(
+      UnableToProcessException(
+          errorMessage: exceptionMessage,
+          statusCode: -1,
+          shouldShowApiError: shouldShowApiErrors),
+    );
   }
 }

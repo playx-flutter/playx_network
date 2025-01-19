@@ -1,12 +1,9 @@
+import 'package:flutter/foundation.dart';
+
 import '../../../playx_network.dart';
 
 /// This class contains the settings for the PlayxNetworkClient.
 /// You can customize the settings based on your needs.
-/// [logSettings] is used to customize the logger settings.
-/// [shouldShowApiErrors] is used to determine whether to show api errors or not.
-/// [exceptionMessages] is used to customize the exception messages.
-/// [unauthorizedRequestCodes] is used to determine the unauthorized request codes.
-/// [successRequestCodes] is used to determine the success request codes.
 class PlayxNetworkClientSettings {
   /// Used to customize the logger settings.
   final PlayxNetworkLoggerSettings logSettings;
@@ -26,6 +23,9 @@ class PlayxNetworkClientSettings {
   /// Used to determine whether to use isolate for mapping json or not.
   final bool useIsolateForMappingJson;
 
+  /// Used to determine whether to use work manager for mapping json in isolate or use [compute] function.
+  final bool useWorkMangerForMappingJsonInIsolate;
+
   const PlayxNetworkClientSettings({
     this.logSettings = const PlayxNetworkLoggerSettings(),
     this.shouldShowApiErrors = true,
@@ -33,6 +33,7 @@ class PlayxNetworkClientSettings {
     this.unauthorizedRequestCodes = const [401, 403],
     this.successRequestCodes = const [200, 201],
     this.useIsolateForMappingJson = true,
+    this.useWorkMangerForMappingJsonInIsolate = true,
   });
 
   PlayxNetworkClientSettings copyWith({
@@ -42,6 +43,7 @@ class PlayxNetworkClientSettings {
     List<int>? unauthorizedRequestCodes,
     List<int>? successRequestCodes,
     bool? useIsolateForMappingJson,
+    bool? useWorkMangerForMappingJsonInIsolate,
   }) {
     return PlayxNetworkClientSettings(
       logSettings: logSettings ?? this.logSettings,
@@ -52,6 +54,9 @@ class PlayxNetworkClientSettings {
       successRequestCodes: successRequestCodes ?? this.successRequestCodes,
       useIsolateForMappingJson:
           useIsolateForMappingJson ?? this.useIsolateForMappingJson,
+      useWorkMangerForMappingJsonInIsolate:
+          useWorkMangerForMappingJsonInIsolate ??
+              this.useWorkMangerForMappingJsonInIsolate,
     );
   }
 }
