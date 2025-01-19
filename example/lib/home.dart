@@ -46,6 +46,8 @@ class _MyHomePageState extends State<MyHomePage> {
     shouldShowApiErrors: true,
     //creates custom exception messages to be displayed when error is received.
     exceptionMessages: CustomExceptionMessage(),
+    useIsolateForMappingJson: true,
+    useWorkMangerForMappingJsonInIsolate: true,
   );
 
   @override
@@ -199,7 +201,9 @@ class _MyHomePageState extends State<MyHomePage> {
         _isLoading = false;
         _cats = cats;
       });
+      print('Cats are : ${cats.length}');
     }, error: (error) {
+      print('Error is : ${error.message}');
       //handle error here
       _weatherMsg = "Error is : ${error.message}";
       setState(() {
