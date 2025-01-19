@@ -1,6 +1,8 @@
 import 'dart:async';
 
-import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+import 'package:playx_network/playx_network.dart';
+import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
 // ignore: avoid_classes_with_only_static_members
 class DioClient {
@@ -8,7 +10,41 @@ class DioClient {
   final FutureOr<Map<String, dynamic>> Function()? customHeaders;
   final FutureOr<Map<String, dynamic>> Function()? customQuery;
 
-  DioClient({required this.dio, this.customHeaders, this.customQuery});
+  final PlayxNetworkClientSettings settings;
+
+  bool attachLogSettings(PlayxNetworkLoggerSettings logSettings) =>
+      kDebugMode && logSettings.attachLoggerOnDebug ||
+      kReleaseMode && logSettings.attachLoggerOnRelease;
+
+  DioClient(
+      {required this.dio,
+      this.customHeaders,
+      this.customQuery,
+      required this.settings}) {
+    dio.interceptors.add(
+      settings.logSettings.buildPrettyDioLogger(),
+    );
+  }
+
+  Dio _getDioInstance({
+    PlayxNetworkLoggerSettings? logSettings,
+  }) {
+    if (logSettings == null || logSettings == settings.logSettings) {
+      return dio;
+    }
+
+    final shouldAttachLogSettings = attachLogSettings(logSettings);
+
+    final interceptors = dio.interceptors.toList();
+    if (shouldAttachLogSettings) {
+      interceptors.removeWhere((element) => element is PrettyDioLogger);
+      interceptors.add(logSettings.buildPrettyDioLogger());
+    } else {
+      interceptors.removeWhere((element) => element is PrettyDioLogger);
+    }
+    final updatedDio = dio.copyWith(interceptors: interceptors);
+    return updatedDio;
+  }
 
   /// sends a [GET] request to the given [url]
   Future<Response> get<T>(
@@ -20,8 +56,9 @@ class DioClient {
     bool attachCustomQuery = true,
     CancelToken? cancelToken,
     ProgressCallback? onReceiveProgress,
+    PlayxNetworkLoggerSettings? logSettings,
   }) async {
-    return dio.get(path,
+    return _getDioInstance(logSettings: logSettings).get(path,
         queryParameters: {
           if (attachCustomQuery && customQuery != null)
             ...?await customQuery?.call(),
@@ -53,8 +90,9 @@ class DioClient {
     bool deleteOnError = true,
     String lengthHeader = Headers.contentLengthHeader,
     Object? data,
+    PlayxNetworkLoggerSettings? logSettings,
   }) async {
-    return dio.download(
+    return _getDioInstance(logSettings: logSettings).download(
       path,
       savePath,
       queryParameters: {
@@ -91,8 +129,9 @@ class DioClient {
     CancelToken? cancelToken,
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
+    PlayxNetworkLoggerSettings? logSettings,
   }) async {
-    return dio.post(
+    return _getDioInstance(logSettings: logSettings).post(
       path,
       data: body,
       queryParameters: {
@@ -125,8 +164,9 @@ class DioClient {
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
     CancelToken? cancelToken,
+    PlayxNetworkLoggerSettings? logSettings,
   }) async {
-    return dio.delete(
+    return _getDioInstance(logSettings: logSettings).delete(
       path,
       data: body,
       queryParameters: {
@@ -159,8 +199,9 @@ class DioClient {
     CancelToken? cancelToken,
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
+    PlayxNetworkLoggerSettings? logSettings,
   }) async {
-    return dio.put(
+    return _getDioInstance(logSettings: logSettings).put(
       path,
       data: body,
       queryParameters: {
@@ -181,5 +222,22 @@ class DioClient {
       onSendProgress: onSendProgress,
       onReceiveProgress: onReceiveProgress,
     );
+  }
+}
+
+extension DioClientExtensions on Dio {
+  Dio copyWith({
+    BaseOptions? options,
+    HttpClientAdapter? httpClientAdapter,
+    List<Interceptor>? interceptors,
+    Transformer? transformer,
+  }) {
+    final dio = Dio(
+      options ?? this.options,
+    );
+    dio.httpClientAdapter = httpClientAdapter ?? this.httpClientAdapter;
+    dio.interceptors.addAll(interceptors ?? this.interceptors);
+    dio.transformer = transformer ?? this.transformer;
+    return dio;
   }
 }
