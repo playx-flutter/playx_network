@@ -39,7 +39,7 @@ sealed class NetworkResult<T> {
   /// Returns the error if the network call is failed.
   NetworkException? get networkError => (this as NetworkError<T>).error;
 
-  ///Helps determining whether the network call is successful or not.
+  /// Helps determining whether the network call is successful or not.
   void when({
     required Function(T success) success,
     required Function(NetworkException error) error,
@@ -54,7 +54,7 @@ sealed class NetworkResult<T> {
     }
   }
 
-  ///Maps the network request whether it's success or error to your desired model.
+  /// Maps the network request whether it's success or error to your desired model.
   S map<S>({
     required S Function(NetworkSuccess<T> data) success,
     required S Function(NetworkError<T> error) error,
@@ -67,7 +67,7 @@ sealed class NetworkResult<T> {
     }
   }
 
-  ///Maps the network request whether it's success or error to your desired model asynchronously.
+  /// Maps the network request whether it's success or error to your desired model asynchronously.
   Future<S> mapAsync<S>({
     required Future<S> Function(NetworkSuccess<T> data) success,
     required Future<S> Function(NetworkError<T> error) error,
