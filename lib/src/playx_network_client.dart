@@ -55,7 +55,8 @@ class PlayxNetworkClient {
     );
     if (GetIt.instance
         .isRegistered<ExceptionMessage>(instanceName: 'exception_messages')) {
-      GetIt.instance.unregister<ExceptionMessage>();
+      GetIt.instance
+          .unregister<ExceptionMessage>(instanceName: 'exception_messages');
     }
     GetIt.instance.registerSingleton<ExceptionMessage>(
         settings.exceptionMessages,
