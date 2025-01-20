@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1
+- fix: bug when initializing PlayxNetworkClient.
+
+
 ## 0.3.0
 
 - **Mapping Enhancements**:

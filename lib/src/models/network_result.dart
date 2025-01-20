@@ -93,8 +93,10 @@ sealed class NetworkResult<T> {
     }
   }
 
-  ExceptionMessage get _exceptionMessages =>
-      GetIt.instance.get<ExceptionMessage>();
+  ExceptionMessage? get _exceptionMessages => GetIt.instance
+          .isRegistered<ExceptionMessage>(instanceName: 'exception_messages')
+      ? GetIt.instance.get<ExceptionMessage>(instanceName: 'exception_messages')
+      : null;
 
   /// Maps the network request whether it's success or error to your desired model asynchronously in an isolate.
   ///
@@ -121,8 +123,9 @@ sealed class NetworkResult<T> {
       return ApiHandler.unableToProcessException(
           e: e,
           s: s,
-          exceptionMessage:
-              exceptionMessage ?? _exceptionMessages.unableToProcess);
+          exceptionMessage: exceptionMessage ??
+              _exceptionMessages?.unableToProcess ??
+              'unableToProcess');
     }
   }
 
