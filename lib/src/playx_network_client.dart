@@ -53,8 +53,13 @@ class PlayxNetworkClient {
       settings: settings,
       onUnauthorizedRequestReceived: onUnauthorizedRequestReceived,
     );
-    GetIt.instance
-        .registerSingleton<ExceptionMessage>(settings.exceptionMessages);
+    if (GetIt.instance
+        .isRegistered<ExceptionMessage>(instanceName: 'exception_messages')) {
+      GetIt.instance.unregister<ExceptionMessage>();
+    }
+    GetIt.instance.registerSingleton<ExceptionMessage>(
+        settings.exceptionMessages,
+        instanceName: 'exception_messages');
   }
 
   static Dio createDefaultDioClient({
