@@ -91,6 +91,7 @@ class DioClient {
     String lengthHeader = Headers.contentLengthHeader,
     Object? data,
     PlayxNetworkLoggerSettings? logSettings,
+        FileAccessMode fileAccessMode =FileAccessMode.write
   }) async {
     return _getDioInstance(logSettings: logSettings).download(
       path,
@@ -108,6 +109,7 @@ class DioClient {
               ...headers,
             },
           ),
+      fileAccessMode:fileAccessMode,
       cancelToken: cancelToken,
       onReceiveProgress: onReceiveProgress,
       deleteOnError: deleteOnError,

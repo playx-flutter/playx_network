@@ -1,7 +1,12 @@
-///Base class for handling api errors and provides suitable error messages.
-sealed class NetworkException {
+
+import 'package:playx_network/playx_network.dart';
+
+/// Base class for handling API errors and providing suitable error messages.
+sealed class NetworkException  implements Exception{
+  /// General error message.
   final String errorMessage;
 
+  /// Whether to display the API error message.
   final bool shouldShowApiError;
 
   const NetworkException({
@@ -9,166 +14,200 @@ sealed class NetworkException {
     this.shouldShowApiError = true,
   });
 
+  /// Returns the appropriate message.
   String get message => errorMessage;
 }
 
+/// Exception for API-related errors.
 class ApiException extends NetworkException {
-  /// Error message from the api.
+  /// API-provided error message.
   final String? apiErrorMessage;
 
-  /// Status code of the response.
-  /// Returns -1 if the error is not returned from the api.
+  /// HTTP status code.
   final int statusCode;
 
-  const ApiException(
-      {this.apiErrorMessage,
-      required this.statusCode,
-      required super.errorMessage,
-      super.shouldShowApiError});
-
-  @override
-  String get message =>
-      shouldShowApiError ? apiErrorMessage ?? errorMessage : errorMessage;
-}
-
-/// Exception that occurs when receiving an unauthorized request from api mainly when receiving 401,403 error codes.
-class UnauthorizedRequestException extends ApiException {
-  const UnauthorizedRequestException(
-      {super.apiErrorMessage,
-      required super.statusCode,
-      required super.errorMessage,
-      super.shouldShowApiError});
-}
-
-/// Exception that occurs when receiving a not found request from api mainly when receiving 404 error code.
-class NotFoundException extends ApiException {
-  const NotFoundException(
-      {super.apiErrorMessage,
-      required super.statusCode,
-      required super.errorMessage,
-      super.shouldShowApiError});
-
-  @override
-  String get message =>
-      shouldShowApiError ? apiErrorMessage ?? errorMessage : errorMessage;
-}
-
-/// Exception that occurs when there is a conflict from the API mainly when receiving 409 error code.
-class ConflictException extends ApiException {
-  const ConflictException(
-      {super.apiErrorMessage,
-      required super.statusCode,
-      required super.errorMessage,
-      super.shouldShowApiError});
-
-  @override
-  String get message =>
-      shouldShowApiError ? apiErrorMessage ?? errorMessage : errorMessage;
-}
-
-/// Exception that occurs when the request has timed out.
-class RequestTimeoutException extends ApiException {
-  const RequestTimeoutException(
-      {super.apiErrorMessage,
-      required super.statusCode,
-      required super.errorMessage,
-      super.shouldShowApiError});
-
-  @override
-  String get message =>
-      shouldShowApiError ? apiErrorMessage ?? errorMessage : errorMessage;
-}
-
-/// Exception that occurs when the client couldn't process the response successfully.
-/// Can happen when the response returns status code 422.
-/// Or the the model from json function has error on it.
-class UnableToProcessException extends ApiException {
-  const UnableToProcessException(
-      {super.apiErrorMessage,
-      required super.statusCode,
-      required super.errorMessage,
-      super.shouldShowApiError});
-
-  @override
-  String get message =>
-      shouldShowApiError ? apiErrorMessage ?? errorMessage : errorMessage;
-}
-
-/// Exception that occurs when there's an internal server error.
-/// Can happen when the response returns status code 500.
-class InternalServerErrorException extends ApiException {
-  const InternalServerErrorException(
-      {super.apiErrorMessage,
-      required super.statusCode,
-      required super.errorMessage,
-      super.shouldShowApiError});
-
-  @override
-  String get message =>
-      shouldShowApiError ? apiErrorMessage ?? errorMessage : errorMessage;
-}
-
-/// Exception that occurs when the client receives service unavailable error.
-/// Can happen when the response returns status code 503.
-class ServiceUnavailableException extends ApiException {
-  const ServiceUnavailableException(
-      {super.apiErrorMessage,
-      required super.statusCode,
-      required super.errorMessage,
-      super.shouldShowApiError});
-
-  @override
-  String get message =>
-      shouldShowApiError ? apiErrorMessage ?? errorMessage : errorMessage;
-}
-
-/// Exception that occurs when the client receives empty response.
-class EmptyResponseException extends ApiException {
-  const EmptyResponseException(
-      {super.apiErrorMessage,
-      required super.statusCode,
-      required super.errorMessage,
-      super.shouldShowApiError});
-
-  @override
-  String get message =>
-      shouldShowApiError ? apiErrorMessage ?? errorMessage : errorMessage;
-}
-
-/// Exception that occurs another api exception happens.
-class DefaultApiException extends ApiException {
-  const DefaultApiException(
-      {super.apiErrorMessage,
-      required super.statusCode,
-      required super.errorMessage,
-      super.shouldShowApiError});
-}
-
-//Dio errors
-/// Exception that occurs when receiving send time out exception.
-class SendTimeoutException extends NetworkException {
-  const SendTimeoutException({
+  const ApiException({
+    this.apiErrorMessage,
+    this.statusCode = 400,
     required super.errorMessage,
+    super.shouldShowApiError,
+  });
+
+  @override
+  String get message =>
+      shouldShowApiError ? apiErrorMessage ?? errorMessage : errorMessage;
+
+  /// Factory method to create an `ApiException` based on status code.
+  static ApiException fromStatusCode({
+    required int statusCode,
+    required ExceptionMessage exceptionMessages,
+    String? apiErrorMessage,
+    bool shouldShowApiErrors = true,
+  }) {
+    switch (statusCode) {
+      case 400:
+        return DefaultApiException(
+            apiErrorMessage: apiErrorMessage,
+            statusCode: statusCode,
+            errorMessage: exceptionMessages.defaultError,
+            shouldShowApiError: shouldShowApiErrors);
+      case 404:
+        return NotFoundException(
+            apiErrorMessage: apiErrorMessage,
+            statusCode: statusCode,
+            errorMessage: exceptionMessages.notFound,
+            shouldShowApiError: shouldShowApiErrors);
+      case 409:
+        return ConflictException(
+            apiErrorMessage: apiErrorMessage,
+            statusCode: statusCode,
+            errorMessage: exceptionMessages.conflict,
+            shouldShowApiError: shouldShowApiErrors);
+      case 408:
+        return RequestTimeoutException(
+            apiErrorMessage: apiErrorMessage,
+            statusCode: statusCode,
+            errorMessage: exceptionMessages.requestTimeout,
+            shouldShowApiError: shouldShowApiErrors);
+      case 422:
+        return UnableToProcessException(
+            apiErrorMessage: apiErrorMessage,
+            statusCode: statusCode,
+            errorMessage: exceptionMessages.unableToProcess,
+            shouldShowApiError: shouldShowApiErrors);
+      case 500:
+        return InternalServerErrorException(
+            apiErrorMessage: apiErrorMessage,
+            statusCode: statusCode,
+            errorMessage: exceptionMessages.internalServerError,
+            shouldShowApiError: shouldShowApiErrors);
+      case 503:
+        return ServiceUnavailableException(
+            apiErrorMessage: apiErrorMessage,
+            statusCode: statusCode,
+            errorMessage: exceptionMessages.serviceUnavailable,
+            shouldShowApiError: shouldShowApiErrors);
+      default:
+        return DefaultApiException(
+            apiErrorMessage: apiErrorMessage,
+            statusCode: statusCode,
+            errorMessage: exceptionMessages.defaultError,
+            shouldShowApiError: shouldShowApiErrors);
+    }
+  }
+}
+
+/// Exception for unauthorized requests (401, 403).
+class UnauthorizedRequestException extends ApiException {
+  const UnauthorizedRequestException({
+    super.apiErrorMessage,
+    super.statusCode = 401,
+    required super.errorMessage,
+    super.shouldShowApiError,
   });
 }
 
+/// Exception for "Not Found" errors (404).
+class NotFoundException extends ApiException {
+  const NotFoundException({
+    super.apiErrorMessage,
+    super.statusCode = 404,
+    required super.errorMessage,
+    super.shouldShowApiError,
+  });
+}
+
+/// Exception for conflicts (409).
+class ConflictException extends ApiException {
+  const ConflictException({
+    super.apiErrorMessage,
+    super.statusCode = 409,
+    required super.errorMessage,
+    super.shouldShowApiError,
+  });
+}
+
+/// Exception for request timeout (408).
+class RequestTimeoutException extends ApiException {
+  const RequestTimeoutException({
+    super.apiErrorMessage,
+    super.statusCode = 408,
+    required super.errorMessage,
+    super.shouldShowApiError,
+  });
+}
+
+/// Exception for unprocessable entity (422).
+class UnableToProcessException extends ApiException {
+  const UnableToProcessException({
+    super.apiErrorMessage,
+    super.statusCode = 422,
+    required super.errorMessage,
+    super.shouldShowApiError,
+  });
+}
+
+/// Exception for internal server errors (500).
+class InternalServerErrorException extends ApiException {
+  const InternalServerErrorException({
+    super.apiErrorMessage,
+    super.statusCode = 500,
+    required super.errorMessage,
+    super.shouldShowApiError,
+  });
+}
+
+/// Exception for service unavailable (503).
+class ServiceUnavailableException extends ApiException {
+  const ServiceUnavailableException({
+    super.apiErrorMessage,
+    super.statusCode = 503,
+    required super.errorMessage,
+    super.shouldShowApiError,
+  });
+}
+
+/// Exception for empty responses (204).
+class EmptyResponseException extends ApiException {
+  const EmptyResponseException({
+    super.apiErrorMessage,
+    super.statusCode = 204,
+    required super.errorMessage,
+    super.shouldShowApiError,
+  });
+}
+
+/// Default API exception (for unhandled errors).
+class DefaultApiException extends ApiException {
+  const DefaultApiException({
+    super.apiErrorMessage,
+    super.statusCode = 400,
+    required super.errorMessage,
+    super.shouldShowApiError,
+  });
+}
+
+/// Exception for request send timeout.
+class SendTimeoutException extends NetworkException {
+  const SendTimeoutException({required super.errorMessage});
+}
+
+/// Exception for request cancellation.
 class RequestCanceledException extends NetworkException {
   const RequestCanceledException({required super.errorMessage});
 }
 
-/// Exception that occurs when there is no internet connection.
+/// Exception for no internet connection.
 class NoInternetConnectionException extends NetworkException {
   const NoInternetConnectionException({required super.errorMessage});
 }
 
-/// Exception that occurs when receiving format exception from Dio.
-class FormatException extends NetworkException {
-  const FormatException({required super.errorMessage});
+/// Exception for invalid response format.
+class InvalidFormatException extends NetworkException {
+  const InvalidFormatException({required super.errorMessage});
 }
 
-/// Default client exception.
+/// Exception for unexpected errors.
 class UnexpectedErrorException extends NetworkException {
-  const UnexpectedErrorException({
-    required super.errorMessage,
-  });
+  const UnexpectedErrorException({required super.errorMessage});
 }

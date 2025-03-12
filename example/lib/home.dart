@@ -79,9 +79,7 @@ class _MyHomePageState extends State<MyHomePage> {
         },
         onUnauthorizedRequestReceived: (response) {
           final code = response?.statusCode;
-          if (kDebugMode) {
-            print('onUnauthorizedRequestReceived code :$code');
-          }
+            debugPrint('onUnauthorizedRequestReceived code :$code');
         });
     super.initState();
 
@@ -196,19 +194,17 @@ class _MyHomePageState extends State<MyHomePage> {
               responseBody: false, attachLoggerOnDebug: true),
         ));
 
-    result.when(success: (cats) {
+    debugPrint('Result isError : ${result.isError} isSuccess => ${result.isSuccess}');
+
+   result.when(success: (cats) {
       setState(() {
         _isLoading = false;
         _cats = cats;
       });
 
-      if (kDebugMode) {
-        print('Cats are : ${cats.length}');
-      }
+        debugPrint('Cats are : ${cats.length}');
     }, error: (error) {
-      if (kDebugMode) {
-        print('Error is : ${error.message}');
-      }
+        debugPrint('Error is : ${error.message}');
       //handle error here
       _weatherMsg = "Error is : ${error.message}";
       setState(() {
