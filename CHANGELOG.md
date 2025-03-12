@@ -9,6 +9,8 @@
 
 ## New Features && Enhancements
 - Update dio to v5.8.0+1
+- Support FileAccessMode in Dio.download to change download file opening mode.
+
 ### NetworkResult
 - New `mapDataAsyncOrNull` Method which maps the success data to another type asynchronously, With option to map the error case or return null.
 - `when` method now returns the value instead of void.
