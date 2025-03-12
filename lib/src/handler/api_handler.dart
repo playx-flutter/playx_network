@@ -327,56 +327,11 @@ class ApiHandler {
           shouldShowApiError: shouldShowApiErrors);
     }
 
-    switch (statusCode) {
-      case 400:
-        return DefaultApiException(
-            apiErrorMessage: errMsg,
-            statusCode: statusCode,
-            errorMessage: exceptionMessages.defaultError,
-            shouldShowApiError: shouldShowApiErrors);
-      case 404:
-        return NotFoundException(
-            apiErrorMessage: errMsg,
-            statusCode: statusCode,
-            errorMessage: exceptionMessages.notFound,
-            shouldShowApiError: shouldShowApiErrors);
-      case 409:
-        return ConflictException(
-            apiErrorMessage: errMsg,
-            statusCode: statusCode,
-            errorMessage: exceptionMessages.conflict,
-            shouldShowApiError: shouldShowApiErrors);
-      case 408:
-        return RequestTimeoutException(
-            apiErrorMessage: errMsg,
-            statusCode: statusCode,
-            errorMessage: exceptionMessages.requestTimeout,
-            shouldShowApiError: shouldShowApiErrors);
-      case 422:
-        return UnableToProcessException(
-            apiErrorMessage: errMsg,
-            statusCode: statusCode,
-            errorMessage: exceptionMessages.unableToProcess,
-            shouldShowApiError: shouldShowApiErrors);
-      case 500:
-        return InternalServerErrorException(
-            apiErrorMessage: errMsg,
-            statusCode: statusCode,
-            errorMessage: exceptionMessages.internalServerError,
-            shouldShowApiError: shouldShowApiErrors);
-      case 503:
-        return ServiceUnavailableException(
-            apiErrorMessage: errMsg,
-            statusCode: statusCode,
-            errorMessage: exceptionMessages.serviceUnavailable,
-            shouldShowApiError: shouldShowApiErrors);
-      default:
-        return DefaultApiException(
-            apiErrorMessage: errMsg,
-            statusCode: statusCode,
-            errorMessage: exceptionMessages.defaultError,
-            shouldShowApiError: shouldShowApiErrors);
-    }
+    return ApiException.fromStatusCode(
+        statusCode: statusCode,
+        apiErrorMessage: errMsg,
+        exceptionMessages: exceptionMessages,
+        shouldShowApiErrors: shouldShowApiErrors);
   }
 
   NetworkException _getDioException(
@@ -435,7 +390,7 @@ class ApiHandler {
         }
         return networkExceptions;
       } on FormatException catch (_) {
-        return FormatException(
+        return InvalidFormatException(
           errorMessage: exceptionMessages.formatException,
         );
       } catch (_) {
