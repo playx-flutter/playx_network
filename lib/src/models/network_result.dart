@@ -1,102 +1,113 @@
+import 'dart:async';
+
 import 'package:playx_core/playx_core.dart';
 import 'package:playx_network/playx_network.dart';
 import 'package:playx_network/src/handler/api_handler.dart';
 
-/// Generic Wrapper class that happens when receiving a valid network response.
+/// Generic Wrapper class that represents a successful network response.
 class NetworkSuccess<T> extends NetworkResult<T> {
+  @override
   final T data;
 
   const NetworkSuccess(this.data);
+
+  @override
+  String toString() => 'NetworkSuccess: $data';
 }
 
-/// Generic Wrapper class that happens when an error happens.
+/// Generic Wrapper class that represents a failed network response.
 class NetworkError<T> extends NetworkResult<T> {
+  @override
   final NetworkException error;
 
   const NetworkError(this.error);
+
+  @override
+  String toString() => 'NetworkError: $error => ${error.message}';
 }
 
-/// Generic Wrapper class for the result of network response.
-/// when the network call is successful it returns [NetworkSuccess].
-/// else it returns error with [NetworkException].
+/// Generic Wrapper class for handling network results.
+/// - If successful, returns a [NetworkSuccess].
+/// - If failed, returns a [NetworkError] with a [NetworkException].
 sealed class NetworkResult<T> {
   const NetworkResult();
 
   const factory NetworkResult.success(T data) = NetworkSuccess;
-
   const factory NetworkResult.error(NetworkException error) = NetworkError;
 
-  /// Returns true if the network call is successful.
+  /// Checks if the network response is successful.
   bool get isSuccess => this is NetworkSuccess<T>;
 
-  /// Returns true if the network call is failed.
+  /// Checks if the network response contains an error.
   bool get isError => this is NetworkError<T>;
 
-  /// Returns the data if the network call is successful.
-  /// Otherwise, it returns null.
-  T? get networkData => (this as NetworkSuccess<T>).data;
+  /// Retrieves the success data if available, otherwise `null`.
+  T? get data => (this is NetworkSuccess<T>) ? (this as NetworkSuccess<T>).data : null;
 
-  /// Returns the error if the network call is failed.
-  NetworkException? get networkError => (this as NetworkError<T>).error;
+  /// Retrieves the error if the request failed, otherwise `null`.
+  NetworkException? get error => (this is NetworkError<T>) ? (this as NetworkError<T>).error : null;
 
-  /// Helps determining whether the network call is successful or not.
-  void when({
-    required Function(T success) success,
-    required Function(NetworkException error) error,
+
+  /// Performs an action based on whether the network call was successful or not.
+  NetworkResult<T> when({
+    required void Function(T success) success,
+    required void Function(NetworkException error) error,
   }) {
     switch (this) {
-      case NetworkSuccess _:
-        final data = (this as NetworkSuccess<T>).data;
-        success(data);
-      case NetworkError _:
-        final exception = (this as NetworkError<T>).error;
-        error(exception);
+      case NetworkSuccess<T>():
+        success((this as NetworkSuccess<T>).data);
+        break;
+      case NetworkError<T>():
+        error((this as NetworkError<T>).error);
+        break;
     }
+    return this;
   }
 
-  /// Maps the network request whether it's success or error to your desired model.
+  /// Transforms the network result into a desired type.
   S map<S>({
     required S Function(NetworkSuccess<T> data) success,
     required S Function(NetworkError<T> error) error,
   }) {
-    switch (this) {
-      case NetworkSuccess _:
-        return success(this as NetworkSuccess<T>);
-      case NetworkError _:
-        return error(this as NetworkError<T>);
-    }
+    return switch (this) {
+      NetworkSuccess<T>() => success(this as NetworkSuccess<T>),
+      NetworkError<T>() => error(this as NetworkError<T>),
+    };
   }
 
-  /// Maps the network request whether it's success or error to your desired model asynchronously.
+  /// Transforms the network result asynchronously into a desired type.
   Future<S> mapAsync<S>({
     required Future<S> Function(NetworkSuccess<T> data) success,
     required Future<S> Function(NetworkError<T> error) error,
-  }) {
-    switch (this) {
-      case NetworkSuccess _:
-        return success(this as NetworkSuccess<T>);
-      case NetworkError _:
-        return error(this as NetworkError<T>);
-    }
+  }) async {
+    return switch (this) {
+      NetworkSuccess<T>() => success(this as NetworkSuccess<T>),
+      NetworkError<T>() => error(this as NetworkError<T>),
+    };
   }
 
-  /// Maps the network request whether it's success or error to your desired model asynchronously.
-  Future<NetworkResult<S>> mapDataAsync<S>({
+
+  /// Maps the success case to another type asynchronously, preserving the error case.
+  FutureOr<NetworkResult<S>> mapDataAsync<S>({
     required Mapper<T, NetworkResult<S>> mapper,
   }) async {
-    switch (this) {
-      case NetworkSuccess _:
-        final data = (this as NetworkSuccess<T>).data;
-        return mapper(data);
-      case NetworkError _:
-        return NetworkResult.error((this as NetworkError<T>).error);
-    }
+    return switch (this) {
+      NetworkSuccess<T>() => await mapper((this as NetworkSuccess<T>).data),
+      NetworkError<T>() => NetworkResult.error((this as NetworkError<T>).error),
+    };
   }
 
-  ExceptionMessage? get _exceptionMessages => GetIt.instance
-          .isRegistered<ExceptionMessage>(instanceName: 'exception_messages')
-      ? GetIt.instance.get<ExceptionMessage>(instanceName: 'exception_messages')
-      : null;
+  /// Maps the success data to another type asynchronously, With option to map the error case or return null.
+  FutureOr<S?> mapDataAsyncOrNull<S>({
+    required Mapper<T, S> mapper,
+    Mapper<NetworkException, S>? errorMapper,
+  }) async {
+    return switch (this) {
+      NetworkSuccess<T>() => await mapper((this as NetworkSuccess<T>).data),
+      NetworkError<T>() => errorMapper?.call((this as NetworkError<T>).error),
+    };
+  }
+
 
   /// Maps the network request whether it's success or error to your desired model asynchronously in an isolate.
   ///
@@ -109,23 +120,17 @@ sealed class NetworkResult<T> {
     bool useWorkManager = true,
   }) async {
     try {
-      return mapAsyncInIsolate(
-        success: (data) async {
-          final res = await mapper(data);
-          return res;
-        },
-        error: (error) async {
-          return NetworkResult.error(error);
-        },
+      return await mapAsyncInIsolate(
+        success: mapper,
+        error: (error) async => NetworkResult.error(error),
         useWorkManager: useWorkManager,
       );
     } catch (e, s) {
       return ApiHandler.unableToProcessException(
-          e: e,
-          s: s,
-          exceptionMessage: exceptionMessage ??
-              _exceptionMessages?.unableToProcess ??
-              'unableToProcess');
+        e: e,
+        s: s,
+        exceptionMessage: exceptionMessage ?? _exceptionMessages?.unableToProcess ?? 'unableToProcess',
+      );
     }
   }
 
@@ -142,14 +147,17 @@ sealed class NetworkResult<T> {
     return MapUtils.mapAsyncInIsolate(
       data: this,
       mapper: (NetworkResult<T> res) async {
-        switch (res) {
-          case NetworkSuccess():
-            return await success(res.data);
-          case NetworkError():
-            return await error(res.error);
-        }
+        return switch (res) {
+          NetworkSuccess<T>() => await success(res.data),
+          NetworkError<T>() => await error(res.error),
+        };
       },
       useWorkManager: useWorkManager,
     );
   }
+
+  ExceptionMessage? get _exceptionMessages =>
+      GetIt.instance.isRegistered<ExceptionMessage>(instanceName: 'exception_messages')
+          ? GetIt.instance.get<ExceptionMessage>(instanceName: 'exception_messages')
+          : null;
 }

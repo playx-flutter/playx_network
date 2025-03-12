@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.4.0
+> Note: This version contains breaking changes.
+
+## Breaking Changes
+- NetworkResult<T> now includes data and error fields for easier access instead of `networkData` and `networkError` getters.
+- Renamed FormatException → InvalidFormatException to avoid conflict with Dart’s built-in FormatException.
+
+## New Features && Enhancements
+- Update dio to v5.8.0+1
+- Support FileAccessMode in Dio.download to change download file opening mode.
+
+### NetworkResult
+- New `mapDataAsyncOrNull` Method which maps the success data to another type asynchronously, With option to map the error case or return null.
+- `when` method now returns the value instead of void.
+
+### NetworkException
+- NetworkException now extends Exception for better error handling.
+- All exception classes now follow a streamlined format with default values for status codes.
+
+
+
 ## 0.3.1 - 0.3.2
 - fix: bug when initializing PlayxNetworkClient.
 
