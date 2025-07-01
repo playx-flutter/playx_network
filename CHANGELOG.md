@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.5.0
+
+> Note: This version contains breaking changes.
+
+###  New Features
+
+* **Export `DioClient`**: A simple and customizable HTTP client based on Dio is now available directly from the `playx_network` package.
+
+###   Improvements
+
+#### Logger Overhaul
+
+* Replaced `pretty_dio_logger` with `talker_dio_logger` for better log control and Talker integration.
+* Updated `PlayxNetworkLoggerSettings` to support detailed logging configuration.
+* Integrated `PlayxLogger` for consistent logging across the Playx ecosystem.
+
+### Other
+- Updated dependencies to their latest versions.
+- Bump minimum Dart SDK version to 3.5.0 and Flutter SDK version to 3.24.0.
+- Migrated Android example project to Kotlin DSL.
+
+
 ## 0.4.0
 > Note: This version contains breaking changes.
 
