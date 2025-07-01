@@ -1,8 +1,7 @@
-
 import 'package:playx_network/playx_network.dart';
 
 /// Base class for handling API errors and providing suitable error messages.
-sealed class NetworkException  implements Exception{
+sealed class NetworkException implements Exception {
   /// General error message.
   final String errorMessage;
 

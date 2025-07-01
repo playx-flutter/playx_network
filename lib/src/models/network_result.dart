@@ -42,11 +42,12 @@ sealed class NetworkResult<T> {
   bool get isError => this is NetworkError<T>;
 
   /// Retrieves the success data if available, otherwise `null`.
-  T? get data => (this is NetworkSuccess<T>) ? (this as NetworkSuccess<T>).data : null;
+  T? get data =>
+      (this is NetworkSuccess<T>) ? (this as NetworkSuccess<T>).data : null;
 
   /// Retrieves the error if the request failed, otherwise `null`.
-  NetworkException? get error => (this is NetworkError<T>) ? (this as NetworkError<T>).error : null;
-
+  NetworkException? get error =>
+      (this is NetworkError<T>) ? (this as NetworkError<T>).error : null;
 
   /// Performs an action based on whether the network call was successful or not.
   NetworkResult<T> when({
@@ -86,7 +87,6 @@ sealed class NetworkResult<T> {
     };
   }
 
-
   /// Maps the success case to another type asynchronously, preserving the error case.
   FutureOr<NetworkResult<S>> mapDataAsync<S>({
     required Mapper<T, NetworkResult<S>> mapper,
@@ -108,7 +108,6 @@ sealed class NetworkResult<T> {
     };
   }
 
-
   /// Maps the network request whether it's success or error to your desired model asynchronously in an isolate.
   ///
   /// [mapper] is the function that maps the data to your desired model.
@@ -129,7 +128,9 @@ sealed class NetworkResult<T> {
       return ApiHandler.unableToProcessException(
         e: e,
         s: s,
-        exceptionMessage: exceptionMessage ?? _exceptionMessages?.unableToProcess ?? 'unableToProcess',
+        exceptionMessage: exceptionMessage ??
+            _exceptionMessages?.unableToProcess ??
+            'unableToProcess',
       );
     }
   }
@@ -156,8 +157,8 @@ sealed class NetworkResult<T> {
     );
   }
 
-  ExceptionMessage? get _exceptionMessages =>
-      GetIt.instance.isRegistered<ExceptionMessage>(instanceName: 'exception_messages')
-          ? GetIt.instance.get<ExceptionMessage>(instanceName: 'exception_messages')
-          : null;
+  ExceptionMessage? get _exceptionMessages => GetIt.instance
+          .isRegistered<ExceptionMessage>(instanceName: 'exception_messages')
+      ? GetIt.instance.get<ExceptionMessage>(instanceName: 'exception_messages')
+      : null;
 }
