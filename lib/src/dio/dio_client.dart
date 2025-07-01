@@ -5,6 +5,7 @@ import 'package:playx_network/playx_network.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
 // ignore: avoid_classes_with_only_static_members
+/// A client for making network requests using Dio.
 class DioClient {
   final Dio dio;
   final FutureOr<Map<String, dynamic>> Function()? customHeaders;
