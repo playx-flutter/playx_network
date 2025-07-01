@@ -71,7 +71,7 @@ class PlayxNetworkLoggerSettings extends Equatable{
         this.printErrorHeaders = true,
         this.printErrorMessage = true,
         this.printRequestData = true,
-        this.printRequestHeaders = false,
+        this.printRequestHeaders = true,
         this.printRequestExtra = false,
         this.hiddenHeaders = const <String>{},
         this.requestFilter,
