@@ -20,7 +20,7 @@ class DioClient {
       this.customHeaders,
       this.customQuery,
       required this.settings}) {
-    if(settings.logSettings.enabled) {
+    if (settings.logSettings.enabled) {
       dio.interceptors.add(
         settings.logSettings.buildTalkerDioLogger(),
       );
@@ -78,22 +78,20 @@ class DioClient {
   }
 
   /// Download file from the given [url]
-  Future<Response> download<T>(
-    String path, {
-    required dynamic savePath,
-    Map<String, dynamic> headers = const {},
-    Map<String, dynamic> query = const {},
-    Options? options,
-    bool attachCustomHeaders = true,
-    bool attachCustomQuery = true,
-    CancelToken? cancelToken,
-    ProgressCallback? onReceiveProgress,
-    bool deleteOnError = true,
-    String lengthHeader = Headers.contentLengthHeader,
-    Object? data,
-    PlayxNetworkLoggerSettings? logSettings,
-        FileAccessMode fileAccessMode =FileAccessMode.write
-  }) async {
+  Future<Response> download<T>(String path,
+      {required dynamic savePath,
+      Map<String, dynamic> headers = const {},
+      Map<String, dynamic> query = const {},
+      Options? options,
+      bool attachCustomHeaders = true,
+      bool attachCustomQuery = true,
+      CancelToken? cancelToken,
+      ProgressCallback? onReceiveProgress,
+      bool deleteOnError = true,
+      String lengthHeader = Headers.contentLengthHeader,
+      Object? data,
+      PlayxNetworkLoggerSettings? logSettings,
+      FileAccessMode fileAccessMode = FileAccessMode.write}) async {
     return _getDioInstance(logSettings: logSettings).download(
       path,
       savePath,
@@ -110,7 +108,7 @@ class DioClient {
               ...headers,
             },
           ),
-      fileAccessMode:fileAccessMode,
+      fileAccessMode: fileAccessMode,
       cancelToken: cancelToken,
       onReceiveProgress: onReceiveProgress,
       deleteOnError: deleteOnError,

@@ -1,8 +1,6 @@
 import 'dart:async';
-import 'dart:developer';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:playx_core/playx_core.dart';
 
 import 'dio/dio_client.dart';
@@ -50,10 +48,11 @@ class PlayxNetworkClient {
       customQuery: customQuery,
       settings: settings,
     );
-    final logger=    PlayxLogger.hasLogger('Playx Network') ?
-        PlayxLogger.getLogger('Playx Network')! :
-      PlayxLogger.initLogger(name: 'Playx Network',);
-
+    final logger = PlayxLogger.hasLogger('Playx Network')
+        ? PlayxLogger.getLogger('Playx Network')!
+        : PlayxLogger.initLogger(
+            name: 'Playx Network',
+          );
 
     _apiHandler = ApiHandler(
       errorMapper: errorMapper ?? ApiHandler.getErrorMessageFromResponse,

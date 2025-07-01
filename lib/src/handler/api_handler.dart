@@ -28,7 +28,8 @@ class ApiHandler {
   bool buildShouldShowApiErrors(PlayxNetworkClientSettings? settings) =>
       (settings ?? this.settings).shouldShowApiErrors;
 
-  bool attachLogSettings(PlayxNetworkClientSettings? settings) => (settings ?? this.settings).logSettings.enabled ;
+  bool attachLogSettings(PlayxNetworkClientSettings? settings) =>
+      (settings ?? this.settings).logSettings.enabled;
 
   List<int> buildUnauthorizedRequestCodes(
           PlayxNetworkClientSettings? settings) =>
@@ -144,10 +145,9 @@ class ApiHandler {
             response: response,
             shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
         _printError(
-          header: 'Playx Network Error :',
-          text: exception.errorMessage,
-          error: exception
-        );
+            header: 'Playx Network Error :',
+            text: exception.errorMessage,
+            error: exception);
         return NetworkResult.error(exception);
       } else {
         if (isResponseBlank(response) ?? true) {
@@ -226,7 +226,7 @@ class ApiHandler {
     } catch (e, s) {
       _printError(
         header: 'Playx Network Error :',
-        error:  e,
+        error: e,
         stackTrace: s,
       );
       return NetworkResult.error(UnexpectedErrorException(
@@ -427,15 +427,14 @@ class ApiHandler {
   void _printError(
       {String? header,
       String? text,
-        Object? error,
-        dynamic stackTrace,
+      Object? error,
+      dynamic stackTrace,
       PlayxNetworkClientSettings? settings}) {
     final bool attachLogs = attachLogSettings(settings);
-    if(attachLogs){
-      logger.e(text,error: error,stackTrace: stackTrace );
+    if (attachLogs) {
+      logger.e(text, error: error, stackTrace: stackTrace);
     }
   }
-
 
   static NetworkResult<T> unableToProcessException<T>({
     dynamic e,
@@ -443,7 +442,8 @@ class ApiHandler {
     required String exceptionMessage,
     bool shouldShowApiErrors = false,
   }) {
-    PlayxLogger.getLogger('Playx Network')?.e(exceptionMessage,error: e,stackTrace: s );
+    PlayxLogger.getLogger('Playx Network')
+        ?.e(exceptionMessage, error: e, stackTrace: s);
     return NetworkResult<T>.error(
       UnableToProcessException(
           errorMessage: exceptionMessage,

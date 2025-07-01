@@ -79,7 +79,7 @@ class _MyHomePageState extends State<MyHomePage> {
         },
         onUnauthorizedRequestReceived: (response) {
           final code = response?.statusCode;
-            debugPrint('onUnauthorizedRequestReceived code :$code');
+          debugPrint('onUnauthorizedRequestReceived code :$code');
         });
     super.initState();
 
@@ -191,20 +191,22 @@ class _MyHomePageState extends State<MyHomePage> {
         fromJson: Cat.fromJson,
         settings: settings.copyWith(
           logSettings: const PlayxNetworkLoggerSettings(
-              printResponseData: false, ),
+            printResponseData: false,
+          ),
         ));
 
-    debugPrint('Result isError : ${result.isError} isSuccess => ${result.isSuccess}');
+    debugPrint(
+        'Result isError : ${result.isError} isSuccess => ${result.isSuccess}');
 
-   result.when(success: (cats) {
+    result.when(success: (cats) {
       setState(() {
         _isLoading = false;
         _cats = cats;
       });
 
-        debugPrint('Cats are : ${cats.length}');
+      debugPrint('Cats are : ${cats.length}');
     }, error: (error) {
-        debugPrint('Error is : ${error.message}');
+      debugPrint('Error is : ${error.message}');
       //handle error here
       _weatherMsg = "Error is : ${error.message}";
       setState(() {
