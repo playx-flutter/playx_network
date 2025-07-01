@@ -1,8 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:playx_network/playx_network.dart';
-import 'package:pretty_dio_logger/pretty_dio_logger.dart';
+import 'package:talker_dio_logger/talker_dio_logger.dart';
 
 // ignore: avoid_classes_with_only_static_members
 /// A client for making network requests using Dio.
@@ -14,17 +13,18 @@ class DioClient {
   final PlayxNetworkClientSettings settings;
 
   bool attachLogSettings(PlayxNetworkLoggerSettings logSettings) =>
-      kDebugMode && logSettings.attachLoggerOnDebug ||
-      kReleaseMode && logSettings.attachLoggerOnRelease;
+      logSettings.enabled;
 
   DioClient(
       {required this.dio,
       this.customHeaders,
       this.customQuery,
       required this.settings}) {
-    dio.interceptors.add(
-      settings.logSettings.buildPrettyDioLogger(),
-    );
+    if(settings.logSettings.enabled) {
+      dio.interceptors.add(
+        settings.logSettings.buildTalkerDioLogger(),
+      );
+    }
   }
 
   Dio _getDioInstance({
@@ -38,10 +38,10 @@ class DioClient {
 
     final interceptors = dio.interceptors.toList();
     if (shouldAttachLogSettings) {
-      interceptors.removeWhere((element) => element is PrettyDioLogger);
-      interceptors.add(logSettings.buildPrettyDioLogger());
+      interceptors.removeWhere((element) => element is TalkerDioLogger);
+      interceptors.add(logSettings.buildTalkerDioLogger());
     } else {
-      interceptors.removeWhere((element) => element is PrettyDioLogger);
+      interceptors.removeWhere((element) => element is TalkerDioLogger);
     }
     final updatedDio = dio.copyWith(interceptors: interceptors);
     return updatedDio;

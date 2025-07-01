@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:playx_core/playx_core.dart';
 import 'package:playx_network/playx_network.dart';
 import 'package:playx_network/src/utils/utils.dart';
@@ -13,10 +12,13 @@ class ApiHandler {
   final PlayxNetworkClientSettings settings;
   final UnauthorizedRequestHandler? onUnauthorizedRequestReceived;
 
+  final PlayxBaseLogger logger;
+
   ApiHandler({
     required this.errorMapper,
     required this.settings,
     this.onUnauthorizedRequestReceived,
+    required this.logger,
   });
 
   ExceptionMessage buildExceptionMessages(
@@ -26,11 +28,7 @@ class ApiHandler {
   bool buildShouldShowApiErrors(PlayxNetworkClientSettings? settings) =>
       (settings ?? this.settings).shouldShowApiErrors;
 
-  bool buildAttachLogSettings(PlayxNetworkClientSettings? settings) =>
-      kDebugMode &&
-          (settings ?? this.settings).logSettings.attachLoggerOnDebug ||
-      kReleaseMode &&
-          (settings ?? this.settings).logSettings.attachLoggerOnRelease;
+  bool attachLogSettings(PlayxNetworkClientSettings? settings) => (settings ?? this.settings).logSettings.enabled ;
 
   List<int> buildUnauthorizedRequestCodes(
           PlayxNetworkClientSettings? settings) =>
@@ -71,7 +69,7 @@ class ApiHandler {
           _printError(
             header: 'Playx Network Error :',
             text: exceptionMessages.unexpectedError,
-            stackTrace: response.toString(),
+            stackTrace: response,
           );
           return NetworkResult.error(UnexpectedErrorException(
             errorMessage: exceptionMessages.unexpectedError,
@@ -107,6 +105,11 @@ class ApiHandler {
             return NetworkResult.success(result);
             // ignore: avoid_catches_without_on_clauses
           } catch (e, s) {
+            _printError(
+              header: 'Playx Network Error :',
+              error: e,
+              stackTrace: s,
+            );
             return ApiHandler.unableToProcessException(
               e: e,
               s: s,
@@ -120,8 +123,8 @@ class ApiHandler {
     } catch (e, s) {
       _printError(
         header: 'Playx Network Error :',
-        text: e.toString(),
-        stackTrace: s.toString(),
+        error: e,
+        stackTrace: s,
       );
       return NetworkResult.error(UnexpectedErrorException(
         errorMessage: exceptionMessages.unexpectedError,
@@ -148,6 +151,7 @@ class ApiHandler {
         _printError(
           header: 'Playx Network Error :',
           text: exception.errorMessage,
+          error: exception
         );
         return NetworkResult.error(exception);
       } else {
@@ -155,7 +159,7 @@ class ApiHandler {
           _printError(
             header: 'Playx Network Error :',
             text: exceptionMessages.unexpectedError,
-            stackTrace: response.toString(),
+            stackTrace: response,
           );
           return NetworkResult.error(UnexpectedErrorException(
             errorMessage: exceptionMessages.unexpectedError,
@@ -201,6 +205,11 @@ class ApiHandler {
               }
               return NetworkResult.success(result);
             } else {
+              _printError(
+                header: 'Playx Network Error :',
+                text: exceptionMessages.unexpectedError,
+                stackTrace: response,
+              );
               return ApiHandler.unableToProcessException(
                 e: ApiHandler.unableToProcessException,
                 exceptionMessage: exceptionMessages.unableToProcess,
@@ -209,6 +218,11 @@ class ApiHandler {
             }
             // ignore: avoid_catches_without_on_clauses
           } catch (e, s) {
+            _printError(
+              header: 'Playx Network Error :',
+              text: exceptionMessages.unableToProcess,
+              stackTrace: response,
+            );
             return ApiHandler.unableToProcessException(
               e: e,
               s: s,
@@ -222,8 +236,8 @@ class ApiHandler {
     } catch (e, s) {
       _printError(
         header: 'Playx Network Error :',
-        text: e.toString(),
-        stackTrace: s.toString(),
+        error:  e,
+        stackTrace: s,
       );
       return NetworkResult.error(UnexpectedErrorException(
         errorMessage: exceptionMessages.unexpectedError,
@@ -248,6 +262,7 @@ class ApiHandler {
         _printError(
           header: 'Playx Network Error :',
           text: exception.errorMessage,
+          error: exception,
         );
         return NetworkResult.error(exception);
       } else {
@@ -255,7 +270,7 @@ class ApiHandler {
           _printError(
             header: 'Playx Network Error :',
             text: exceptionMessages.unexpectedError,
-            stackTrace: response.toString(),
+            stackTrace: response,
           );
           return NetworkResult.error(UnexpectedErrorException(
             errorMessage: exceptionMessages.unexpectedError,
@@ -268,8 +283,8 @@ class ApiHandler {
     } on Exception catch (e, s) {
       _printError(
         header: 'Playx Network Error :',
-        text: e.toString(),
-        stackTrace: s.toString(),
+        error: e,
+        stackTrace: s,
       );
       return NetworkResult.error(UnexpectedErrorException(
         errorMessage: exceptionMessages.unexpectedError,
@@ -285,8 +300,8 @@ class ApiHandler {
   }) {
     _printError(
       header: 'Playx Network (Dio) Error :',
-      text: error.toString(),
-      stackTrace: stackTrace.toString(),
+      text: error,
+      stackTrace: stackTrace,
     );
     return NetworkResult.error(_getDioException(
         error: error,
@@ -310,7 +325,8 @@ class ApiHandler {
       _printError(
         header: 'Playx Network Error :',
         text: 'Error while parsing error message $e',
-        stackTrace: s.toString(),
+        error: e,
+        stackTrace: s,
       );
     }
 
@@ -421,49 +437,15 @@ class ApiHandler {
   void _printError(
       {String? header,
       String? text,
-      String? stackTrace,
+        Object? error,
+        dynamic stackTrace,
       PlayxNetworkClientSettings? settings}) {
-    final bool attachLogSettings = buildAttachLogSettings(settings);
-
-    if (attachLogSettings) {
-      const maxWidth = 90;
-      //ignore: avoid_print
-      print('');
-      //ignore: avoid_print
-      print('╔╣ $header');
-      final error = '\x1B[31m$text\x1B[0m';
-      //ignore: avoid_print
-      print('║  $error');
-      _printStackTrace(stackTrace ?? '');
-      //ignore: avoid_print
-      print('╚${'═' * (maxWidth - 1)}╝');
+    final bool attachLogs = attachLogSettings(settings);
+    if(attachLogs){
+      logger.e(text,error: error,stackTrace: stackTrace );
     }
   }
 
-  static void _printStackTrace(String msg) {
-    final lines = msg.split('\n');
-    for (var i = 0; i < lines.length; ++i) {
-      final text = lines[i];
-      final error = '\x1B[31m$text\x1B[0m';
-      //ignore: avoid_print
-      print((i >= 0 ? '║ ' : '') + error);
-    }
-  }
-
-  static void printError({String? header, String? text, String? stackTrace}) {
-    if (kReleaseMode) return;
-    const maxWidth = 90;
-    //ignore: avoid_print
-    print('');
-    //ignore: avoid_print
-    print('╔╣ $header');
-    final error = '\x1B[31m$text\x1B[0m';
-    //ignore: avoid_print
-    print('║  $error');
-    _printStackTrace(stackTrace ?? '');
-    //ignore: avoid_print
-    print('╚${'═' * (maxWidth - 1)}╝');
-  }
 
   static NetworkResult<T> unableToProcessException<T>({
     dynamic e,
@@ -471,11 +453,7 @@ class ApiHandler {
     required String exceptionMessage,
     bool shouldShowApiErrors = false,
   }) {
-    printError(
-      header: 'Playx Network Error :',
-      text: e.toString(),
-      stackTrace: s.toString(),
-    );
+    PlayxLogger.getLogger('Playx Network')?.e(exceptionMessage,error: e,stackTrace: s );
     return NetworkResult<T>.error(
       UnableToProcessException(
           errorMessage: exceptionMessage,

@@ -1,102 +1,168 @@
-import 'package:pretty_dio_logger/pretty_dio_logger.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+import 'package:playx_core/playx_core.dart';
+import 'package:talker_dio_logger/talker_dio_logger.dart';
 
 /// Logger settings used to customize what should be logged by the application when performing a request.
-class PlayxNetworkLoggerSettings {
-  /// Print request [Options]
-  final bool request;
+class PlayxNetworkLoggerSettings extends Equatable{
 
-  /// Print request header [Options.headers]
-  final bool requestHeader;
+  // Print Dio logger if true
+  final bool enabled;
 
-  /// Print request data [Options.data]
-  final bool requestBody;
+  /// Print [response.data] if true
+  final bool printResponseData;
 
-  /// Print [Response.data]
-  final bool responseBody;
+  /// Print [response.headers] if true
+  final bool printResponseHeaders;
 
-  /// Print [Response.headers]
-  final bool responseHeader;
+  /// Print [response.statusMessage] if true
+  final bool printResponseMessage;
 
-  /// Print error message
-  final bool error;
+  /// Print [response.redirects] if true
+  final bool printResponseRedirects;
 
-  /// InitialTab count to logPrint json response
-  static const int kInitialTab = 1;
+  /// Print response time if true
+  final bool printResponseTime;
 
-  /// 1 tab length
-  static const String tabStep = '    ';
+  /// Print [error.response.data] if true
+  final bool printErrorData;
 
-  /// Print compact json response
-  final bool compact;
+  /// Print [error.response.headers] if true
+  final bool printErrorHeaders;
 
-  /// Width size per logPrint
-  final int maxWidth;
+  /// Print [error.message] if true
+  final bool printErrorMessage;
 
-  /// Log printer; defaults logPrint log to console.
-  /// In flutter, you'd better use debugPrint.
-  /// you can also write log in a file.
-  final void Function(Object object) logPrint;
+  /// Print [request.data] if true
+  final bool printRequestData;
 
-  final bool attachLoggerOnDebug;
+  /// Print [request.headers] if true
+  final bool printRequestHeaders;
 
-  final bool attachLoggerOnRelease;
+  /// Print [request.extra] if true
+  final bool printRequestExtra;
+
+
+  /// For request filtering.
+  /// You can add your custom logic to log only specific HTTP requests [RequestOptions].
+  final bool Function(RequestOptions requestOptions)? requestFilter;
+
+  /// For response filtering.
+  /// You can add your custom logic to log only specific HTTP responses [Response].
+  final bool Function(Response response)? responseFilter;
+
+  /// For error filtering.
+  /// You can add your custom logic to log only specific Dio error [DioException].
+  final bool Function(DioException response)? errorFilter;
+
+  /// Header values for the specified keys in the Set will be replaced with *****.
+  /// Case insensitive
+  final Set<String> hiddenHeaders;
 
   const PlayxNetworkLoggerSettings(
-      {this.request = true,
-      this.requestHeader = true,
-      this.requestBody = true,
-      this.responseHeader = false,
-      this.responseBody = false,
-      this.attachLoggerOnDebug = true,
-      this.attachLoggerOnRelease = false,
-      this.error = true,
-      this.maxWidth = 90,
-      this.compact = true,
-      this.logPrint = print});
+      {
+        this.enabled = kDebugMode,
+        this.printResponseData = true,
+        this.printResponseHeaders = false,
+        this.printResponseMessage = true,
+        this.printResponseRedirects = false,
+        this.printResponseTime = false,
+        this.printErrorData = true,
+        this.printErrorHeaders = true,
+        this.printErrorMessage = true,
+        this.printRequestData = true,
+        this.printRequestHeaders = false,
+        this.printRequestExtra = false,
+        this.hiddenHeaders = const <String>{},
+        this.requestFilter,
+        this.responseFilter,
+        this.errorFilter,
+      });
 
-  PrettyDioLogger buildPrettyDioLogger() {
-    return PrettyDioLogger(
-      requestHeader: requestHeader,
-      requestBody: requestBody,
-      responseBody: responseBody,
-      responseHeader: responseHeader,
-      error: error,
-      compact: compact,
-      maxWidth: maxWidth,
-      logPrint: logPrint,
+  TalkerDioLogger buildTalkerDioLogger() {
+    return TalkerDioLogger(
+      settings: TalkerDioLoggerSettings(
+        enabled: enabled,
+        printResponseData: printResponseData,
+        printResponseHeaders: printResponseHeaders,
+        printResponseMessage: printResponseMessage,
+        printResponseRedirects: printResponseRedirects,
+        printResponseTime: printResponseTime,
+        printErrorData: printErrorData,
+        printErrorHeaders: printErrorHeaders,
+        printErrorMessage: printErrorMessage,
+        printRequestData: printRequestData,
+        printRequestHeaders: printRequestHeaders,
+        printRequestExtra: printRequestExtra,
+        requestFilter: requestFilter,
+        responseFilter: responseFilter,
+        errorFilter: errorFilter,
+        hiddenHeaders: hiddenHeaders,
+      )
     );
   }
 
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-
-    return other is PlayxNetworkLoggerSettings &&
-        other.request == request &&
-        other.requestHeader == requestHeader &&
-        other.requestBody == requestBody &&
-        other.responseHeader == responseHeader &&
-        other.responseBody == responseBody &&
-        other.error == error &&
-        other.compact == compact &&
-        other.maxWidth == maxWidth &&
-        other.attachLoggerOnDebug == attachLoggerOnDebug &&
-        other.attachLoggerOnRelease == attachLoggerOnRelease &&
-        other.logPrint == logPrint;
+  PlayxNetworkLoggerSettings copyWith({
+    bool? enabled,
+    bool? printResponseData,
+    bool? printResponseHeaders,
+    bool? printResponseMessage,
+    bool? printResponseRedirects,
+    bool? printResponseTime,
+    bool? printErrorData,
+    bool? printErrorHeaders,
+    bool? printErrorMessage,
+    bool? printRequestData,
+    bool? printRequestHeaders,
+    bool? printRequestExtra,
+    bool Function(RequestOptions requestOptions)? requestFilter,
+    bool Function(Response response)? responseFilter,
+    bool Function(DioException response)? errorFilter,
+    Set<String>? hiddenHeaders
+  }) {
+    return PlayxNetworkLoggerSettings(
+      enabled: enabled ?? this.enabled,
+      printResponseData: printResponseData ?? this.printResponseData,
+      printResponseHeaders: printResponseHeaders ?? this.printResponseHeaders,
+      printResponseMessage: printResponseMessage ?? this.printResponseMessage,
+      printResponseRedirects: printResponseRedirects ?? this.printResponseRedirects,
+      printResponseTime: printResponseTime ?? this.printResponseTime,
+      printErrorData: printErrorData ?? this.printErrorData,
+      printErrorHeaders: printErrorHeaders ?? this.printErrorHeaders,
+      printErrorMessage: printErrorMessage ?? this.printErrorMessage,
+      printRequestData: printRequestData ?? this.printRequestData,
+      printRequestHeaders: printRequestHeaders ?? this.printRequestHeaders,
+      printRequestExtra: printRequestExtra ?? this.printRequestExtra,
+      requestFilter: requestFilter ?? this.requestFilter,
+      responseFilter: responseFilter ?? this.responseFilter,
+      errorFilter: errorFilter ?? this.errorFilter,
+      hiddenHeaders: hiddenHeaders ?? this.hiddenHeaders
+    );
   }
 
+
+
   @override
-  int get hashCode {
-    return request.hashCode ^
-        requestHeader.hashCode ^
-        requestBody.hashCode ^
-        responseBody.hashCode ^
-        responseHeader.hashCode ^
-        error.hashCode ^
-        compact.hashCode ^
-        maxWidth.hashCode ^
-        attachLoggerOnDebug.hashCode ^
-        attachLoggerOnRelease.hashCode ^
-        logPrint.hashCode;
-  }
+  List<Object?> get props => [
+    enabled,
+    printResponseData,
+    printResponseHeaders,
+    printResponseMessage,
+    printResponseRedirects,
+    printResponseTime,
+    printErrorData,
+    printErrorHeaders,
+    printErrorMessage,
+    printRequestData,
+    printRequestHeaders,
+    printRequestExtra,
+    requestFilter,
+    responseFilter,
+    errorFilter,
+    hiddenHeaders
+  ];
+
+  @override
+  bool get stringify => true;
+
 }

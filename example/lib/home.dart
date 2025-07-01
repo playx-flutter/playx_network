@@ -38,9 +38,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
   final settings = const PlayxNetworkClientSettings(
     logSettings: PlayxNetworkLoggerSettings(
-      responseBody: true,
-      request: true,
-      attachLoggerOnDebug: true,
+      printResponseData: true,
+      printRequestData: true,
+      enabled: kDebugMode,
     ),
     //Whether you want to show api error message or default message.
     shouldShowApiErrors: true,
@@ -191,7 +191,7 @@ class _MyHomePageState extends State<MyHomePage> {
         fromJson: Cat.fromJson,
         settings: settings.copyWith(
           logSettings: const PlayxNetworkLoggerSettings(
-              responseBody: false, attachLoggerOnDebug: true),
+              printResponseData: false, ),
         ));
 
     debugPrint('Result isError : ${result.isError} isSuccess => ${result.isSuccess}');

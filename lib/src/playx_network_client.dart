@@ -48,11 +48,18 @@ class PlayxNetworkClient {
       customQuery: customQuery,
       settings: settings,
     );
+    final logger=    PlayxLogger.hasLogger('Playx Network') ?
+        PlayxLogger.getLogger('Playx Network')! :
+      PlayxLogger.initLogger(name: 'Playx Network');
+
+
     _apiHandler = ApiHandler(
       errorMapper: errorMapper ?? ApiHandler.getErrorMessageFromResponse,
       settings: settings,
       onUnauthorizedRequestReceived: onUnauthorizedRequestReceived,
+      logger: logger,
     );
+
     if (GetIt.instance
         .isRegistered<ExceptionMessage>(instanceName: 'exception_messages')) {
       GetIt.instance
