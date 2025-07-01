@@ -105,11 +105,6 @@ class ApiHandler {
             return NetworkResult.success(result);
             // ignore: avoid_catches_without_on_clauses
           } catch (e, s) {
-            _printError(
-              header: 'Playx Network Error :',
-              error: e,
-              stackTrace: s,
-            );
             return ApiHandler.unableToProcessException(
               e: e,
               s: s,
@@ -218,11 +213,6 @@ class ApiHandler {
             }
             // ignore: avoid_catches_without_on_clauses
           } catch (e, s) {
-            _printError(
-              header: 'Playx Network Error :',
-              text: exceptionMessages.unableToProcess,
-              stackTrace: response,
-            );
             return ApiHandler.unableToProcessException(
               e: e,
               s: s,

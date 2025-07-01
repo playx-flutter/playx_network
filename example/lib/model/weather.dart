@@ -84,20 +84,23 @@ class CurrentWeather {
     this.time,
   });
 
-  CurrentWeather.fromJson(dynamic json) {
-    temperature = json['temperature'];
-    windspeed = json['windspeed'];
-    winddirection = json['winddirection'];
-    weathercode = json['weathercode'];
-    isDay = json['is_day'];
-    time = json['time'];
-  }
   num? temperature;
   num? windspeed;
   num? winddirection;
   num? weathercode;
   num? isDay;
   String? time;
+
+  factory CurrentWeather.fromJson(dynamic json) {
+    return CurrentWeather(
+      temperature: json['temperature'],
+      windspeed: json['windspeed'],
+      winddirection: json['winddirection'],
+      weathercode: json['weathercode'],
+      isDay: json['is_day'],
+      time: json['time'],
+    );
+  }
 
   Map<String, dynamic> toJson() {
     final map = <String, dynamic>{};
@@ -107,6 +110,7 @@ class CurrentWeather {
     map['weathercode'] = weathercode;
     map['is_day'] = isDay;
     map['time'] = time;
+
     return map;
   }
 }
