@@ -1,13 +1,13 @@
 name: playx_network
 description: playx_network is a Wrapper around Dio that can perform api request with better error handling and easily get the result of any api request.
-version: 0.4.0
+version: 0.5.0
 homepage: https://sourcya.io
 repository: https://github.com/playx-flutter/playx_network
 issue_tracker: https://github.com/playx-flutter/playx_network/issues
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
-  flutter: ">=3.3.0"
+  sdk: '>=3.5.0 <4.0.0'
+  flutter: ">=3.24.0"
 
 topics:
     - playx
@@ -20,14 +20,14 @@ dependencies:
     sdk: flutter
   dio: ^5.8.0+1
   pretty_dio_logger: ^1.4.0
-  sentry_dio: ^8.13.3
-  playx_core: ^0.6.3
+  sentry_dio: ^9.1.0
+  playx_core: ^0.7.3
   dio_web_adapter: ^2.1.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
 
 flutter:
 
