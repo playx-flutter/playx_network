@@ -366,7 +366,7 @@ packages:
       path: ".."
       relative: true
     source: path
-    version: "0.5.0"
+    version: "0.5.1"
   plugin_platform_interface:
     dependency: transitive
     description:
@@ -379,18 +379,18 @@ packages:
     dependency: transitive
     description:
       name: sentry
-      sha256: "4aee18ffcdb6d92db3a770764fd0034b93f27ae736cf9f39855575a36c04fe91"
+      sha256: "40583b61f5f4dc0ea7095a34c03cd71e17b43bd8866fba34972398f70806b464"
       url: "https://pub.dev"
     source: hosted
-    version: "9.1.0"
+    version: "9.2.0"
   sentry_dio:
     dependency: transitive
     description:
       name: sentry_dio
-      sha256: "967e1aeda7ba1bf5aba7f7efb265ba9d2bbe5cd3432b5220677c91403543738b"
+      sha256: "62836fb92b6d3b38748469c63cb60df60917d2d85214d94051c7424e960450c9"
       url: "https://pub.dev"
     source: hosted
-    version: "9.1.0"
+    version: "9.2.0"
   shared_preferences:
     dependency: transitive
     description:
