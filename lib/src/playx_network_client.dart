@@ -52,6 +52,7 @@ class PlayxNetworkClient {
         ? PlayxLogger.getLogger('Playx Network')!
         : PlayxLogger.initLogger(
             name: 'Playx Network',
+            setAsDefault: false,
           );
 
     _apiHandler = ApiHandler(

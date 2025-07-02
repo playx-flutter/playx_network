@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.1
+- Updated dependencies to their latest versions.
+- Enhanced logging errors and exceptions to provide more detailed information.
+
 ## 0.5.0
 
 > Note: This version contains breaking changes.

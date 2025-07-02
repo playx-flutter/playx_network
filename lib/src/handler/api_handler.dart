@@ -62,15 +62,16 @@ class ApiHandler {
             shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
         _printError(
           header: 'Playx Network Error :',
-          text: exception.errorMessage,
+          text: 'ERROR ${response.statusCode} ${response.statusMessage}',
+          error: exception,
         );
         return NetworkResult.error(exception);
       } else {
         if (isResponseBlank(response) ?? true) {
           _printError(
             header: 'Playx Network Error :',
-            text: exceptionMessages.unexpectedError,
-            stackTrace: response,
+            text: 'Response is blank or null',
+            error: response,
           );
           return NetworkResult.error(UnexpectedErrorException(
             errorMessage: exceptionMessages.unexpectedError,
@@ -82,6 +83,7 @@ class ApiHandler {
             _printError(
               header: 'Playx Network Error :',
               text: exceptionMessages.emptyResponse,
+              error: data,
             );
             return NetworkResult.error(EmptyResponseException(
                 errorMessage: exceptionMessages.emptyResponse,
@@ -146,15 +148,15 @@ class ApiHandler {
             shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
         _printError(
             header: 'Playx Network Error :',
-            text: exception.errorMessage,
+            text: 'ERROR ${response.statusCode} ${response.statusMessage}',
             error: exception);
         return NetworkResult.error(exception);
       } else {
         if (isResponseBlank(response) ?? true) {
           _printError(
             header: 'Playx Network Error :',
-            text: exceptionMessages.unexpectedError,
-            stackTrace: response,
+            text: 'Response is blank or null',
+            error: response,
           );
           return NetworkResult.error(UnexpectedErrorException(
             errorMessage: exceptionMessages.unexpectedError,
@@ -166,6 +168,7 @@ class ApiHandler {
             _printError(
               header: 'Playx Network Error :',
               text: exceptionMessages.emptyResponse,
+              error: data,
             );
             return NetworkResult.error(EmptyResponseException(
                 errorMessage: exceptionMessages.emptyResponse,
@@ -192,6 +195,7 @@ class ApiHandler {
                 _printError(
                   header: 'Playx Network Error :',
                   text: exceptionMessages.emptyResponse,
+                  error: result,
                 );
                 return NetworkResult.error(EmptyResponseException(
                     errorMessage: exceptionMessages.emptyResponse,
@@ -202,8 +206,8 @@ class ApiHandler {
             } else {
               _printError(
                 header: 'Playx Network Error :',
-                text: exceptionMessages.unexpectedError,
-                stackTrace: response,
+                text: 'Response is not a List',
+                error: response,
               );
               return ApiHandler.unableToProcessException(
                 e: ApiHandler.unableToProcessException,
@@ -250,8 +254,8 @@ class ApiHandler {
             response: response,
             shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
         _printError(
-          header: 'Playx Network Error :',
-          text: exception.errorMessage,
+          header: 'Playx Network Error:',
+          text: 'ERROR ${response.statusCode} ${response.statusMessage}',
           error: exception,
         );
         return NetworkResult.error(exception);
@@ -259,8 +263,8 @@ class ApiHandler {
         if (isResponseBlank(response) ?? true) {
           _printError(
             header: 'Playx Network Error :',
-            text: exceptionMessages.unexpectedError,
-            stackTrace: response,
+            text: 'Response is blank or null',
+            error: response,
           );
           return NetworkResult.error(UnexpectedErrorException(
             errorMessage: exceptionMessages.unexpectedError,
@@ -272,7 +276,7 @@ class ApiHandler {
       // ignore: avoid_catches_without_on_clauses
     } on Exception catch (e, s) {
       _printError(
-        header: 'Playx Network Error :',
+        text: exceptionMessages.unexpectedError,
         error: e,
         stackTrace: s,
       );
@@ -290,7 +294,8 @@ class ApiHandler {
   }) {
     _printError(
       header: 'Playx Network (Dio) Error :',
-      text: error,
+      text: 'DioException occurred:',
+      error: error,
       stackTrace: stackTrace,
     );
     return NetworkResult.error(_getDioException(
