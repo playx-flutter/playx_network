@@ -48,6 +48,7 @@ class ApiHandler {
   Future<NetworkResult<T>> handleNetworkResult<T>({
     required Response response,
     required JsonMapper<T> fromJson,
+    ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
@@ -59,6 +60,7 @@ class ApiHandler {
           !successCodes.contains(response.statusCode)) {
         final NetworkException exception = _handleResponse(
             response: response,
+            errorMapper: errorMapper,
             shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
         _printError(
           header: 'Playx Network Error :',
@@ -133,6 +135,7 @@ class ApiHandler {
   Future<NetworkResult<List<T>>> handleNetworkResultForList<T>({
     required Response response,
     required JsonMapper<T> fromJson,
+    ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
@@ -145,6 +148,7 @@ class ApiHandler {
           !successCodes.contains(response.statusCode)) {
         final NetworkException exception = _handleResponse(
             response: response,
+            errorMapper: errorMapper,
             shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
         _printError(
             header: 'Playx Network Error :',
@@ -242,6 +246,7 @@ class ApiHandler {
   Future<NetworkResult<Response>> handleNetworkResultForDownload({
     required Response<dynamic> response,
     required bool shouldHandleUnauthorizedRequest,
+    ErrorMapper? errorMapper,
     PlayxNetworkClientSettings? settings,
   }) async {
     final exceptionMessages = buildExceptionMessages(settings);
@@ -252,6 +257,7 @@ class ApiHandler {
           !successCodes.contains(response.statusCode)) {
         final NetworkException exception = _handleResponse(
             response: response,
+            errorMapper: errorMapper,
             shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
         _printError(
           header: 'Playx Network Error:',
@@ -289,6 +295,7 @@ class ApiHandler {
   NetworkResult<T> handleDioException<T>({
     dynamic error,
     dynamic stackTrace,
+    ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) {
@@ -300,12 +307,14 @@ class ApiHandler {
     );
     return NetworkResult.error(_getDioException(
         error: error,
+        errorMapper: errorMapper,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest));
   }
 
   NetworkException _handleResponse(
       {Response? response,
       bool shouldHandleUnauthorizedRequest = true,
+      ErrorMapper? errorMapper,
       PlayxNetworkClientSettings? settings}) {
     final exceptionMessages = buildExceptionMessages(settings);
     final shouldShowApiErrors = buildShouldShowApiErrors(settings);
@@ -315,7 +324,7 @@ class ApiHandler {
 
     String? errMsg;
     try {
-      errMsg = errorMapper(errorJson);
+      errMsg = (errorMapper ?? this.errorMapper)(errorJson);
     } catch (e, s) {
       _printError(
         header: 'Playx Network Error :',
@@ -347,6 +356,7 @@ class ApiHandler {
 
   NetworkException _getDioException(
       {dynamic error,
+      ErrorMapper? errorMapper,
       bool shouldHandleUnauthorizedRequest = true,
       PlayxNetworkClientSettings? settings}) {
     final exceptionMessages = buildExceptionMessages(settings);
@@ -378,6 +388,7 @@ class ApiHandler {
               ),
             DioExceptionType.badResponse => _handleResponse(
                 response: error.response,
+                errorMapper: errorMapper,
                 shouldHandleUnauthorizedRequest:
                     shouldHandleUnauthorizedRequest),
             DioExceptionType.sendTimeout => SendTimeoutException(

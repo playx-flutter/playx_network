@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.0
+- Updated dependencies to their latest versions.
+- PATCH Request Support: Added new methods (patch and patchList) to easily perform PATCH API requests.
+- Per-Request Error Mapping: You can now pass a custom ErrorMapper to individual API calls for more specific error handling.
+- Granular Logging Control: Added new settings to control exactly what gets printed in the logs (e.g., toggle response data, request headers, etc.).
+- Added dio_smart_retry package to support retrying failed requests with exponential backoff.
+
+
 ## 0.5.1
 - Updated dependencies to their latest versions.
 - Enhanced logging errors and exceptions to provide more detailed information.

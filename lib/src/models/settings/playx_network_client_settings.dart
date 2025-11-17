@@ -44,9 +44,18 @@ class PlayxNetworkClientSettings {
     List<int>? successRequestCodes,
     bool? useIsolateForMappingJson,
     bool? useWorkMangerForMappingJsonInIsolate,
+    bool? printResponseData,
+    bool? printRequestData,
+    bool? printRequestHeaders,
+    bool? printResponseHeaders,
   }) {
     return PlayxNetworkClientSettings(
-      logSettings: logSettings ?? this.logSettings,
+      logSettings: (logSettings ?? this.logSettings).copyWith(
+        printRequestData: printRequestData,
+        printRequestHeaders: printRequestHeaders,
+        printResponseHeaders: printResponseHeaders,
+        printResponseData: printResponseData,
+      ),
       shouldShowApiErrors: shouldShowApiErrors ?? this.shouldShowApiErrors,
       exceptionMessages: exceptionMessages ?? this.exceptionMessages,
       unauthorizedRequestCodes:
