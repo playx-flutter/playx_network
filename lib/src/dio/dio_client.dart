@@ -224,6 +224,43 @@ class DioClient {
       onReceiveProgress: onReceiveProgress,
     );
   }
+
+  Future<Response> patch<T>(
+    String path, {
+    Object body = const {},
+    Map<String, dynamic> headers = const {},
+    Map<String, dynamic> query = const {},
+    Options? options,
+    String? contentType,
+    bool attachCustomHeaders = true,
+    bool attachCustomQuery = true,
+    CancelToken? cancelToken,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+    PlayxNetworkLoggerSettings? logSettings,
+  }) async {
+    return _getDioInstance(logSettings: logSettings).patch(
+      path,
+      data: body,
+      queryParameters: {
+        if (attachCustomQuery && customQuery != null)
+          ...?await customQuery?.call(),
+        ...query,
+      },
+      options: options ??
+          Options(
+            headers: {
+              if (attachCustomHeaders && customHeaders != null)
+                ...?await customHeaders?.call(),
+              ...headers,
+            },
+            contentType: contentType,
+          ),
+      cancelToken: cancelToken,
+      onSendProgress: onSendProgress,
+      onReceiveProgress: onReceiveProgress,
+    );
+  }
 }
 
 extension DioClientExtensions on Dio {
