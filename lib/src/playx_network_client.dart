@@ -103,6 +103,7 @@ class PlayxNetworkClient {
     CancelToken? cancelToken,
     ProgressCallback? onReceiveProgress,
     required JsonMapper<T> fromJson,
+    ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
@@ -123,6 +124,7 @@ class PlayxNetworkClient {
         fromJson: fromJson,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
+        errorMapper: errorMapper,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error, stackTrace) {
@@ -131,6 +133,7 @@ class PlayxNetworkClient {
         stackTrace: stackTrace,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
+        errorMapper: errorMapper,
       );
     }
   }
@@ -150,6 +153,7 @@ class PlayxNetworkClient {
     CancelToken? cancelToken,
     ProgressCallback? onReceiveProgress,
     required JsonMapper<T> fromJson,
+    ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
@@ -170,6 +174,7 @@ class PlayxNetworkClient {
         fromJson: fromJson,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
+        errorMapper: errorMapper,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
@@ -177,6 +182,7 @@ class PlayxNetworkClient {
         error: error,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
+        errorMapper: errorMapper,
       );
     }
   }
@@ -199,6 +205,7 @@ class PlayxNetworkClient {
     String lengthHeader = Headers.contentLengthHeader,
     Object? data,
     PlayxNetworkClientSettings? settings,
+    ErrorMapper? errorMapper,
   }) async {
     try {
       final res = await _dioClient.download(
@@ -219,6 +226,7 @@ class PlayxNetworkClient {
       return _apiHandler.handleNetworkResultForDownload(
         response: res,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        errorMapper: errorMapper,
         settings: settings,
       );
       // ignore: avoid_catches_without_on_clauses
@@ -226,6 +234,7 @@ class PlayxNetworkClient {
       return _apiHandler.handleDioException(
         error: error,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        errorMapper: errorMapper,
         settings: settings,
       );
     }
@@ -249,6 +258,7 @@ class PlayxNetworkClient {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
     required JsonMapper<T> fromJson,
+    ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
@@ -272,6 +282,7 @@ class PlayxNetworkClient {
         fromJson: fromJson,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
+        errorMapper: errorMapper,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
@@ -279,6 +290,7 @@ class PlayxNetworkClient {
         error: error,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
+        errorMapper: errorMapper,
       );
     }
   }
@@ -301,6 +313,7 @@ class PlayxNetworkClient {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
     required JsonMapper<T> fromJson,
+    ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
@@ -324,6 +337,7 @@ class PlayxNetworkClient {
         fromJson: fromJson,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
+        errorMapper: errorMapper,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
@@ -331,6 +345,7 @@ class PlayxNetworkClient {
         error: error,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
+        errorMapper: errorMapper,
       );
     }
   }
@@ -351,6 +366,7 @@ class PlayxNetworkClient {
     bool attachCustomQuery = true,
     CancelToken? cancelToken,
     required JsonMapper<T> fromJson,
+    ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
@@ -372,6 +388,7 @@ class PlayxNetworkClient {
         fromJson: fromJson,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
+        errorMapper: errorMapper,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
@@ -379,6 +396,7 @@ class PlayxNetworkClient {
         error: error,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
+        errorMapper: errorMapper,
       );
     }
   }
@@ -399,6 +417,7 @@ class PlayxNetworkClient {
     bool attachCustomQuery = true,
     CancelToken? cancelToken,
     required JsonMapper<T> fromJson,
+    ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
@@ -420,6 +439,7 @@ class PlayxNetworkClient {
         fromJson: fromJson,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
+        errorMapper: errorMapper,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
@@ -427,6 +447,7 @@ class PlayxNetworkClient {
         error: error,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
+        errorMapper: errorMapper,
       );
     }
   }
@@ -449,6 +470,7 @@ class PlayxNetworkClient {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
     required JsonMapper<T> fromJson,
+    ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
@@ -472,6 +494,7 @@ class PlayxNetworkClient {
         fromJson: fromJson,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
+        errorMapper: errorMapper,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
@@ -479,6 +502,7 @@ class PlayxNetworkClient {
         error: error,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
+        errorMapper: errorMapper,
       );
     }
   }
@@ -501,6 +525,7 @@ class PlayxNetworkClient {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
     required JsonMapper<T> fromJson,
+    ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
@@ -524,6 +549,7 @@ class PlayxNetworkClient {
         fromJson: fromJson,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
+        errorMapper: errorMapper,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
@@ -531,6 +557,7 @@ class PlayxNetworkClient {
         error: error,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
+        errorMapper: errorMapper,
       );
     }
   }
@@ -553,6 +580,7 @@ class PlayxNetworkClient {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
     required JsonMapper<T> fromJson,
+    ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
@@ -576,6 +604,7 @@ class PlayxNetworkClient {
         fromJson: fromJson,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
+        errorMapper: errorMapper,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
@@ -583,6 +612,7 @@ class PlayxNetworkClient {
         error: error,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
+        errorMapper: errorMapper,
       );
     }
   }
@@ -605,6 +635,7 @@ class PlayxNetworkClient {
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
     required JsonMapper<T> fromJson,
+    ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
@@ -628,6 +659,7 @@ class PlayxNetworkClient {
         fromJson: fromJson,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
+        errorMapper: errorMapper,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
@@ -635,6 +667,7 @@ class PlayxNetworkClient {
         error: error,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
+        errorMapper: errorMapper,
       );
     }
   }
