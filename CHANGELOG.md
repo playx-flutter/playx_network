@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.7.0
+- **Nested JSON Key Extraction**: Added `dataKey` parameter to all network requests (`get`, `getList`, `post`, `postList`, etc.) to extract nested JSON values before parsing directly via dot-notation (e.g. `dataKey: 'data.users'`).
+
 ## 0.6.0
 - Updated dependencies to their latest versions.
 - PATCH Request Support: Added new methods (patch and patchList) to easily perform PATCH API requests.

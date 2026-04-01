@@ -48,6 +48,7 @@ class ApiHandler {
   Future<NetworkResult<T>> handleNetworkResult<T>({
     required Response response,
     required JsonMapper<T> fromJson,
+    String? dataKey,
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
@@ -93,6 +94,9 @@ class ApiHandler {
                 shouldShowApiError: shouldShowApiErrors));
           }
 
+          final actualData =
+              dataKey != null ? _getJsonValueOrNull(data, dataKey) : data;
+
           try {
             bool useIsolate = useIsolateForMappingJson(settings);
             bool useWorkManager =
@@ -100,13 +104,12 @@ class ApiHandler {
 
             final result = useIsolate
                 ? await MapUtils.mapAsyncInIsolate(
-                    data: data,
+                    data: actualData,
                     mapper: fromJson,
                     useWorkManager: useWorkManager,
                     printError: false,
                   )
-                : await fromJson(data);
-
+                : await fromJson(actualData);
             return NetworkResult.success(result);
             // ignore: avoid_catches_without_on_clauses
           } catch (e, s) {
@@ -135,6 +138,7 @@ class ApiHandler {
   Future<NetworkResult<List<T>>> handleNetworkResultForList<T>({
     required Response response,
     required JsonMapper<T> fromJson,
+    String? dataKey,
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
@@ -180,20 +184,23 @@ class ApiHandler {
                 shouldShowApiError: shouldShowApiErrors));
           }
 
+          final actualData =
+              dataKey != null ? _getJsonValueOrNull(data, dataKey) : data;
+
           try {
-            if (data is List) {
+            if (actualData is List) {
               bool useIsolate = useIsolateForMappingJson(settings);
               bool useWorkManager =
                   useWorkManagerForMappingJsonInIsolate(settings);
 
               final result = useIsolate
-                  ? await data.asyncMapInIsolate(
+                  ? await actualData.asyncMapInIsolate(
                       mapper: fromJson,
                       useWorkManager: useWorkManager,
                       printError: false,
                       printEachItemError: false)
                   : await Future.wait(
-                      data.map((item) async => await fromJson(item)));
+                      actualData.map((item) async => await fromJson(item)));
 
               if (result.isEmpty) {
                 _printError(
@@ -466,5 +473,43 @@ class ApiHandler {
           statusCode: -1,
           shouldShowApiError: shouldShowApiErrors),
     );
+  }
+
+  /// Internal helper to safely get a value from a JSON map by key.
+  /// Returns null if the JSON is null, not a map, or if the key is missing.
+  /// Supports dot-notation for nested keys (e.g., 'data.user.name' or 'data.users.0.name').
+  static dynamic _getJsonValueOrNull(dynamic json, String key) {
+    if (json == null) {
+      return null;
+    }
+
+    if (json is Map && json.containsKey(key)) {
+      return json[key];
+    }
+
+    if (key.contains('.')) {
+      final keys = key.split('.');
+      dynamic current = json;
+
+      for (final k in keys) {
+        if (current is Map) {
+          if (!current.containsKey(k)) {
+            return null;
+          }
+          current = current[k];
+        } else if (current is List) {
+          final index = int.tryParse(k);
+          if (index == null || index < 0 || index >= current.length) {
+            return null;
+          }
+          current = current[index];
+        } else {
+          return null;
+        }
+      }
+      return current;
+    }
+
+    return null;
   }
 }
