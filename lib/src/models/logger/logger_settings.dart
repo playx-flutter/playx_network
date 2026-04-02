@@ -47,9 +47,6 @@ class PlayxNetworkLoggerSettings extends Equatable {
   /// Whether to enable ANSI colors in logs.
   final bool enableColors;
 
-  /// Whether to display timestamp in logs.
-  final bool displayTimestamp;
-
   /// For request filtering.
   /// You can add your custom logic to log only specific HTTP requests [RequestOptions].
   final bool Function(RequestOptions requestOptions)? requestFilter;
@@ -84,7 +81,6 @@ class PlayxNetworkLoggerSettings extends Equatable {
     this.printRequestHeaders = true,
     this.printRequestExtra = false,
     this.enableColors = false,
-    this.displayTimestamp = false,
     this.hiddenHeaders = const <String>{},
     this.requestFilter,
     this.responseFilter,
@@ -159,7 +155,6 @@ class PlayxNetworkLoggerSettings extends Equatable {
         printRequestHeaders: printRequestHeaders ?? this.printRequestHeaders,
         printRequestExtra: printRequestExtra ?? this.printRequestExtra,
         enableColors: enableColors ?? this.enableColors,
-        displayTimestamp: displayTimestamp ?? this.displayTimestamp,
         requestFilter: requestFilter ?? this.requestFilter,
         responseFilter: responseFilter ?? this.responseFilter,
         errorFilter: errorFilter ?? this.errorFilter,
@@ -187,7 +182,6 @@ class PlayxNetworkLoggerSettings extends Equatable {
         hiddenHeaders,
         talker,
         enableColors,
-        displayTimestamp,
       ];
 
   @override
