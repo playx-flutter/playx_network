@@ -115,18 +115,43 @@ class _MyHomePageState extends State<MyHomePage> {
                     _weatherMsg,
                     style: Theme.of(context).textTheme.headlineMedium,
                   ),
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Wrap(
+                      spacing: 8,
+                      children: [
+                        ElevatedButton(
+                          onPressed: getWeatherNestedFromApi,
+                          child: const Text('Weather Nested'),
+                        ),
+                        ElevatedButton(
+                          onPressed: getCatsWithCancellation,
+                          child: const Text('Cats (CancelTag)'),
+                        ),
+                        ElevatedButton(
+                          onPressed: cancelCatsRequest,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red.shade100,
+                          ),
+                          child: const Text('Cancel Cats'),
+                        ),
+                      ],
+                    ),
+                  ),
                   Expanded(
-                      child: ListView.builder(
-                          itemCount: _cats.length,
-                          itemBuilder: (context, index) {
-                            return SizedBox(
-                              height: 200,
-                              child: Image.network(
-                                _cats[index].url ?? '',
-                                fit: BoxFit.cover,
-                              ),
-                            );
-                          }))
+                    child: ListView.builder(
+                      itemCount: _cats.length,
+                      itemBuilder: (context, index) {
+                        return SizedBox(
+                          height: 200,
+                          child: Image.network(
+                            _cats[index].url ?? '',
+                            fit: BoxFit.cover,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                 ],
               ),
       ),
@@ -226,5 +251,68 @@ class _MyHomePageState extends State<MyHomePage> {
     }, error: (error) {
       return NetworkResult<List<String?>>.error(error.error);
     });
+  }
+
+  /// Perform GET Request and extract nested data using [dataKey].
+  /// In this example we extract [CurrentWeather] directly from the response.
+  Future<void> getWeatherNestedFromApi() async {
+    setState(() {
+      _isLoading = true;
+    });
+    final result = await _client.get(
+      _forecastEndpoint,
+      query: {
+        'latitude': '30.04',
+        'longitude': '31.23',
+        'current_weather': 'true',
+      },
+      // Extract 'current_weather' directly from the response.
+      dataKey: 'current_weather',
+      fromJson: CurrentWeather.fromJson,
+    );
+
+    result.when(success: (weather) {
+      setState(() {
+        _isLoading = false;
+        _weatherMsg = "Nested: ${weather.temperature ?? 0} C";
+      });
+    }, error: (error) {
+      _weatherMsg = "Error: ${error.message}";
+      setState(() {
+        _isLoading = false;
+      });
+    });
+  }
+
+  /// Demonstrates request cancellation using [cancelTag].
+  Future<void> getCatsWithCancellation() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    // This request will be cancelled if another one starts with the same tag
+    // because [cancelOld] is true by default.
+    final result = await _client.getList(
+      _catsUrl,
+      query: {'limit': '5'},
+      cancelTag: 'cats_request',
+      fromJson: Cat.fromJson,
+    );
+
+    result.when(success: (cats) {
+      setState(() {
+        _isLoading = false;
+        _cats = cats;
+      });
+    }, error: (error) {
+      debugPrint('Error: ${error.message}');
+      setState(() {
+        _isLoading = false;
+      });
+    });
+  }
+
+  void cancelCatsRequest() {
+    _client.cancelRequestsByTag('cats_request');
   }
 }
