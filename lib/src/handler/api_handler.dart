@@ -49,6 +49,7 @@ class ApiHandler {
     required Response response,
     required JsonMapper<T> fromJson,
     String? dataKey,
+    CancelToken? cancelToken,
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
@@ -102,15 +103,39 @@ class ApiHandler {
             bool useWorkManager =
                 useWorkManagerForMappingJsonInIsolate(settings);
 
-            final result = useIsolate
-                ? await MapUtils.mapAsyncInIsolate(
+            final future = Future.value(useIsolate
+                ? MapUtils.mapAsyncInIsolate(
                     data: actualData,
                     mapper: fromJson,
                     useWorkManager: useWorkManager,
                     printError: false,
                   )
-                : await fromJson(actualData);
-            return NetworkResult.success(result);
+                : fromJson(actualData));
+
+            bool isFinished = false;
+            final cancelable = Cancelable.fromFuture(future);
+            cancelToken?.whenCancel.then((_) {
+              if (!isFinished) {
+                cancelable.cancel();
+              }
+            });
+
+            try {
+              final result = await cancelable;
+              isFinished = true;
+              if (cancelToken?.isCancelled ?? false) {
+                return NetworkResult.error(RequestCanceledException(
+                    errorMessage: exceptionMessages.requestCancelled));
+              }
+              return NetworkResult.success(result);
+            } on CanceledError {
+              isFinished = true;
+              return NetworkResult.error(RequestCanceledException(
+                  errorMessage: exceptionMessages.requestCancelled));
+            } catch (e) {
+              isFinished = true;
+              rethrow;
+            }
             // ignore: avoid_catches_without_on_clauses
           } catch (e, s) {
             return ApiHandler.unableToProcessException(
@@ -139,6 +164,7 @@ class ApiHandler {
     required Response response,
     required JsonMapper<T> fromJson,
     String? dataKey,
+    CancelToken? cancelToken,
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
@@ -193,14 +219,39 @@ class ApiHandler {
               bool useWorkManager =
                   useWorkManagerForMappingJsonInIsolate(settings);
 
-              final result = useIsolate
-                  ? await actualData.asyncMapInIsolate(
+              final future = useIsolate
+                  ? actualData.asyncMapInIsolate(
                       mapper: fromJson,
                       useWorkManager: useWorkManager,
                       printError: false,
                       printEachItemError: false)
-                  : await Future.wait(
+                  : Future.wait(
                       actualData.map((item) async => await fromJson(item)));
+
+              bool isFinished = false;
+              final cancelable = Cancelable.fromFuture(future);
+              cancelToken?.whenCancel.then((_) {
+                if (!isFinished) {
+                  cancelable.cancel();
+                }
+              });
+
+              late final List<T> result;
+              try {
+                result = await cancelable;
+                isFinished = true;
+                if (cancelToken?.isCancelled ?? false) {
+                  return NetworkResult.error(RequestCanceledException(
+                      errorMessage: exceptionMessages.requestCancelled));
+                }
+              } on CanceledError {
+                isFinished = true;
+                return NetworkResult.error(RequestCanceledException(
+                    errorMessage: exceptionMessages.requestCancelled));
+              } catch (e) {
+                isFinished = true;
+                rethrow;
+              }
 
               if (result.isEmpty) {
                 _printError(
@@ -253,6 +304,7 @@ class ApiHandler {
   Future<NetworkResult<Response>> handleNetworkResultForDownload({
     required Response<dynamic> response,
     required bool shouldHandleUnauthorizedRequest,
+    CancelToken? cancelToken,
     ErrorMapper? errorMapper,
     PlayxNetworkClientSettings? settings,
   }) async {
@@ -283,6 +335,10 @@ class ApiHandler {
             errorMessage: exceptionMessages.unexpectedError,
           ));
         } else {
+          if (cancelToken?.isCancelled ?? false) {
+            return NetworkResult.error(RequestCanceledException(
+                errorMessage: exceptionMessages.requestCancelled));
+          }
           return NetworkResult.success(response);
         }
       }
