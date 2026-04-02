@@ -4,7 +4,7 @@
 Wrapper around [`Dio`](https://pub.dev/packages/dio) that can perform API requests with better error handling and easily get the result of any API request.
 
 ## Features
--  Perform GET, POST, PUT,, and DELETE HTTP methods for retrieving from and sending data to a server.
+- Perform GET, POST, PUT, PATCH, and DELETE HTTP methods for retrieving from and sending data to a server.
 - Better Error handling for API and [`Dio`](https://pub.dev/packages/dio) Errors with the ability to customize these errors.
 - Each request is wrapped by `NetworkResult` which returns whether success or failure of the API request.
 - No need to use try catch anymore as every request is handled.
@@ -14,13 +14,12 @@ Wrapper around [`Dio`](https://pub.dev/packages/dio) that can perform API reques
 
 In `pubspec.yaml` add these lines to `dependencies`
 
-```yaml  
-playx_network: ^0.6.0
+playx_network: ^0.7.0
 ```  
 
 ## Usage
 
-We can use `PlayxNetworkClient`  to perform GET, POST, PUT,, and DELETE HTTP methods for retrieving from and sending data to a server.
+We can use `PlayxNetworkClient`  to perform GET, POST, PUT, PATCH, and DELETE HTTP methods for retrieving from and sending data to a server.
 
 To use it we need to :
 
@@ -33,7 +32,7 @@ To use it we need to :
         BaseOptions(
           baseUrl: _baseUrl,
           connectTimeout: const Duration(seconds: 20),
-          senTimeout: const Duration(seconds: 20),
+          sendTimeout: const Duration(seconds: 20),
         ),
       ),
       //If you want to attach a token to the client or add any custom headers to all requests.
@@ -125,6 +124,44 @@ Here is all available methods of `PlayxNetworkClient` :
 | putList<T>       | sends a `PUT` request to the given url and returns `NetworkResult` of List of Type [T] model.                        |
 | delete<T>        | sends a `DELETE` request to the given url and returns `NetworkResult` of Type [T] model.|
 | deleteList<T>    | sends a `DELETE` request to the given url and returns `NetworkResult` of List of Type [T] model.                        |
+| patch<T>         | sends a `PATCH` request to the given url and returns `NetworkResult` of Type [T] model.|
+| patchList<T>     | sends a `PATCH` request to the given url and returns `NetworkResult` of List of Type [T] model.                        |
+
+## Nested JSON Key Extraction
+You can extract nested JSON values directly from the response before parsing using dot-notation with the `dataKey` parameter.
+This is useful when you want to target a specific field in a large JSON structure without mapping the outer layers.
+
+```dart
+final result = await _client.get(
+  'forecast',
+  query: {
+    'latitude': '30.04',
+    'longitude': '31.23',
+    'current_weather': 'true',
+  },
+  // Extract 'current_weather' directly from the response
+  dataKey: 'current_weather',
+  fromJson: CurrentWeather.fromJson,
+);
+```
+
+## Smart Request Cancellation
+Manage and cancel multiple requests easily using `cancelTag`. 
+By default, providing a `cancelTag` will automatically cancel any previous pending requests with the same tag (`cancelOld: true`).
+
+```dart
+// Subsequent calls with the same tag will cancel previous ones automatically
+networkClient.getList(
+  '/search?q=query',
+  cancelTag: 'search_request',
+  fromJson: Cat.fromJson,
+);
+
+// You can also cancel requests manually
+networkClient.cancelRequestsByTag('search_request');
+```
+
+Additionally, if a request is canceled while JSON mapping is occurring in an isolate, the mapping process itself is also terminated to save resources.
 
 
 ## Error Message customization:

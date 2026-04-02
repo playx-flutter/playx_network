@@ -5,6 +5,7 @@ import 'package:playx_core/playx_core.dart';
 
 import 'dio/dio_client.dart';
 import 'handler/api_handler.dart';
+import 'manager/playx_cancel_token_manager.dart';
 import 'models/exceptions/message/exception_message.dart';
 import 'models/network_result.dart';
 import 'models/settings/playx_network_client_settings.dart';
@@ -23,6 +24,7 @@ typedef UnauthorizedRequestHandler = void Function(Response? response);
 class PlayxNetworkClient {
   late final DioClient _dioClient;
   late final ApiHandler _apiHandler;
+  late final PlayxCancelTokenManager _cancelTokenManager;
 
   ///Settings for the client.
   final PlayxNetworkClientSettings settings;
@@ -42,6 +44,7 @@ class PlayxNetworkClient {
     ErrorMapper? errorMapper,
     this.settings = const PlayxNetworkClientSettings(),
   }) {
+    _cancelTokenManager = PlayxCancelTokenManager();
     _dioClient = DioClient(
       dio: dio,
       customHeaders: customHeaders,
@@ -70,6 +73,16 @@ class PlayxNetworkClient {
     GetIt.instance.registerSingleton<ExceptionMessage>(
         settings.exceptionMessages,
         instanceName: 'exception_messages');
+  }
+
+  /// Cancels all requests concurrently associated with the given [cancelTag].
+  void cancelRequestsByTag(String cancelTag, {dynamic reason}) {
+    _cancelTokenManager.cancelRequests(cancelTag, reason: reason);
+  }
+
+  /// Cancels all pending requests managed by this client.
+  void cancelAllRequests({dynamic reason}) {
+    _cancelTokenManager.cancelAllRequests(reason: reason);
   }
 
   static Dio createDefaultDioClient({
@@ -101,12 +114,18 @@ class PlayxNetworkClient {
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
     CancelToken? cancelToken,
+    String? cancelTag,
+    bool cancelOld = true,
     ProgressCallback? onReceiveProgress,
     required JsonMapper<T> fromJson,
+    String? dataKey,
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
+    final resolvedCancelToken = cancelTag != null
+        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
+        : cancelToken;
     try {
       final res = await _dioClient.get(
         path,
@@ -115,13 +134,15 @@ class PlayxNetworkClient {
         options: options,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
-        cancelToken: cancelToken,
+        cancelToken: resolvedCancelToken,
         onReceiveProgress: onReceiveProgress,
         logSettings: settings?.logSettings,
       );
       return _apiHandler.handleNetworkResult(
         response: res,
+        cancelToken: resolvedCancelToken,
         fromJson: fromJson,
+        dataKey: dataKey,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
         errorMapper: errorMapper,
@@ -151,12 +172,19 @@ class PlayxNetworkClient {
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
     CancelToken? cancelToken,
+    String? cancelTag,
+    bool cancelOld = true,
     ProgressCallback? onReceiveProgress,
     required JsonMapper<T> fromJson,
+    String? dataKey,
+    String? itemDataKey,
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
+    final resolvedCancelToken = cancelTag != null
+        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
+        : cancelToken;
     try {
       final res = await _dioClient.get(
         path,
@@ -165,13 +193,16 @@ class PlayxNetworkClient {
         options: options,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
-        cancelToken: cancelToken,
+        cancelToken: resolvedCancelToken,
         onReceiveProgress: onReceiveProgress,
         logSettings: settings?.logSettings,
       );
       return _apiHandler.handleNetworkResultForList(
         response: res,
+        cancelToken: resolvedCancelToken,
         fromJson: fromJson,
+        dataKey: dataKey,
+        itemDataKey: itemDataKey,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
         errorMapper: errorMapper,
@@ -198,6 +229,8 @@ class PlayxNetworkClient {
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
     CancelToken? cancelToken,
+    String? cancelTag,
+    bool cancelOld = true,
     ProgressCallback? onReceiveProgress,
     JsonMapper? fromJson,
     bool shouldHandleUnauthorizedRequest = true,
@@ -207,6 +240,9 @@ class PlayxNetworkClient {
     PlayxNetworkClientSettings? settings,
     ErrorMapper? errorMapper,
   }) async {
+    final resolvedCancelToken = cancelTag != null
+        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
+        : cancelToken;
     try {
       final res = await _dioClient.download(
         path,
@@ -216,7 +252,7 @@ class PlayxNetworkClient {
         options: options,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
-        cancelToken: cancelToken,
+        cancelToken: resolvedCancelToken,
         onReceiveProgress: onReceiveProgress,
         data: data,
         deleteOnError: deleteOnError,
@@ -225,6 +261,7 @@ class PlayxNetworkClient {
       );
       return _apiHandler.handleNetworkResultForDownload(
         response: res,
+        cancelToken: resolvedCancelToken,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         errorMapper: errorMapper,
         settings: settings,
@@ -255,13 +292,19 @@ class PlayxNetworkClient {
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
     CancelToken? cancelToken,
+    String? cancelTag,
+    bool cancelOld = true,
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
     required JsonMapper<T> fromJson,
+    String? dataKey,
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
+    final resolvedCancelToken = cancelTag != null
+        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
+        : cancelToken;
     try {
       final res = await _dioClient.post(
         path,
@@ -272,14 +315,16 @@ class PlayxNetworkClient {
         contentType: contentType,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
-        cancelToken: cancelToken,
+        cancelToken: resolvedCancelToken,
         onSendProgress: onSendProgress,
         onReceiveProgress: onReceiveProgress,
         logSettings: settings?.logSettings,
       );
       return _apiHandler.handleNetworkResult(
         response: res,
+        cancelToken: resolvedCancelToken,
         fromJson: fromJson,
+        dataKey: dataKey,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
         errorMapper: errorMapper,
@@ -310,13 +355,20 @@ class PlayxNetworkClient {
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
     CancelToken? cancelToken,
+    String? cancelTag,
+    bool cancelOld = true,
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
     required JsonMapper<T> fromJson,
+    String? dataKey,
+    String? itemDataKey,
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
+    final resolvedCancelToken = cancelTag != null
+        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
+        : cancelToken;
     try {
       final res = await _dioClient.post(
         path,
@@ -327,14 +379,17 @@ class PlayxNetworkClient {
         contentType: contentType,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
-        cancelToken: cancelToken,
+        cancelToken: resolvedCancelToken,
         onSendProgress: onSendProgress,
         onReceiveProgress: onReceiveProgress,
         logSettings: settings?.logSettings,
       );
       return _apiHandler.handleNetworkResultForList(
         response: res,
+        cancelToken: resolvedCancelToken,
         fromJson: fromJson,
+        dataKey: dataKey,
+        itemDataKey: itemDataKey,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
         errorMapper: errorMapper,
@@ -365,11 +420,17 @@ class PlayxNetworkClient {
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
     CancelToken? cancelToken,
+    String? cancelTag,
+    bool cancelOld = true,
     required JsonMapper<T> fromJson,
+    String? dataKey,
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
+    final resolvedCancelToken = cancelTag != null
+        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
+        : cancelToken;
     try {
       final res = await _dioClient.delete(
         path,
@@ -380,12 +441,14 @@ class PlayxNetworkClient {
         contentType: contentType,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
-        cancelToken: cancelToken,
+        cancelToken: resolvedCancelToken,
         logSettings: settings?.logSettings,
       );
       return _apiHandler.handleNetworkResult(
         response: res,
+        cancelToken: resolvedCancelToken,
         fromJson: fromJson,
+        dataKey: dataKey,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
         errorMapper: errorMapper,
@@ -416,11 +479,18 @@ class PlayxNetworkClient {
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
     CancelToken? cancelToken,
+    String? cancelTag,
+    bool cancelOld = true,
     required JsonMapper<T> fromJson,
+    String? dataKey,
+    String? itemDataKey,
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
+    final resolvedCancelToken = cancelTag != null
+        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
+        : cancelToken;
     try {
       final res = await _dioClient.delete(
         path,
@@ -431,12 +501,15 @@ class PlayxNetworkClient {
         contentType: contentType,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
-        cancelToken: cancelToken,
+        cancelToken: resolvedCancelToken,
         logSettings: settings?.logSettings,
       );
       return _apiHandler.handleNetworkResultForList(
         response: res,
+        cancelToken: resolvedCancelToken,
         fromJson: fromJson,
+        dataKey: dataKey,
+        itemDataKey: itemDataKey,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
         errorMapper: errorMapper,
@@ -467,13 +540,19 @@ class PlayxNetworkClient {
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
     CancelToken? cancelToken,
+    String? cancelTag,
+    bool cancelOld = true,
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
     required JsonMapper<T> fromJson,
+    String? dataKey,
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
+    final resolvedCancelToken = cancelTag != null
+        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
+        : cancelToken;
     try {
       final res = await _dioClient.put(
         path,
@@ -484,14 +563,16 @@ class PlayxNetworkClient {
         contentType: contentType,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
-        cancelToken: cancelToken,
+        cancelToken: resolvedCancelToken,
         onSendProgress: onSendProgress,
         onReceiveProgress: onReceiveProgress,
         logSettings: settings?.logSettings,
       );
       return _apiHandler.handleNetworkResult(
         response: res,
+        cancelToken: resolvedCancelToken,
         fromJson: fromJson,
+        dataKey: dataKey,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
         errorMapper: errorMapper,
@@ -522,13 +603,20 @@ class PlayxNetworkClient {
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
     CancelToken? cancelToken,
+    String? cancelTag,
+    bool cancelOld = true,
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
     required JsonMapper<T> fromJson,
+    String? dataKey,
+    String? itemDataKey,
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
+    final resolvedCancelToken = cancelTag != null
+        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
+        : cancelToken;
     try {
       final res = await _dioClient.put(
         path,
@@ -539,14 +627,17 @@ class PlayxNetworkClient {
         contentType: contentType,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
-        cancelToken: cancelToken,
+        cancelToken: resolvedCancelToken,
         onSendProgress: onSendProgress,
         onReceiveProgress: onReceiveProgress,
         logSettings: settings?.logSettings,
       );
       return _apiHandler.handleNetworkResultForList(
         response: res,
+        cancelToken: resolvedCancelToken,
         fromJson: fromJson,
+        dataKey: dataKey,
+        itemDataKey: itemDataKey,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
         errorMapper: errorMapper,
@@ -577,13 +668,20 @@ class PlayxNetworkClient {
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
     CancelToken? cancelToken,
+    String? cancelTag,
+    bool cancelOld = true,
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
     required JsonMapper<T> fromJson,
+    String? dataKey,
+    String? itemDataKey,
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
+    final resolvedCancelToken = cancelTag != null
+        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
+        : cancelToken;
     try {
       final res = await _dioClient.patch(
         path,
@@ -594,14 +692,16 @@ class PlayxNetworkClient {
         contentType: contentType,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
-        cancelToken: cancelToken,
+        cancelToken: resolvedCancelToken,
         onSendProgress: onSendProgress,
         onReceiveProgress: onReceiveProgress,
         logSettings: settings?.logSettings,
       );
       return _apiHandler.handleNetworkResult(
         response: res,
+        cancelToken: resolvedCancelToken,
         fromJson: fromJson,
+        dataKey: dataKey,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
         errorMapper: errorMapper,
@@ -632,13 +732,20 @@ class PlayxNetworkClient {
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
     CancelToken? cancelToken,
+    String? cancelTag,
+    bool cancelOld = true,
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
     required JsonMapper<T> fromJson,
+    String? dataKey,
+    String? itemDataKey,
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
+    final resolvedCancelToken = cancelTag != null
+        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
+        : cancelToken;
     try {
       final res = await _dioClient.patch(
         path,
@@ -649,14 +756,17 @@ class PlayxNetworkClient {
         contentType: contentType,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
-        cancelToken: cancelToken,
+        cancelToken: resolvedCancelToken,
         onSendProgress: onSendProgress,
         onReceiveProgress: onReceiveProgress,
         logSettings: settings?.logSettings,
       );
       return _apiHandler.handleNetworkResultForList(
         response: res,
+        cancelToken: resolvedCancelToken,
         fromJson: fromJson,
+        dataKey: dataKey,
+        itemDataKey: itemDataKey,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
         errorMapper: errorMapper,

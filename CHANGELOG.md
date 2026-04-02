@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.0
+- **Nested JSON Key Extraction**: Added `dataKey` parameter to all network requests to extract nested JSON values before parsing.
+- **Item-Level Nested Key Extraction**: Added `itemDataKey` to all list-returning requests (`getList`, `postList`, etc.) to unwrap each list item (e.g., `itemDataKey: 'attributes'`) before passing it to the mapper.
+- **Smart Request Cancellation Manager**: Added `cancelTag` parameter to manage and cancel multiple requests at once with automatic `cancelOld` support.
+- **Mapping Cancellation**: Better support for canceling requests during JSON mapping in isolates. Now, when a request is canceled, the mapping process is also canceled to save resources and improve performance.
+
 ## 0.6.0
 - Updated dependencies to their latest versions.
 - PATCH Request Support: Added new methods (patch and patchList) to easily perform PATCH API requests.
