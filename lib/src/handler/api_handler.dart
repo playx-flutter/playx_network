@@ -164,6 +164,7 @@ class ApiHandler {
     required Response response,
     required JsonMapper<T> fromJson,
     String? dataKey,
+    String? itemDataKey,
     CancelToken? cancelToken,
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
@@ -219,14 +220,25 @@ class ApiHandler {
               bool useWorkManager =
                   useWorkManagerForMappingJsonInIsolate(settings);
 
+              final List<dynamic> itemsToMap;
+              if (itemDataKey != null) {
+                itemsToMap = actualData
+                    .map((item) =>
+                        ApiHandler._getJsonValueOrNull(item, itemDataKey) ??
+                        item)
+                    .toList();
+              } else {
+                itemsToMap = actualData;
+              }
+
               final future = useIsolate
-                  ? actualData.asyncMapInIsolate(
+                  ? itemsToMap.asyncMapInIsolate(
                       mapper: fromJson,
                       useWorkManager: useWorkManager,
                       printError: false,
                       printEachItemError: false)
                   : Future.wait(
-                      actualData.map((item) async => await fromJson(item)));
+                      itemsToMap.map((item) async => await fromJson(item)));
 
               bool isFinished = false;
               final cancelable = Cancelable.fromFuture(future);

@@ -5,6 +5,7 @@ import 'package:playx_network_example/model/Weather.dart';
 import 'package:playx_network_example/model/exception/custom_exception_message.dart';
 
 import 'model/Cat.dart';
+import 'model/Weight.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({
@@ -22,6 +23,8 @@ const String _forecastEndpoint = 'forecast';
 
 //url to override the default base url with cats endpoint.
 const String _catsUrl = 'https://api.thecatapi.com/v1/images/search';
+//url to cat breeds endpoint.
+const String _breedsUrl = 'https://api.thecatapi.com/v1/breeds';
 
 class _MyHomePageState extends State<MyHomePage> {
   //Message for displaying current weather temperature from api.
@@ -29,6 +32,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
   //List of cats to be displayed from api.
   List<Cat> _cats = [];
+
+  //List of weights to be displayed from api.
+  List<Weight> _weights = [];
 
   // determines whether the app is loading or not
   bool _isLoading = false;
@@ -135,13 +141,37 @@ class _MyHomePageState extends State<MyHomePage> {
                           ),
                           child: const Text('Cancel Cats'),
                         ),
+                        ElevatedButton(
+                          onPressed: getCatBreedsFromApi,
+                          child: const Text('Cat Breeds'),
+                        ),
                       ],
                     ),
                   ),
                   Expanded(
                     child: ListView.builder(
-                      itemCount: _cats.length,
+                      itemCount:
+                          _weights.isNotEmpty ? _weights.length : _cats.length,
                       itemBuilder: (context, index) {
+                        if (_weights.isNotEmpty) {
+                          final weight = _weights[index];
+                          return Card(
+                            margin: const EdgeInsets.all(8),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Weight (Metric): ${weight.metric} kg',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold)),
+                                  Text(
+                                      'Weight (Imperial): ${weight.imperial} lb'),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
                         return SizedBox(
                           height: 200,
                           child: Image.network(
@@ -159,6 +189,7 @@ class _MyHomePageState extends State<MyHomePage> {
         onPressed: () {
           getWeatherFromApi();
           getCatsFromApi();
+          _weights = [];
         },
         tooltip: 'Refresh',
         child: const Icon(Icons.refresh),
@@ -226,6 +257,7 @@ class _MyHomePageState extends State<MyHomePage> {
     result.when(success: (cats) {
       setState(() {
         _isLoading = false;
+        _weights.clear();
         _cats = cats;
       });
 
@@ -284,6 +316,42 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  /// Perform GET Request and extract nested item data using [itemDataKey].
+  /// This example Uses [itemDataKey] to extract the 'image' object from each breed item
+  /// in the response list, which perfectly matches our [Cat] model.
+  Future<void> getCatBreedsFromApi() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    final result = await _client.getList(
+      _breedsUrl,
+      query: {
+        'limit': '10',
+        'page': '0',
+      },
+      fromJson: Weight.fromJson,
+      // Extract the 'weight' object from each breed item in the list.
+      itemDataKey: 'weight',
+    );
+
+    result.when(
+      success: (weights) {
+        setState(() {
+          _isLoading = false;
+          _weights = weights;
+          _cats = []; // Clear cats when showing weights
+        });
+      },
+      error: (error) {
+        setState(() {
+          _isLoading = false;
+          _weatherMsg = "Breeds Error: ${error.message}";
+        });
+      },
+    );
+  }
+
   /// Demonstrates request cancellation using [cancelTag].
   Future<void> getCatsWithCancellation() async {
     setState(() {
@@ -303,6 +371,7 @@ class _MyHomePageState extends State<MyHomePage> {
       setState(() {
         _isLoading = false;
         _cats = cats;
+        _weights.clear();
       });
     }, error: (error) {
       debugPrint('Error: ${error.message}');
