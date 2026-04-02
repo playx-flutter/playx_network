@@ -123,7 +123,9 @@ class PlayxNetworkClient {
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
-    final resolvedCancelToken = cancelTag != null ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld) : cancelToken;
+    final resolvedCancelToken = cancelTag != null
+        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
+        : cancelToken;
     try {
       final res = await _dioClient.get(
         path,
@@ -180,7 +182,9 @@ class PlayxNetworkClient {
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
-    final resolvedCancelToken = cancelTag != null ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld) : cancelToken;
+    final resolvedCancelToken = cancelTag != null
+        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
+        : cancelToken;
     try {
       final res = await _dioClient.get(
         path,
@@ -236,7 +240,9 @@ class PlayxNetworkClient {
     PlayxNetworkClientSettings? settings,
     ErrorMapper? errorMapper,
   }) async {
-    final resolvedCancelToken = cancelTag != null ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld) : cancelToken;
+    final resolvedCancelToken = cancelTag != null
+        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
+        : cancelToken;
     try {
       final res = await _dioClient.download(
         path,
@@ -296,7 +302,9 @@ class PlayxNetworkClient {
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
-    final resolvedCancelToken = cancelTag != null ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld) : cancelToken;
+    final resolvedCancelToken = cancelTag != null
+        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
+        : cancelToken;
     try {
       final res = await _dioClient.post(
         path,
@@ -358,7 +366,9 @@ class PlayxNetworkClient {
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
-    final resolvedCancelToken = cancelTag != null ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld) : cancelToken;
+    final resolvedCancelToken = cancelTag != null
+        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
+        : cancelToken;
     try {
       final res = await _dioClient.post(
         path,
@@ -418,7 +428,9 @@ class PlayxNetworkClient {
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
-    final resolvedCancelToken = cancelTag != null ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld) : cancelToken;
+    final resolvedCancelToken = cancelTag != null
+        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
+        : cancelToken;
     try {
       final res = await _dioClient.delete(
         path,
@@ -476,7 +488,9 @@ class PlayxNetworkClient {
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
-    final resolvedCancelToken = cancelTag != null ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld) : cancelToken;
+    final resolvedCancelToken = cancelTag != null
+        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
+        : cancelToken;
     try {
       final res = await _dioClient.delete(
         path,
@@ -536,7 +550,9 @@ class PlayxNetworkClient {
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
-    final resolvedCancelToken = cancelTag != null ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld) : cancelToken;
+    final resolvedCancelToken = cancelTag != null
+        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
+        : cancelToken;
     try {
       final res = await _dioClient.put(
         path,
@@ -598,7 +614,9 @@ class PlayxNetworkClient {
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
-    final resolvedCancelToken = cancelTag != null ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld) : cancelToken;
+    final resolvedCancelToken = cancelTag != null
+        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
+        : cancelToken;
     try {
       final res = await _dioClient.put(
         path,
@@ -661,7 +679,9 @@ class PlayxNetworkClient {
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
-    final resolvedCancelToken = cancelTag != null ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld) : cancelToken;
+    final resolvedCancelToken = cancelTag != null
+        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
+        : cancelToken;
     try {
       final res = await _dioClient.patch(
         path,
@@ -723,7 +743,9 @@ class PlayxNetworkClient {
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
-    final resolvedCancelToken = cancelTag != null ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld) : cancelToken;
+    final resolvedCancelToken = cancelTag != null
+        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
+        : cancelToken;
     try {
       final res = await _dioClient.patch(
         path,

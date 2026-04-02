@@ -1,6 +1,9 @@
+import 'dart:developer' as developer;
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:playx_core/playx_core.dart';
+import 'package:talker/talker.dart';
 import 'package:talker_dio_logger/talker_dio_logger.dart';
 
 /// Logger settings used to customize what should be logged by the application when performing a request.
@@ -41,6 +44,12 @@ class PlayxNetworkLoggerSettings extends Equatable {
   /// Print [request.extra] if true
   final bool printRequestExtra;
 
+  /// Whether to enable ANSI colors in logs.
+  final bool enableColors;
+
+  /// Whether to display timestamp in logs.
+  final bool displayTimestamp;
+
   /// For request filtering.
   /// You can add your custom logic to log only specific HTTP requests [RequestOptions].
   final bool Function(RequestOptions requestOptions)? requestFilter;
@@ -57,6 +66,10 @@ class PlayxNetworkLoggerSettings extends Equatable {
   /// Case insensitive
   final Set<String> hiddenHeaders;
 
+  /// Custom [Talker] instance to be used for logging.
+  /// If null, a default instance will be used with [developer.log] to avoid 'flutter:' prefix.
+  final Talker? talker;
+
   const PlayxNetworkLoggerSettings({
     this.enabled = kDebugMode,
     this.printResponseData = true,
@@ -70,32 +83,46 @@ class PlayxNetworkLoggerSettings extends Equatable {
     this.printRequestData = true,
     this.printRequestHeaders = true,
     this.printRequestExtra = false,
+    this.enableColors = false,
+    this.displayTimestamp = false,
     this.hiddenHeaders = const <String>{},
     this.requestFilter,
     this.responseFilter,
     this.errorFilter,
+    this.talker,
   });
 
   TalkerDioLogger buildTalkerDioLogger() {
     return TalkerDioLogger(
-        settings: TalkerDioLoggerSettings(
-      enabled: enabled,
-      printResponseData: printResponseData,
-      printResponseHeaders: printResponseHeaders,
-      printResponseMessage: printResponseMessage,
-      printResponseRedirects: printResponseRedirects,
-      printResponseTime: printResponseTime,
-      printErrorData: printErrorData,
-      printErrorHeaders: printErrorHeaders,
-      printErrorMessage: printErrorMessage,
-      printRequestData: printRequestData,
-      printRequestHeaders: printRequestHeaders,
-      printRequestExtra: printRequestExtra,
-      requestFilter: requestFilter,
-      responseFilter: responseFilter,
-      errorFilter: errorFilter,
-      hiddenHeaders: hiddenHeaders,
-    ));
+      talker: talker ??
+          Talker(
+            settings: TalkerSettings(),
+            logger: TalkerLogger(
+              settings: TalkerLoggerSettings(
+                enableColors: enableColors,
+              ),
+              output: (message) => developer.log(message),
+            ),
+          ),
+      settings: TalkerDioLoggerSettings(
+        enabled: enabled,
+        printResponseData: printResponseData,
+        printResponseHeaders: printResponseHeaders,
+        printResponseMessage: printResponseMessage,
+        printResponseRedirects: printResponseRedirects,
+        printResponseTime: printResponseTime,
+        printErrorData: printErrorData,
+        printErrorHeaders: printErrorHeaders,
+        printErrorMessage: printErrorMessage,
+        printRequestData: printRequestData,
+        printRequestHeaders: printRequestHeaders,
+        printRequestExtra: printRequestExtra,
+        requestFilter: requestFilter,
+        responseFilter: responseFilter,
+        errorFilter: errorFilter,
+        hiddenHeaders: hiddenHeaders,
+      ),
+    );
   }
 
   PlayxNetworkLoggerSettings copyWith(
@@ -114,7 +141,9 @@ class PlayxNetworkLoggerSettings extends Equatable {
       bool Function(RequestOptions requestOptions)? requestFilter,
       bool Function(Response response)? responseFilter,
       bool Function(DioException response)? errorFilter,
-      Set<String>? hiddenHeaders}) {
+      Set<String>? hiddenHeaders,
+      bool? enableColors,
+      Talker? talker}) {
     return PlayxNetworkLoggerSettings(
         enabled: enabled ?? this.enabled,
         printResponseData: printResponseData ?? this.printResponseData,
@@ -129,10 +158,13 @@ class PlayxNetworkLoggerSettings extends Equatable {
         printRequestData: printRequestData ?? this.printRequestData,
         printRequestHeaders: printRequestHeaders ?? this.printRequestHeaders,
         printRequestExtra: printRequestExtra ?? this.printRequestExtra,
+        enableColors: enableColors ?? this.enableColors,
+        displayTimestamp: displayTimestamp ?? this.displayTimestamp,
         requestFilter: requestFilter ?? this.requestFilter,
         responseFilter: responseFilter ?? this.responseFilter,
         errorFilter: errorFilter ?? this.errorFilter,
-        hiddenHeaders: hiddenHeaders ?? this.hiddenHeaders);
+        hiddenHeaders: hiddenHeaders ?? this.hiddenHeaders,
+        talker: talker ?? this.talker);
   }
 
   @override
@@ -152,7 +184,10 @@ class PlayxNetworkLoggerSettings extends Equatable {
         requestFilter,
         responseFilter,
         errorFilter,
-        hiddenHeaders
+        hiddenHeaders,
+        talker,
+        enableColors,
+        displayTimestamp,
       ];
 
   @override
