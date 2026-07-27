@@ -13,4 +13,5 @@ export 'package:playx_network/src/models/network_result.dart';
 export 'package:playx_network/src/models/settings/playx_network_client_settings.dart';
 export 'package:playx_network/src/manager/playx_cancel_token_manager.dart';
 export 'package:playx_network/src/playx_network_client.dart';
+export 'package:playx_network/src/utils/extensions.dart';
 export 'package:sentry_dio/sentry_dio.dart';
