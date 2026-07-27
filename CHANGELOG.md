@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.0.0
+- **Interceptors Support**: Added `interceptors` and `configureInterceptors` parameters to `PlayxNetworkClient` to easily add and configure Dio interceptors.
+- **Custom Validate Status**: Added `PlayxValidateStatus` callback and `validateStatus` field to `PlayxNetworkClientSettings` for flexible response validation beyond simple status code lists. Returning `null` falls back to `successRequestCodes`.
+- **Per-Request Settings Propagation Fix**: Fixed a bug where per-request `PlayxNetworkClientSettings` were not propagated to `_handleResponse` and `_getDioException`, causing per-request `exceptionMessages`, `unauthorizedRequestCodes`, `shouldShowApiErrors`, and `validateStatus` to be silently ignored.
 - **Nested JSON Key Extraction**: Added `dataKey` parameter to all network requests to extract nested JSON values before parsing.
 - **Item-Level Nested Key Extraction**: Added `itemDataKey` to all list-returning requests (`getList`, `postList`, etc.) to unwrap each list item (e.g., `itemDataKey: 'attributes'`) before passing it to the mapper.
 - **Smart Request Cancellation Manager**: Added `cancelTag` parameter to manage and cancel multiple requests at once with automatic `cancelOld` support.

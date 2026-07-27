@@ -4,6 +4,7 @@ export 'package:dio/dio.dart';
 export 'package:dio/io.dart';
 export 'package:dio_smart_retry/dio_smart_retry.dart';
 export 'package:playx_network/src/dio/dio_client.dart';
+export 'package:playx_network/src/handler/api_handler.dart';
 export 'package:playx_network/src/models/error/api_error.dart';
 export 'package:playx_network/src/models/exceptions/message/english_exception_message.dart';
 export 'package:playx_network/src/models/exceptions/message/exception_message.dart';

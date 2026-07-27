@@ -19,6 +19,15 @@ typedef ErrorMapper = String? Function(dynamic json);
 /// Function that handles unauthorized request.
 typedef UnauthorizedRequestHandler = void Function(Response? response);
 
+/// Function used to configure the [Dio] interceptors before the client is used.
+///
+/// Receives the [Dio] instance and the active [PlayxNetworkClientSettings],
+/// so callers can add/remove interceptors conditionally based on settings.
+typedef InterceptorsConfigurer = void Function(
+  Dio dio,
+  PlayxNetworkClientSettings settings,
+);
+
 /// PlayxNetworkClient is a Wrapper around [Dio] that can perform api request
 /// With better error handling and easily get the result of any api request.
 class PlayxNetworkClient {
@@ -36,6 +45,8 @@ class PlayxNetworkClient {
   /// [onUnauthorizedRequestReceived] which is a function that is called when unauthorized request is received.
   /// [errorMapper] which is a function that converts json error response from api to error message.
   /// [settings] which is a settings object that can be used to customize the client.
+  /// [interceptors] which is a list of [Interceptor] to be added to the dio client.
+  /// [configureInterceptors] which is a function that is called to configure the dio interceptors.
   PlayxNetworkClient({
     required Dio dio,
     FutureOr<Map<String, dynamic>> Function()? customHeaders,
@@ -43,8 +54,19 @@ class PlayxNetworkClient {
     UnauthorizedRequestHandler? onUnauthorizedRequestReceived,
     ErrorMapper? errorMapper,
     this.settings = const PlayxNetworkClientSettings(),
+    List<Interceptor> interceptors = const [],
+    InterceptorsConfigurer? configureInterceptors,
   }) {
     _cancelTokenManager = PlayxCancelTokenManager();
+
+    // Attach any explicitly-provided interceptors before the client is used.
+    if (interceptors.isNotEmpty) {
+      dio.interceptors.addAll(interceptors);
+    }
+
+    // Allow the caller to further configure the dio interceptors.
+    configureInterceptors?.call(dio, settings);
+
     _dioClient = DioClient(
       dio: dio,
       customHeaders: customHeaders,
