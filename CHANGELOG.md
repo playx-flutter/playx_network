@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.0
+- **Custom Interceptors Support**: Added `interceptors` and `interceptorsBuilder` to `PlayxNetworkClientSettings` to easily add custom Dio interceptors to the underlying Dio client. Interceptors are appended after the built-in logger interceptor.
+- **Custom Status Validation**: Added `ValidateStatus` callback and `validateStatus` parameter to `PlayxNetworkClientSettings` and all network request methods. This allows custom logic to determine whether a response should be treated as success or error, replacing the previous hardcoded `successRequestCodes` + `badRequest` check. Returning `true` treats the response as successful, `false` as an error, and `null` falls back to the default `successRequestCodes` validation.
+- **Bug Fix**: Fixed `_handleResponse` not receiving the per-request `settings` override, causing it to always use the client-level settings for error messages and unauthorized request codes.
+- **Bug Fix**: Added handling for `DioExceptionType.transformTimeout` in the Dio exception switch to ensure exhaustive matching with the latest Dio version.
+
 ## 1.0.0
 - **Nested JSON Key Extraction**: Added `dataKey` parameter to all network requests to extract nested JSON values before parsing.
 - **Item-Level Nested Key Extraction**: Added `itemDataKey` to all list-returning requests (`getList`, `postList`, etc.) to unwrap each list item (e.g., `itemDataKey: 'attributes'`) before passing it to the mapper.

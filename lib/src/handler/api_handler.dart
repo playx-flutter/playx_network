@@ -38,6 +38,35 @@ class ApiHandler {
   List<int> buildSuccessCodes(PlayxNetworkClientSettings? settings) =>
       (settings ?? this.settings).successRequestCodes;
 
+  /// Resolves the effective [PlayxValidateStatus] callback for the given
+  /// settings.
+  /// Per-request settings take precedence over the client-level settings.
+  PlayxValidateStatus? buildValidateStatus(
+          PlayxNetworkClientSettings? settings) =>
+      (settings ?? this.settings).validateStatus;
+
+  /// Returns `true` when the [response] should be treated as an error based on
+  /// the effective [PlayxValidateStatus] callback (if any), otherwise falls
+  /// back to the configured [successRequestCodes].
+  ///
+  /// [validateStatus] overrides the settings-level callback when provided.
+  bool isErrorResponse(
+    Response? response,
+    PlayxNetworkClientSettings? settings, {
+    PlayxValidateStatus? validateStatus,
+  }) {
+    final effective = validateStatus ?? buildValidateStatus(settings);
+    if (effective != null) {
+      final result = effective(response);
+      if (result != null) {
+        return !result;
+      }
+    }
+    final successCodes = buildSuccessCodes(settings);
+    return response?.statusCode == HttpStatus.badRequest ||
+        !successCodes.contains(response?.statusCode);
+  }
+
   bool useIsolateForMappingJson(PlayxNetworkClientSettings? settings) =>
       (settings ?? this.settings).useIsolateForMappingJson;
 
@@ -53,17 +82,18 @@ class ApiHandler {
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
+    PlayxValidateStatus? validateStatus,
   }) async {
     final exceptionMessages = buildExceptionMessages(settings);
     final shouldShowApiErrors = buildShouldShowApiErrors(settings);
-    final successCodes = buildSuccessCodes(settings);
     try {
-      if (response.statusCode == HttpStatus.badRequest ||
-          !successCodes.contains(response.statusCode)) {
+      if (isErrorResponse(response, settings, validateStatus: validateStatus)) {
         final NetworkException exception = _handleResponse(
-            response: response,
-            errorMapper: errorMapper,
-            shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+          response: response,
+          errorMapper: errorMapper,
+          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+          settings: settings,
+        );
         _printError(
           header: 'Playx Network Error :',
           text: 'ERROR ${response.statusCode} ${response.statusMessage}',
@@ -169,22 +199,24 @@ class ApiHandler {
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
+    PlayxValidateStatus? validateStatus,
   }) async {
     final exceptionMessages = buildExceptionMessages(settings);
     final shouldShowApiErrors = buildShouldShowApiErrors(settings);
-    final successCodes = buildSuccessCodes(settings);
 
     try {
-      if (response.statusCode == HttpStatus.badRequest ||
-          !successCodes.contains(response.statusCode)) {
+      if (isErrorResponse(response, settings, validateStatus: validateStatus)) {
         final NetworkException exception = _handleResponse(
-            response: response,
-            errorMapper: errorMapper,
-            shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+          response: response,
+          errorMapper: errorMapper,
+          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+          settings: settings,
+        );
         _printError(
-            header: 'Playx Network Error :',
-            text: 'ERROR ${response.statusCode} ${response.statusMessage}',
-            error: exception);
+          header: 'Playx Network Error :',
+          text: 'ERROR ${response.statusCode} ${response.statusMessage}',
+          error: exception,
+        );
         return NetworkResult.error(exception);
       } else {
         if (isResponseBlank(response) ?? true) {
@@ -205,10 +237,13 @@ class ApiHandler {
               text: exceptionMessages.emptyResponse,
               error: data,
             );
-            return NetworkResult.error(EmptyResponseException(
+            return NetworkResult.error(
+              EmptyResponseException(
                 errorMessage: exceptionMessages.emptyResponse,
                 statusCode: -1,
-                shouldShowApiError: shouldShowApiErrors));
+                shouldShowApiError: shouldShowApiErrors,
+              ),
+            );
           }
 
           final actualData =
@@ -253,13 +288,19 @@ class ApiHandler {
                 result = await cancelable;
                 isFinished = true;
                 if (cancelToken?.isCancelled ?? false) {
-                  return NetworkResult.error(RequestCanceledException(
-                      errorMessage: exceptionMessages.requestCancelled));
+                  return NetworkResult.error(
+                    RequestCanceledException(
+                      errorMessage: exceptionMessages.requestCancelled,
+                    ),
+                  );
                 }
               } on CanceledError {
                 isFinished = true;
-                return NetworkResult.error(RequestCanceledException(
-                    errorMessage: exceptionMessages.requestCancelled));
+                return NetworkResult.error(
+                  RequestCanceledException(
+                    errorMessage: exceptionMessages.requestCancelled,
+                  ),
+                );
               } catch (e) {
                 isFinished = true;
                 rethrow;
@@ -271,10 +312,13 @@ class ApiHandler {
                   text: exceptionMessages.emptyResponse,
                   error: result,
                 );
-                return NetworkResult.error(EmptyResponseException(
+                return NetworkResult.error(
+                  EmptyResponseException(
                     errorMessage: exceptionMessages.emptyResponse,
                     shouldShowApiError: shouldShowApiErrors,
-                    statusCode: -1));
+                    statusCode: -1,
+                  ),
+                );
               }
               return NetworkResult.success(result);
             } else {
@@ -307,9 +351,11 @@ class ApiHandler {
         error: e,
         stackTrace: s,
       );
-      return NetworkResult.error(UnexpectedErrorException(
-        errorMessage: exceptionMessages.unexpectedError,
-      ));
+      return NetworkResult.error(
+        UnexpectedErrorException(
+          errorMessage: exceptionMessages.unexpectedError,
+        ),
+      );
     }
   }
 
@@ -319,17 +365,18 @@ class ApiHandler {
     CancelToken? cancelToken,
     ErrorMapper? errorMapper,
     PlayxNetworkClientSettings? settings,
+    PlayxValidateStatus? validateStatus,
   }) async {
     final exceptionMessages = buildExceptionMessages(settings);
-    final successCodes = buildSuccessCodes(settings);
 
     try {
-      if (response.statusCode == HttpStatus.badRequest ||
-          !successCodes.contains(response.statusCode)) {
+      if (isErrorResponse(response, settings, validateStatus: validateStatus)) {
         final NetworkException exception = _handleResponse(
-            response: response,
-            errorMapper: errorMapper,
-            shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+          response: response,
+          errorMapper: errorMapper,
+          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+          settings: settings,
+        );
         _printError(
           header: 'Playx Network Error:',
           text: 'ERROR ${response.statusCode} ${response.statusMessage}',
@@ -348,8 +395,11 @@ class ApiHandler {
           ));
         } else {
           if (cancelToken?.isCancelled ?? false) {
-            return NetworkResult.error(RequestCanceledException(
-                errorMessage: exceptionMessages.requestCancelled));
+            return NetworkResult.error(
+              RequestCanceledException(
+                errorMessage: exceptionMessages.requestCancelled,
+              ),
+            );
           }
           return NetworkResult.success(response);
         }
@@ -386,11 +436,12 @@ class ApiHandler {
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest));
   }
 
-  NetworkException _handleResponse(
-      {Response? response,
-      bool shouldHandleUnauthorizedRequest = true,
-      ErrorMapper? errorMapper,
-      PlayxNetworkClientSettings? settings}) {
+  NetworkException _handleResponse({
+    Response? response,
+    bool shouldHandleUnauthorizedRequest = true,
+    ErrorMapper? errorMapper,
+    PlayxNetworkClientSettings? settings,
+  }) {
     final exceptionMessages = buildExceptionMessages(settings);
     final shouldShowApiErrors = buildShouldShowApiErrors(settings);
     final unauthorizedRequestCodes = buildUnauthorizedRequestCodes(settings);
@@ -416,17 +467,19 @@ class ApiHandler {
         onUnauthorizedRequestReceived?.call(response);
       }
       return UnauthorizedRequestException(
-          apiErrorMessage: errMsg,
-          statusCode: statusCode,
-          errorMessage: exceptionMessages.unauthorizedRequest,
-          shouldShowApiError: shouldShowApiErrors);
+        apiErrorMessage: errMsg,
+        statusCode: statusCode,
+        errorMessage: exceptionMessages.unauthorizedRequest,
+        shouldShowApiError: shouldShowApiErrors,
+      );
     }
 
     return ApiException.fromStatusCode(
-        statusCode: statusCode,
-        apiErrorMessage: errMsg,
-        exceptionMessages: exceptionMessages,
-        shouldShowApiErrors: shouldShowApiErrors);
+      statusCode: statusCode,
+      apiErrorMessage: errMsg,
+      exceptionMessages: exceptionMessages,
+      shouldShowApiErrors: shouldShowApiErrors,
+    );
   }
 
   NetworkException _getDioException(
@@ -465,7 +518,9 @@ class ApiHandler {
                 response: error.response,
                 errorMapper: errorMapper,
                 shouldHandleUnauthorizedRequest:
-                    shouldHandleUnauthorizedRequest),
+                    shouldHandleUnauthorizedRequest,
+                settings: settings,
+              ),
             DioExceptionType.sendTimeout => SendTimeoutException(
                 errorMessage: exceptionMessages.sendTimeout,
               ),
@@ -474,6 +529,9 @@ class ApiHandler {
               ),
             DioExceptionType.connectionError => NoInternetConnectionException(
                 errorMessage: exceptionMessages.noInternetConnection,
+              ),
+            DioExceptionType.transformTimeout => SendTimeoutException(
+                errorMessage: exceptionMessages.sendTimeout,
               ),
           };
         } else if (error is SocketException) {

@@ -122,6 +122,7 @@ class PlayxNetworkClient {
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
+    PlayxValidateStatus? validateStatus,
   }) async {
     final resolvedCancelToken = cancelTag != null
         ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
@@ -146,6 +147,7 @@ class PlayxNetworkClient {
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
         errorMapper: errorMapper,
+        validateStatus: validateStatus,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error, stackTrace) {
@@ -181,6 +183,7 @@ class PlayxNetworkClient {
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
+    PlayxValidateStatus? validateStatus,
   }) async {
     final resolvedCancelToken = cancelTag != null
         ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
@@ -206,6 +209,7 @@ class PlayxNetworkClient {
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
         errorMapper: errorMapper,
+        validateStatus: validateStatus,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
@@ -239,6 +243,7 @@ class PlayxNetworkClient {
     Object? data,
     PlayxNetworkClientSettings? settings,
     ErrorMapper? errorMapper,
+    PlayxValidateStatus? validateStatus,
   }) async {
     final resolvedCancelToken = cancelTag != null
         ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
@@ -264,6 +269,7 @@ class PlayxNetworkClient {
         cancelToken: resolvedCancelToken,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         errorMapper: errorMapper,
+        validateStatus: validateStatus,
         settings: settings,
       );
       // ignore: avoid_catches_without_on_clauses
@@ -301,6 +307,7 @@ class PlayxNetworkClient {
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
+    PlayxValidateStatus? validateStatus,
   }) async {
     final resolvedCancelToken = cancelTag != null
         ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
@@ -328,6 +335,7 @@ class PlayxNetworkClient {
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
         errorMapper: errorMapper,
+        validateStatus: validateStatus,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
@@ -365,6 +373,7 @@ class PlayxNetworkClient {
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
+    PlayxValidateStatus? validateStatus,
   }) async {
     final resolvedCancelToken = cancelTag != null
         ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
@@ -393,6 +402,7 @@ class PlayxNetworkClient {
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
         errorMapper: errorMapper,
+        validateStatus: validateStatus,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
@@ -427,6 +437,7 @@ class PlayxNetworkClient {
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
+    PlayxValidateStatus? validateStatus,
   }) async {
     final resolvedCancelToken = cancelTag != null
         ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
@@ -452,6 +463,7 @@ class PlayxNetworkClient {
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
         errorMapper: errorMapper,
+        validateStatus: validateStatus,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
@@ -487,6 +499,7 @@ class PlayxNetworkClient {
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
+    PlayxValidateStatus? validateStatus,
   }) async {
     final resolvedCancelToken = cancelTag != null
         ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
@@ -513,6 +526,7 @@ class PlayxNetworkClient {
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
         errorMapper: errorMapper,
+        validateStatus: validateStatus,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
@@ -549,6 +563,7 @@ class PlayxNetworkClient {
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
+    PlayxValidateStatus? validateStatus,
   }) async {
     final resolvedCancelToken = cancelTag != null
         ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
@@ -576,6 +591,7 @@ class PlayxNetworkClient {
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
         errorMapper: errorMapper,
+        validateStatus: validateStatus,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
@@ -613,6 +629,7 @@ class PlayxNetworkClient {
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
+    PlayxValidateStatus? validateStatus,
   }) async {
     final resolvedCancelToken = cancelTag != null
         ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
@@ -641,6 +658,7 @@ class PlayxNetworkClient {
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
         errorMapper: errorMapper,
+        validateStatus: validateStatus,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
@@ -678,6 +696,7 @@ class PlayxNetworkClient {
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
+    PlayxValidateStatus? validateStatus,
   }) async {
     final resolvedCancelToken = cancelTag != null
         ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
@@ -705,6 +724,7 @@ class PlayxNetworkClient {
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
         errorMapper: errorMapper,
+        validateStatus: validateStatus,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
@@ -742,6 +762,7 @@ class PlayxNetworkClient {
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
+    PlayxValidateStatus? validateStatus,
   }) async {
     final resolvedCancelToken = cancelTag != null
         ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
@@ -770,6 +791,7 @@ class PlayxNetworkClient {
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
         errorMapper: errorMapper,
+        validateStatus: validateStatus,
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {

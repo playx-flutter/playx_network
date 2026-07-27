@@ -25,6 +25,17 @@ class DioClient {
         settings.logSettings.buildTalkerDioLogger(),
       );
     }
+
+    // Append user-provided interceptors after the built-in logger so they
+    // observe the final request/response cycle.
+    if (settings.interceptors.isNotEmpty) {
+      dio.interceptors.addAll(settings.interceptors);
+    }
+
+    final built = settings.interceptorsBuilder?.call();
+    if (built != null && built.isNotEmpty) {
+      dio.interceptors.addAll(built);
+    }
   }
 
   Dio _getDioInstance({
@@ -65,14 +76,11 @@ class DioClient {
             ...?await customQuery?.call(),
           ...query,
         },
-        options: options ??
-            Options(
-              headers: {
-                if (attachCustomHeaders && customHeaders != null)
-                  ...?await customHeaders?.call(),
-                ...headers,
-              },
-            ),
+        options: await _resolveOptions(
+          options: options,
+          headers: headers,
+          attachCustomHeaders: attachCustomHeaders,
+        ),
         cancelToken: cancelToken,
         onReceiveProgress: onReceiveProgress);
   }
@@ -100,14 +108,11 @@ class DioClient {
           ...?await customQuery?.call(),
         ...query,
       },
-      options: options ??
-          Options(
-            headers: {
-              if (attachCustomHeaders && customHeaders != null)
-                ...?await customHeaders?.call(),
-              ...headers,
-            },
-          ),
+      options: await _resolveOptions(
+        options: options,
+        headers: headers,
+        attachCustomHeaders: attachCustomHeaders,
+      ),
       fileAccessMode: fileAccessMode,
       cancelToken: cancelToken,
       onReceiveProgress: onReceiveProgress,
@@ -140,15 +145,12 @@ class DioClient {
           ...?await customQuery?.call(),
         ...query,
       },
-      options: options ??
-          Options(
-            headers: {
-              if (attachCustomHeaders && customHeaders != null)
-                ...?await customHeaders?.call(),
-              ...headers,
-            },
-            contentType: contentType,
-          ),
+      options: await _resolveOptions(
+        options: options,
+        headers: headers,
+        attachCustomHeaders: attachCustomHeaders,
+        contentType: contentType,
+      ),
       cancelToken: cancelToken,
       onSendProgress: onSendProgress,
       onReceiveProgress: onReceiveProgress,
@@ -175,15 +177,12 @@ class DioClient {
           ...?await customQuery?.call(),
         ...query,
       },
-      options: options ??
-          Options(
-            headers: {
-              if (attachCustomHeaders && customHeaders != null)
-                ...?await customHeaders?.call(),
-              ...headers,
-            },
-            contentType: contentType,
-          ),
+      options: await _resolveOptions(
+        options: options,
+        headers: headers,
+        attachCustomHeaders: attachCustomHeaders,
+        contentType: contentType,
+      ),
       cancelToken: cancelToken,
     );
   }
@@ -210,15 +209,12 @@ class DioClient {
           ...?await customQuery?.call(),
         ...query,
       },
-      options: options ??
-          Options(
-            headers: {
-              if (attachCustomHeaders && customHeaders != null)
-                ...?await customHeaders?.call(),
-              ...headers,
-            },
-            contentType: contentType,
-          ),
+      options: await _resolveOptions(
+        options: options,
+        headers: headers,
+        attachCustomHeaders: attachCustomHeaders,
+        contentType: contentType,
+      ),
       cancelToken: cancelToken,
       onSendProgress: onSendProgress,
       onReceiveProgress: onReceiveProgress,
@@ -247,18 +243,45 @@ class DioClient {
           ...?await customQuery?.call(),
         ...query,
       },
-      options: options ??
-          Options(
-            headers: {
-              if (attachCustomHeaders && customHeaders != null)
-                ...?await customHeaders?.call(),
-              ...headers,
-            },
-            contentType: contentType,
-          ),
+      options: await _resolveOptions(
+        options: options,
+        headers: headers,
+        attachCustomHeaders: attachCustomHeaders,
+        contentType: contentType,
+      ),
       cancelToken: cancelToken,
       onSendProgress: onSendProgress,
       onReceiveProgress: onReceiveProgress,
+    );
+  }
+
+  /// Builds the [Options] for a request.
+  ///
+  /// If [options] is provided by the caller it takes precedence (after merging
+  /// the custom headers), otherwise a new [Options] is created from the custom
+  /// headers and content type.
+  Future<Options> _resolveOptions({
+    Options? options,
+    Map<String, dynamic> headers = const {},
+    bool attachCustomHeaders = true,
+    String? contentType,
+  }) async {
+    final Map<String, dynamic> mergedHeaders = {
+      if (attachCustomHeaders && customHeaders != null)
+        ...?await customHeaders?.call(),
+      ...headers,
+    };
+
+    if (options != null) {
+      return options.copyWith(
+        headers: mergedHeaders.isEmpty ? options.headers : mergedHeaders,
+        contentType: contentType,
+      );
+    }
+
+    return Options(
+      headers: mergedHeaders,
+      contentType: contentType,
     );
   }
 }
