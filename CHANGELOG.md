@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.0
+- **Streaming Support**: Added `getStream` and `postStream` methods to `PlayxNetworkClient` for consuming streaming endpoints (SSE, NDJSON, chunked text/binary) via `NetworkStreamResult`.
+- **SSE Support**: Added `getSse` and `postSse` convenience methods and `PlayxSseEvent` model for parsing Server-Sent Events.
+- **PlayxStreamFormat**: New enum that controls how stream chunks are decoded (`bytes`, `text`, `json`, `sse`).
+- **NetworkStreamResult**: New sealed wrapper (analogous to `NetworkResult`) wrapping a `Stream` of decoded events or a `NetworkException`.
+
 ## 1.0.0
 - **Nested JSON Key Extraction**: Added `dataKey` parameter to all network requests to extract nested JSON values before parsing.
 - **Item-Level Nested Key Extraction**: Added `itemDataKey` to all list-returning requests (`getList`, `postList`, etc.) to unwrap each list item (e.g., `itemDataKey: 'attributes'`) before passing it to the mapper.

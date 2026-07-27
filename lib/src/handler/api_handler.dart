@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:playx_core/playx_core.dart';
@@ -367,6 +368,240 @@ class ApiHandler {
     }
   }
 
+  /// Handles a streaming [ResponseBody] and returns a
+  /// [NetworkStreamResult] of the decoded events.
+  ///
+  /// The generic type [T] is inferred from [format]:
+  /// - [PlayxStreamFormat.bytes] → `List<int>`
+  /// - [PlayxStreamFormat.text]  → `String`
+  /// - [PlayxStreamFormat.json]  → `Object` (the decoded JSON value)
+  /// - [PlayxStreamFormat.sse]   → [PlayxSseEvent]
+  ///
+  /// If the HTTP status code is not in the success codes, the response body
+  /// is drained and a [NetworkStreamResult.error] is returned with the
+  /// appropriate [NetworkException].
+  ///
+  /// The returned stream is a single-subscription stream; consume it once.
+  NetworkStreamResult<T> handleStreamResult<T>({
+    required ResponseBody? responseBody,
+    required int statusCode,
+    String? statusMessage,
+    required PlayxStreamFormat format,
+    CancelToken? cancelToken,
+    ErrorMapper? errorMapper,
+    bool shouldHandleUnauthorizedRequest = true,
+    PlayxNetworkClientSettings? settings,
+  }) {
+    final exceptionMessages = buildExceptionMessages(settings);
+    final successCodes = buildSuccessCodes(settings);
+
+    final isSuccess = successCodes.contains(statusCode);
+
+    if (!isSuccess || responseBody == null) {
+      final exception = _handleStreamError(
+        statusCode: statusCode,
+        statusMessage: statusMessage,
+        responseBody: responseBody,
+        errorMapper: errorMapper,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
+      );
+      _printError(
+        header: 'Playx Network Error :',
+        text: 'STREAM ERROR $statusCode $statusMessage',
+        error: exception,
+      );
+      return NetworkStreamResult.error(exception);
+    }
+
+    final rawStream = responseBody.stream;
+
+    // Wire cancellation into the stream so that cancelling the request
+    // cancels the stream subscription.
+    final controller = StreamController<T>();
+    late StreamSubscription<dynamic> subscription;
+    bool cancelled = false;
+
+    cancelToken?.whenCancel.then((_) {
+      if (!cancelled) {
+        cancelled = true;
+        subscription.cancel().catchError((_) {});
+        if (!controller.isClosed) {
+          controller.addError(RequestCanceledException(
+              errorMessage: exceptionMessages.requestCancelled));
+          controller.close();
+        }
+      }
+    });
+
+    // For SSE format, use the stateful decodeStream parser.
+    // For other formats, decode each chunk individually.
+    if (format == PlayxStreamFormat.sse) {
+      final decodedStream =
+          format.decodeStream(rawStream) as Stream<PlayxSseEvent>;
+      subscription = decodedStream.listen(
+        (event) => controller.add(event as T),
+        onError: (Object e, StackTrace s) {
+          _printError(
+            header: 'Playx Network (Stream) Error :',
+            text: 'Stream error',
+            error: e,
+            stackTrace: s,
+          );
+          controller.addError(_getDioException(
+            error: e,
+            errorMapper: errorMapper,
+            shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+            settings: settings,
+          ));
+        },
+        onDone: controller.close,
+        cancelOnError: true,
+      );
+    } else {
+      subscription = rawStream.listen(
+        (chunk) {
+          try {
+            final decoded = format.decodeChunk(chunk);
+            if (decoded != null) {
+              controller.add(decoded as T);
+            }
+          } catch (e, s) {
+            _printError(
+              header: 'Playx Network Error :',
+              text: exceptionMessages.unableToProcess,
+              error: e,
+              stackTrace: s,
+            );
+            controller.addError(UnableToProcessException(
+              errorMessage: exceptionMessages.unableToProcess,
+              statusCode: statusCode,
+              shouldShowApiError: buildShouldShowApiErrors(settings),
+            ));
+          }
+        },
+        onError: (Object e, StackTrace s) {
+          _printError(
+            header: 'Playx Network (Stream) Error :',
+            text: 'Stream error',
+            error: e,
+            stackTrace: s,
+          );
+          controller.addError(_getDioException(
+            error: e,
+            errorMapper: errorMapper,
+            shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+            settings: settings,
+          ));
+        },
+        onDone: controller.close,
+        cancelOnError: true,
+      );
+    }
+
+    return NetworkStreamResult.success(controller.stream);
+  }
+
+  /// Handles a streaming response using [PlayxStreamFormat.sse] and returns a
+  /// [NetworkStreamResult] of [PlayxSseEvent].
+  ///
+  /// This is a specialized version of [handleStreamResult] that uses the
+  /// stateful SSE parser to split the raw byte stream into individual
+  /// [PlayxSseEvent]s.
+  NetworkStreamResult<PlayxSseEvent> handleSseStreamResult({
+    required ResponseBody? responseBody,
+    required int statusCode,
+    String? statusMessage,
+    CancelToken? cancelToken,
+    ErrorMapper? errorMapper,
+    bool shouldHandleUnauthorizedRequest = true,
+    PlayxNetworkClientSettings? settings,
+  }) {
+    final exceptionMessages = buildExceptionMessages(settings);
+    final successCodes = buildSuccessCodes(settings);
+
+    final isSuccess = successCodes.contains(statusCode);
+
+    if (!isSuccess || responseBody == null) {
+      final exception = _handleStreamError(
+        statusCode: statusCode,
+        statusMessage: statusMessage,
+        responseBody: responseBody,
+        errorMapper: errorMapper,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
+      );
+      _printError(
+        header: 'Playx Network Error :',
+        text: 'STREAM ERROR $statusCode $statusMessage',
+        error: exception,
+      );
+      return NetworkStreamResult.error(exception);
+    }
+
+    final rawStream = responseBody.stream;
+    final sseStream =
+        PlayxStreamFormat.sse.decodeStream(rawStream) as Stream<PlayxSseEvent>;
+
+    // Wire cancellation into the stream.
+    final controller = StreamController<PlayxSseEvent>();
+    late StreamSubscription<PlayxSseEvent> subscription;
+    bool cancelled = false;
+
+    cancelToken?.whenCancel.then((_) {
+      if (!cancelled) {
+        cancelled = true;
+        subscription.cancel().catchError((_) {});
+        if (!controller.isClosed) {
+          controller.addError(RequestCanceledException(
+            errorMessage: exceptionMessages.requestCancelled,
+          ));
+          controller.close();
+        }
+      }
+    });
+
+    subscription = sseStream.listen(
+      controller.add,
+      onError: (Object e, StackTrace s) {
+        _printError(
+          header: 'Playx Network (SSE) Error :',
+          text: 'SSE stream error',
+          error: e,
+          stackTrace: s,
+        );
+        controller.addError(_getDioException(
+          error: e,
+          errorMapper: errorMapper,
+          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+          settings: settings,
+        ));
+      },
+      onDone: controller.close,
+      cancelOnError: true,
+    );
+
+    return NetworkStreamResult.success(controller.stream);
+  }
+
+  NetworkException _handleStreamError({
+    required int statusCode,
+    String? statusMessage,
+    required ResponseBody? responseBody,
+    ErrorMapper? errorMapper,
+    bool shouldHandleUnauthorizedRequest = true,
+    PlayxNetworkClientSettings? settings,
+  }) {
+    // Drain the response body so the HTTP connection can be reused.
+    responseBody?.stream.listen(null).cancel().catchError((_) {});
+    return _handleResponse(
+      response: _StreamStatusResponse(statusCode, statusMessage),
+      errorMapper: errorMapper,
+      shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+      settings: settings,
+    );
+  }
+
   NetworkResult<T> handleDioException<T>({
     dynamic error,
     dynamic stackTrace,
@@ -475,6 +710,9 @@ class ApiHandler {
             DioExceptionType.connectionError => NoInternetConnectionException(
                 errorMessage: exceptionMessages.noInternetConnection,
               ),
+            DioExceptionType.transformTimeout => SendTimeoutException(
+                errorMessage: exceptionMessages.sendTimeout,
+              ),
           };
         } else if (error is SocketException) {
           networkExceptions = NoInternetConnectionException(
@@ -580,4 +818,53 @@ class ApiHandler {
 
     return null;
   }
+}
+
+/// A lightweight [Response]-like shim used by the stream handlers to reuse
+/// [_handleResponse] for status-code based error mapping.
+///
+/// It only exposes the fields that [_handleResponse] and [ApiHandler] need:
+/// [statusCode], [statusMessage] and [data] (always `null` for streams since
+/// the body has not been consumed).
+class _StreamStatusResponse implements Response<dynamic> {
+  _StreamStatusResponse(this._statusCode, this._statusMessage);
+
+  final int _statusCode;
+  final String? _statusMessage;
+
+  @override
+  int? get statusCode => _statusCode;
+
+  @override
+  set statusCode(int? value) {}
+
+  @override
+  String? get statusMessage => _statusMessage;
+
+  @override
+  set statusMessage(String? value) {}
+
+  @override
+  dynamic get data => null;
+
+  @override
+  set data(dynamic value) {}
+
+  @override
+  RequestOptions requestOptions = RequestOptions(path: '');
+
+  @override
+  bool isRedirect = false;
+
+  @override
+  List<RedirectRecord> redirects = const [];
+
+  @override
+  Headers headers = Headers();
+
+  @override
+  Map<String, dynamic> extra = <String, dynamic>{};
+
+  @override
+  Uri get realUri => Uri.parse('');
 }
