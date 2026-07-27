@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.1.0
+- **Structured Error Data Support**: `NetworkException` now carries an `errorData` field (`Object?`) that holds the raw value returned by the `ErrorMapper`. The error remains a `String` by default — when the mapper returns a `String`, it is used as `apiErrorMessage`. When a custom `ErrorMapper` returns a structured object (e.g. a parsed error model), it is stored in `errorData` and can be retrieved via `errorDataAs<E>()`. The `ErrorMapper` typedef now returns `Object?` instead of `String?`.
+
 ## 1.0.0
 - **Nested JSON Key Extraction**: Added `dataKey` parameter to all network requests to extract nested JSON values before parsing.
 - **Item-Level Nested Key Extraction**: Added `itemDataKey` to all list-returning requests (`getList`, `postList`, etc.) to unwrap each list item (e.g., `itemDataKey: 'attributes'`) before passing it to the mapper.

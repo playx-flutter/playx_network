@@ -13,8 +13,13 @@ import 'models/settings/playx_network_client_settings.dart';
 ///Function that converts json response to the required model.
 typedef JsonMapper<T> = FutureOr<T> Function(dynamic json);
 
-///Function that converts json error response from api to error message.
-typedef ErrorMapper = String? Function(dynamic json);
+///Function that converts json error response from api to error data.
+///
+/// By default, returns a [String] message extracted from the response.
+/// Can return a custom object (e.g. a parsed error model) to allow consumers
+/// to access structured error data from the API.
+/// The returned object is accessible via [NetworkException.errorData].
+typedef ErrorMapper = Object? Function(dynamic json);
 
 /// Function that handles unauthorized request.
 typedef UnauthorizedRequestHandler = void Function(Response? response);

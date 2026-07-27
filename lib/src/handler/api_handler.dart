@@ -397,9 +397,9 @@ class ApiHandler {
 
     final dynamic errorJson = response?.data;
 
-    String? errMsg;
+    Object? errorData;
     try {
-      errMsg = (errorMapper ?? this.errorMapper)(errorJson);
+      errorData = (errorMapper ?? this.errorMapper)(errorJson);
     } catch (e, s) {
       _printError(
         header: 'Playx Network Error :',
@@ -409,6 +409,11 @@ class ApiHandler {
       );
     }
 
+    // By default, the error data is a String message extracted from the
+    // response. When it is a String, use it as the apiErrorMessage. When it is
+    // a custom object, keep it as errorData and leave apiErrorMessage null.
+    final String? errMsg = errorData is String ? errorData : null;
+
     final int statusCode = response?.statusCode ?? -1;
 
     if (unauthorizedRequestCodes.contains(statusCode)) {
@@ -417,6 +422,7 @@ class ApiHandler {
       }
       return UnauthorizedRequestException(
           apiErrorMessage: errMsg,
+          errorData: errorData,
           statusCode: statusCode,
           errorMessage: exceptionMessages.unauthorizedRequest,
           shouldShowApiError: shouldShowApiErrors);
@@ -425,6 +431,7 @@ class ApiHandler {
     return ApiException.fromStatusCode(
         statusCode: statusCode,
         apiErrorMessage: errMsg,
+        errorData: errorData,
         exceptionMessages: exceptionMessages,
         shouldShowApiErrors: shouldShowApiErrors);
   }
@@ -474,6 +481,9 @@ class ApiHandler {
               ),
             DioExceptionType.connectionError => NoInternetConnectionException(
                 errorMessage: exceptionMessages.noInternetConnection,
+              ),
+            DioExceptionType.transformTimeout => SendTimeoutException(
+                errorMessage: exceptionMessages.sendTimeout,
               ),
           };
         } else if (error is SocketException) {

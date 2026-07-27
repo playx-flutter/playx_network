@@ -8,13 +8,32 @@ sealed class NetworkException implements Exception {
   /// Whether to display the API error message.
   final bool shouldShowApiError;
 
+  /// The raw error data returned by the [ErrorMapper].
+  ///
+  /// By default, this is a [String] (the error message extracted from the
+  /// response). Can be a custom object when a custom [ErrorMapper] is provided,
+  /// allowing consumers to access structured error data from the API.
+  final Object? errorData;
+
   const NetworkException({
     required this.errorMessage,
     this.shouldShowApiError = true,
+    this.errorData,
   });
 
   /// Returns the appropriate message.
   String get message => errorMessage;
+
+  /// Returns the [errorData] if it is of type [E], otherwise `null`.
+  ///
+  /// Useful for accessing structured error data when using a custom
+  /// [ErrorMapper].
+  ///
+  /// Example:
+  /// ```dart
+  /// final myError = exception.errorDataAs<MyCustomError>();
+  /// ```
+  E? errorDataAs<E extends Object>() => errorData is E ? errorData as E : null;
 }
 
 /// Exception for API-related errors.
@@ -30,6 +49,7 @@ class ApiException extends NetworkException {
     this.statusCode = 400,
     required super.errorMessage,
     super.shouldShowApiError,
+    super.errorData,
   });
 
   @override
@@ -41,54 +61,63 @@ class ApiException extends NetworkException {
     required int statusCode,
     required ExceptionMessage exceptionMessages,
     String? apiErrorMessage,
+    Object? errorData,
     bool shouldShowApiErrors = true,
   }) {
     switch (statusCode) {
       case 400:
         return DefaultApiException(
             apiErrorMessage: apiErrorMessage,
+            errorData: errorData,
             statusCode: statusCode,
             errorMessage: exceptionMessages.defaultError,
             shouldShowApiError: shouldShowApiErrors);
       case 404:
         return NotFoundException(
             apiErrorMessage: apiErrorMessage,
+            errorData: errorData,
             statusCode: statusCode,
             errorMessage: exceptionMessages.notFound,
             shouldShowApiError: shouldShowApiErrors);
       case 409:
         return ConflictException(
             apiErrorMessage: apiErrorMessage,
+            errorData: errorData,
             statusCode: statusCode,
             errorMessage: exceptionMessages.conflict,
             shouldShowApiError: shouldShowApiErrors);
       case 408:
         return RequestTimeoutException(
             apiErrorMessage: apiErrorMessage,
+            errorData: errorData,
             statusCode: statusCode,
             errorMessage: exceptionMessages.requestTimeout,
             shouldShowApiError: shouldShowApiErrors);
       case 422:
         return UnableToProcessException(
             apiErrorMessage: apiErrorMessage,
+            errorData: errorData,
             statusCode: statusCode,
             errorMessage: exceptionMessages.unableToProcess,
             shouldShowApiError: shouldShowApiErrors);
       case 500:
         return InternalServerErrorException(
             apiErrorMessage: apiErrorMessage,
+            errorData: errorData,
             statusCode: statusCode,
             errorMessage: exceptionMessages.internalServerError,
             shouldShowApiError: shouldShowApiErrors);
       case 503:
         return ServiceUnavailableException(
             apiErrorMessage: apiErrorMessage,
+            errorData: errorData,
             statusCode: statusCode,
             errorMessage: exceptionMessages.serviceUnavailable,
             shouldShowApiError: shouldShowApiErrors);
       default:
         return DefaultApiException(
             apiErrorMessage: apiErrorMessage,
+            errorData: errorData,
             statusCode: statusCode,
             errorMessage: exceptionMessages.defaultError,
             shouldShowApiError: shouldShowApiErrors);
@@ -100,6 +129,7 @@ class ApiException extends NetworkException {
 class UnauthorizedRequestException extends ApiException {
   const UnauthorizedRequestException({
     super.apiErrorMessage,
+    super.errorData,
     super.statusCode = 401,
     required super.errorMessage,
     super.shouldShowApiError,
@@ -110,6 +140,7 @@ class UnauthorizedRequestException extends ApiException {
 class NotFoundException extends ApiException {
   const NotFoundException({
     super.apiErrorMessage,
+    super.errorData,
     super.statusCode = 404,
     required super.errorMessage,
     super.shouldShowApiError,
@@ -120,6 +151,7 @@ class NotFoundException extends ApiException {
 class ConflictException extends ApiException {
   const ConflictException({
     super.apiErrorMessage,
+    super.errorData,
     super.statusCode = 409,
     required super.errorMessage,
     super.shouldShowApiError,
@@ -130,6 +162,7 @@ class ConflictException extends ApiException {
 class RequestTimeoutException extends ApiException {
   const RequestTimeoutException({
     super.apiErrorMessage,
+    super.errorData,
     super.statusCode = 408,
     required super.errorMessage,
     super.shouldShowApiError,
@@ -140,6 +173,7 @@ class RequestTimeoutException extends ApiException {
 class UnableToProcessException extends ApiException {
   const UnableToProcessException({
     super.apiErrorMessage,
+    super.errorData,
     super.statusCode = 422,
     required super.errorMessage,
     super.shouldShowApiError,
@@ -150,6 +184,7 @@ class UnableToProcessException extends ApiException {
 class InternalServerErrorException extends ApiException {
   const InternalServerErrorException({
     super.apiErrorMessage,
+    super.errorData,
     super.statusCode = 500,
     required super.errorMessage,
     super.shouldShowApiError,
@@ -160,6 +195,7 @@ class InternalServerErrorException extends ApiException {
 class ServiceUnavailableException extends ApiException {
   const ServiceUnavailableException({
     super.apiErrorMessage,
+    super.errorData,
     super.statusCode = 503,
     required super.errorMessage,
     super.shouldShowApiError,
@@ -170,6 +206,7 @@ class ServiceUnavailableException extends ApiException {
 class EmptyResponseException extends ApiException {
   const EmptyResponseException({
     super.apiErrorMessage,
+    super.errorData,
     super.statusCode = 204,
     required super.errorMessage,
     super.shouldShowApiError,
@@ -180,6 +217,7 @@ class EmptyResponseException extends ApiException {
 class DefaultApiException extends ApiException {
   const DefaultApiException({
     super.apiErrorMessage,
+    super.errorData,
     super.statusCode = 400,
     required super.errorMessage,
     super.shouldShowApiError,
@@ -188,25 +226,28 @@ class DefaultApiException extends ApiException {
 
 /// Exception for request send timeout.
 class SendTimeoutException extends NetworkException {
-  const SendTimeoutException({required super.errorMessage});
+  const SendTimeoutException({required super.errorMessage, super.errorData});
 }
 
 /// Exception for request cancellation.
 class RequestCanceledException extends NetworkException {
-  const RequestCanceledException({required super.errorMessage});
+  const RequestCanceledException(
+      {required super.errorMessage, super.errorData});
 }
 
 /// Exception for no internet connection.
 class NoInternetConnectionException extends NetworkException {
-  const NoInternetConnectionException({required super.errorMessage});
+  const NoInternetConnectionException(
+      {required super.errorMessage, super.errorData});
 }
 
 /// Exception for invalid response format.
 class InvalidFormatException extends NetworkException {
-  const InvalidFormatException({required super.errorMessage});
+  const InvalidFormatException({required super.errorMessage, super.errorData});
 }
 
 /// Exception for unexpected errors.
 class UnexpectedErrorException extends NetworkException {
-  const UnexpectedErrorException({required super.errorMessage});
+  const UnexpectedErrorException(
+      {required super.errorMessage, super.errorData});
 }
