@@ -33,6 +33,8 @@ class PlayxNetworkClient {
   ///takes [Dio] object so u can easily customize your dio options.
   /// [customHeaders] which is custom headers that can included in each request like authorization token.
   /// [customQuery] which is custom query that can included in each request.
+  /// [customPathParameters] which is custom path parameters that are substituted into `{placeholder}`
+  /// segments of each request path, included in each request.
   /// [onUnauthorizedRequestReceived] which is a function that is called when unauthorized request is received.
   /// [errorMapper] which is a function that converts json error response from api to error message.
   /// [settings] which is a settings object that can be used to customize the client.
@@ -40,6 +42,7 @@ class PlayxNetworkClient {
     required Dio dio,
     FutureOr<Map<String, dynamic>> Function()? customHeaders,
     FutureOr<Map<String, dynamic>> Function()? customQuery,
+    FutureOr<Map<String, dynamic>> Function()? customPathParameters,
     UnauthorizedRequestHandler? onUnauthorizedRequestReceived,
     ErrorMapper? errorMapper,
     this.settings = const PlayxNetworkClientSettings(),
@@ -49,6 +52,7 @@ class PlayxNetworkClient {
       dio: dio,
       customHeaders: customHeaders,
       customQuery: customQuery,
+      customPathParameters: customPathParameters,
       settings: settings,
     );
     final logger = PlayxLogger.hasLogger('Playx Network')
@@ -106,13 +110,17 @@ class PlayxNetworkClient {
   /// You can pass your own queries, headers weather to attach custom headers or not.
   /// Or add custom options which overrides headers and custom headers.
   /// Or add cancel token to cancel the request.
+  /// [pathParameters] replaces `{placeholder}` segments in [path] before the request is sent.
+  /// Set [attachCustomPathParameters] to `false` to skip any client-level `customPathParameters`.
   Future<NetworkResult<T>> get<T>(
     String path, {
+    Map<String, dynamic> pathParameters = const {},
     Map<String, dynamic> headers = const {},
     Map<String, dynamic> query = const {},
     Options? options,
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
+    bool attachCustomPathParameters = true,
     CancelToken? cancelToken,
     String? cancelTag,
     bool cancelOld = true,
@@ -129,11 +137,13 @@ class PlayxNetworkClient {
     try {
       final res = await _dioClient.get(
         path,
+        pathParameters: pathParameters,
         headers: headers,
         query: query,
         options: options,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
+        attachCustomPathParameters: attachCustomPathParameters,
         cancelToken: resolvedCancelToken,
         onReceiveProgress: onReceiveProgress,
         logSettings: settings?.logSettings,
@@ -164,13 +174,17 @@ class PlayxNetworkClient {
   /// You can pass your own queries, headers weather to attach custom headers or not.
   /// Or add custom options which overrides headers and custom headers.
   /// Or add cancel token to cancel the request.
+  /// [pathParameters] replaces `{placeholder}` segments in [path] before the request is sent.
+  /// Set [attachCustomPathParameters] to `false` to skip any client-level `customPathParameters`.
   Future<NetworkResult<List<T>>> getList<T>(
     String path, {
+    Map<String, dynamic> pathParameters = const {},
     Map<String, dynamic> headers = const {},
     Map<String, dynamic> query = const {},
     Options? options,
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
+    bool attachCustomPathParameters = true,
     CancelToken? cancelToken,
     String? cancelTag,
     bool cancelOld = true,
@@ -188,11 +202,13 @@ class PlayxNetworkClient {
     try {
       final res = await _dioClient.get(
         path,
+        pathParameters: pathParameters,
         headers: headers,
         query: query,
         options: options,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
+        attachCustomPathParameters: attachCustomPathParameters,
         cancelToken: resolvedCancelToken,
         onReceiveProgress: onReceiveProgress,
         logSettings: settings?.logSettings,
@@ -220,14 +236,18 @@ class PlayxNetworkClient {
 
   /// Download file from the given [url]
   /// and returns [NetworkResult] of [Response].
+  /// [pathParameters] replaces `{placeholder}` segments in [path] before the request is sent.
+  /// Set [attachCustomPathParameters] to `false` to skip any client-level `customPathParameters`.
   Future<NetworkResult<Response>> download(
     String path, {
     required dynamic savePath,
+    Map<String, dynamic> pathParameters = const {},
     Map<String, dynamic> headers = const {},
     Map<String, dynamic> query = const {},
     Options? options,
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
+    bool attachCustomPathParameters = true,
     CancelToken? cancelToken,
     String? cancelTag,
     bool cancelOld = true,
@@ -247,11 +267,13 @@ class PlayxNetworkClient {
       final res = await _dioClient.download(
         path,
         savePath: savePath,
+        pathParameters: pathParameters,
         headers: headers,
         query: query,
         options: options,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
+        attachCustomPathParameters: attachCustomPathParameters,
         cancelToken: resolvedCancelToken,
         onReceiveProgress: onReceiveProgress,
         data: data,
@@ -282,15 +304,19 @@ class PlayxNetworkClient {
   /// You can pass your own queries, headers weather to attach custom headers or not.
   /// Or add custom options which overrides headers and custom headers.
   /// Or add cancel token to cancel the request.
+  /// [pathParameters] replaces `{placeholder}` segments in [path] before the request is sent.
+  /// Set [attachCustomPathParameters] to `false` to skip any client-level `customPathParameters`.
   Future<NetworkResult<T>> post<T>(
     String path, {
     Object body = const {},
+    Map<String, dynamic> pathParameters = const {},
     Map<String, dynamic> headers = const {},
     Map<String, dynamic> query = const {},
     Options? options,
     String? contentType,
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
+    bool attachCustomPathParameters = true,
     CancelToken? cancelToken,
     String? cancelTag,
     bool cancelOld = true,
@@ -309,12 +335,14 @@ class PlayxNetworkClient {
       final res = await _dioClient.post(
         path,
         body: body,
+        pathParameters: pathParameters,
         headers: headers,
         query: query,
         options: options,
         contentType: contentType,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
+        attachCustomPathParameters: attachCustomPathParameters,
         cancelToken: resolvedCancelToken,
         onSendProgress: onSendProgress,
         onReceiveProgress: onReceiveProgress,
@@ -345,15 +373,19 @@ class PlayxNetworkClient {
   /// You can pass your own queries, headers weather to attach custom headers or not.
   /// Or add custom options which overrides headers and custom headers.
   /// Or add cancel token to cancel the request.
+  /// [pathParameters] replaces `{placeholder}` segments in [path] before the request is sent.
+  /// Set [attachCustomPathParameters] to `false` to skip any client-level `customPathParameters`.
   Future<NetworkResult<List<T>>> postList<T>(
     String path, {
     Object body = const {},
+    Map<String, dynamic> pathParameters = const {},
     Map<String, dynamic> headers = const {},
     Map<String, dynamic> query = const {},
     Options? options,
     String? contentType,
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
+    bool attachCustomPathParameters = true,
     CancelToken? cancelToken,
     String? cancelTag,
     bool cancelOld = true,
@@ -373,12 +405,14 @@ class PlayxNetworkClient {
       final res = await _dioClient.post(
         path,
         body: body,
+        pathParameters: pathParameters,
         headers: headers,
         query: query,
         options: options,
         contentType: contentType,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
+        attachCustomPathParameters: attachCustomPathParameters,
         cancelToken: resolvedCancelToken,
         onSendProgress: onSendProgress,
         onReceiveProgress: onReceiveProgress,
@@ -410,15 +444,19 @@ class PlayxNetworkClient {
   /// You can pass your own queries, headers weather to attach custom headers or not.
   /// Or add custom options which overrides headers and custom headers.
   /// Or add cancel token to cancel the request.
+  /// [pathParameters] replaces `{placeholder}` segments in [path] before the request is sent.
+  /// Set [attachCustomPathParameters] to `false` to skip any client-level `customPathParameters`.
   Future<NetworkResult<T>> delete<T>(
     String path, {
     Object body = const {},
+    Map<String, dynamic> pathParameters = const {},
     Map<String, dynamic> headers = const {},
     Map<String, dynamic> query = const {},
     Options? options,
     String? contentType,
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
+    bool attachCustomPathParameters = true,
     CancelToken? cancelToken,
     String? cancelTag,
     bool cancelOld = true,
@@ -435,12 +473,14 @@ class PlayxNetworkClient {
       final res = await _dioClient.delete(
         path,
         body: body,
+        pathParameters: pathParameters,
         headers: headers,
         query: query,
         options: options,
         contentType: contentType,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
+        attachCustomPathParameters: attachCustomPathParameters,
         cancelToken: resolvedCancelToken,
         logSettings: settings?.logSettings,
       );
@@ -469,15 +509,19 @@ class PlayxNetworkClient {
   /// You can pass your own queries, headers weather to attach custom headers or not.
   /// Or add custom options which overrides headers and custom headers.
   /// Or add cancel token to cancel the request.
+  /// [pathParameters] replaces `{placeholder}` segments in [path] before the request is sent.
+  /// Set [attachCustomPathParameters] to `false` to skip any client-level `customPathParameters`.
   Future<NetworkResult<List<T>>> deleteList<T>(
     String path, {
     Object body = const {},
+    Map<String, dynamic> pathParameters = const {},
     Map<String, dynamic> headers = const {},
     Map<String, dynamic> query = const {},
     Options? options,
     String? contentType,
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
+    bool attachCustomPathParameters = true,
     CancelToken? cancelToken,
     String? cancelTag,
     bool cancelOld = true,
@@ -495,12 +539,14 @@ class PlayxNetworkClient {
       final res = await _dioClient.delete(
         path,
         body: body,
+        pathParameters: pathParameters,
         headers: headers,
         query: query,
         options: options,
         contentType: contentType,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
+        attachCustomPathParameters: attachCustomPathParameters,
         cancelToken: resolvedCancelToken,
         logSettings: settings?.logSettings,
       );
@@ -530,15 +576,19 @@ class PlayxNetworkClient {
   /// You can pass your own queries, headers weather to attach custom headers or not.
   /// Or add custom options which overrides headers and custom headers.
   /// Or add cancel token to cancel the request.
+  /// [pathParameters] replaces `{placeholder}` segments in [path] before the request is sent.
+  /// Set [attachCustomPathParameters] to `false` to skip any client-level `customPathParameters`.
   Future<NetworkResult<T>> put<T>(
     String path, {
     Object body = const {},
+    Map<String, dynamic> pathParameters = const {},
     Map<String, dynamic> headers = const {},
     Map<String, dynamic> query = const {},
     Options? options,
     String? contentType,
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
+    bool attachCustomPathParameters = true,
     CancelToken? cancelToken,
     String? cancelTag,
     bool cancelOld = true,
@@ -557,12 +607,14 @@ class PlayxNetworkClient {
       final res = await _dioClient.put(
         path,
         body: body,
+        pathParameters: pathParameters,
         headers: headers,
         query: query,
         options: options,
         contentType: contentType,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
+        attachCustomPathParameters: attachCustomPathParameters,
         cancelToken: resolvedCancelToken,
         onSendProgress: onSendProgress,
         onReceiveProgress: onReceiveProgress,
@@ -593,15 +645,19 @@ class PlayxNetworkClient {
   /// You can pass your own queries, headers weather to attach custom headers or not.
   /// Or add custom options which overrides headers and custom headers.
   /// Or add cancel token to cancel the request.
+  /// [pathParameters] replaces `{placeholder}` segments in [path] before the request is sent.
+  /// Set [attachCustomPathParameters] to `false` to skip any client-level `customPathParameters`.
   Future<NetworkResult<List<T>>> putList<T>(
     String path, {
     Object body = const {},
+    Map<String, dynamic> pathParameters = const {},
     Map<String, dynamic> headers = const {},
     Map<String, dynamic> query = const {},
     Options? options,
     String? contentType,
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
+    bool attachCustomPathParameters = true,
     CancelToken? cancelToken,
     String? cancelTag,
     bool cancelOld = true,
@@ -621,12 +677,14 @@ class PlayxNetworkClient {
       final res = await _dioClient.put(
         path,
         body: body,
+        pathParameters: pathParameters,
         headers: headers,
         query: query,
         options: options,
         contentType: contentType,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
+        attachCustomPathParameters: attachCustomPathParameters,
         cancelToken: resolvedCancelToken,
         onSendProgress: onSendProgress,
         onReceiveProgress: onReceiveProgress,
@@ -658,15 +716,19 @@ class PlayxNetworkClient {
   /// You can pass your own queries, headers weather to attach custom headers or not.
   /// Or add custom options which overrides headers and custom headers.
   /// Or add cancel token to cancel the request.
+  /// [pathParameters] replaces `{placeholder}` segments in [path] before the request is sent.
+  /// Set [attachCustomPathParameters] to `false` to skip any client-level `customPathParameters`.
   Future<NetworkResult<T>> patch<T>(
     String path, {
     Object body = const {},
+    Map<String, dynamic> pathParameters = const {},
     Map<String, dynamic> headers = const {},
     Map<String, dynamic> query = const {},
     Options? options,
     String? contentType,
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
+    bool attachCustomPathParameters = true,
     CancelToken? cancelToken,
     String? cancelTag,
     bool cancelOld = true,
@@ -686,12 +748,14 @@ class PlayxNetworkClient {
       final res = await _dioClient.patch(
         path,
         body: body,
+        pathParameters: pathParameters,
         headers: headers,
         query: query,
         options: options,
         contentType: contentType,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
+        attachCustomPathParameters: attachCustomPathParameters,
         cancelToken: resolvedCancelToken,
         onSendProgress: onSendProgress,
         onReceiveProgress: onReceiveProgress,
@@ -722,15 +786,19 @@ class PlayxNetworkClient {
   /// You can pass your own queries, headers weather to attach custom headers or not.
   /// Or add custom options which overrides headers and custom headers.
   /// Or add cancel token to cancel the request.
+  /// [pathParameters] replaces `{placeholder}` segments in [path] before the request is sent.
+  /// Set [attachCustomPathParameters] to `false` to skip any client-level `customPathParameters`.
   Future<NetworkResult<List<T>>> patchList<T>(
     String path, {
     Object body = const {},
+    Map<String, dynamic> pathParameters = const {},
     Map<String, dynamic> headers = const {},
     Map<String, dynamic> query = const {},
     Options? options,
     String? contentType,
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
+    bool attachCustomPathParameters = true,
     CancelToken? cancelToken,
     String? cancelTag,
     bool cancelOld = true,
@@ -750,12 +818,14 @@ class PlayxNetworkClient {
       final res = await _dioClient.patch(
         path,
         body: body,
+        pathParameters: pathParameters,
         headers: headers,
         query: query,
         options: options,
         contentType: contentType,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
+        attachCustomPathParameters: attachCustomPathParameters,
         cancelToken: resolvedCancelToken,
         onSendProgress: onSendProgress,
         onReceiveProgress: onReceiveProgress,

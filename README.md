@@ -145,6 +145,43 @@ final result = await _client.get(
 );
 ```
 
+## Path Parameters
+You can substitute `{placeholder}` segments in the request path with concrete values using the `pathParameters` parameter.
+This keeps dynamic URLs readable and avoids manual string interpolation. Values are URL-encoded for safe path segments (spaces become `%20`).
+
+```dart
+final result = await _client.get(
+  'users/{userId}/posts/{postId}',
+  pathParameters: {
+    'userId': 42,
+    'postId': 7,
+  },
+  fromJson: Post.fromJson,
+);
+// The request is sent to: users/42/posts/7
+```
+
+Path parameters work with every HTTP method (`get`, `getList`, `post`, `postList`, `put`, `putList`, `delete`, `deleteList`, `patch`, `patchList`, `download`).
+
+You can also attach app-wide path segments to **every** request via `customPathParameters` on `PlayxNetworkClient`, mirroring `customQuery`:
+
+```dart
+final PlayxNetworkClient _client = PlayxNetworkClient(
+  dio: Dio(BaseOptions(baseUrl: _baseUrl)),
+  // e.g. inject an API version segment into each path
+  customPathParameters: () async => {'version': 'v2'},
+);
+
+// Sent to: v2/users/42
+final result = await _client.get(
+  '{version}/users/{userId}',
+  pathParameters: {'userId': 42},
+  fromJson: User.fromJson,
+);
+```
+
+To skip the client-level `customPathParameters` for a single request, pass `attachCustomPathParameters: false`. Per-request `pathParameters` take precedence over `customPathParameters` for the same key.
+
 ## Smart Request Cancellation
 Manage and cancel multiple requests easily using `cancelTag`. 
 By default, providing a `cancelTag` will automatically cancel any previous pending requests with the same tag (`cancelOld: true`).
