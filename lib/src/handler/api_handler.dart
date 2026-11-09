@@ -683,8 +683,8 @@ class ApiHandler {
             DioExceptionType.connectionError => NoInternetConnectionException(
                 errorMessage: exceptionMessages.noInternetConnection,
               ),
-            DioExceptionType.transformTimeout => SendTimeoutException(
-                errorMessage: exceptionMessages.sendTimeout,
+            DioExceptionType.transformTimeout => UnexpectedErrorException(
+                errorMessage: exceptionMessages.unexpectedError,
               ),
           };
         } else if (error is SocketException) {

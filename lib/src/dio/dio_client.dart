@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:playx_network/playx_network.dart';
+import 'package:playx_network/src/utils/path_utils.dart';
 import 'package:talker_dio_logger/talker_dio_logger.dart';
 
 // ignore: avoid_classes_with_only_static_members
@@ -9,22 +10,43 @@ class DioClient {
   final Dio dio;
   final FutureOr<Map<String, dynamic>> Function()? customHeaders;
   final FutureOr<Map<String, dynamic>> Function()? customQuery;
+  final FutureOr<Map<String, dynamic>> Function()? customPathParameters;
 
   final PlayxNetworkClientSettings settings;
 
   bool attachLogSettings(PlayxNetworkLoggerSettings logSettings) =>
       logSettings.enabled;
 
-  DioClient(
-      {required this.dio,
-      this.customHeaders,
-      this.customQuery,
-      required this.settings}) {
+  DioClient({
+    required this.dio,
+    this.customHeaders,
+    this.customQuery,
+    this.customPathParameters,
+    required this.settings,
+  }) {
     if (settings.logSettings.enabled) {
       dio.interceptors.add(
         settings.logSettings.buildTalkerDioLogger(),
       );
     }
+  }
+
+  /// Resolves the request [path] by substituting `{placeholder}` segments
+  /// with the merged [pathParameters] and any [customPathParameters] when
+  /// [attachCustomPathParameters] is `true`.
+  Future<String> _resolvePath(
+    String path,
+    Map<String, dynamic> pathParameters,
+    bool attachCustomPathParameters,
+  ) async {
+    // Nothing to substitute, so avoid running the (possibly async) callback.
+    if (!path.contains('{')) return path;
+    final merged = <String, dynamic>{
+      if (attachCustomPathParameters && customPathParameters != null)
+        ...?await customPathParameters?.call(),
+      ...pathParameters,
+    };
+    return substitutePathParameters(path, merged);
   }
 
   Dio _getDioInstance({
@@ -48,18 +70,26 @@ class DioClient {
   }
 
   /// sends a [GET] request to the given [url]
+  ///
+  /// [pathParameters] replaces `{placeholder}` segments in [path] before the
+  /// request is sent. Set [attachCustomPathParameters] to `false` to skip any
+  /// client-level `customPathParameters`.
   Future<Response> get<T>(
     String path, {
+    Map<String, dynamic> pathParameters = const {},
     Map<String, dynamic> headers = const {},
     Map<String, dynamic> query = const {},
     Options? options,
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
+    bool attachCustomPathParameters = true,
     CancelToken? cancelToken,
     ProgressCallback? onReceiveProgress,
     PlayxNetworkLoggerSettings? logSettings,
   }) async {
-    return _getDioInstance(logSettings: logSettings).get(path,
+    final resolvedPath =
+        await _resolvePath(path, pathParameters, attachCustomPathParameters);
+    return _getDioInstance(logSettings: logSettings).get(resolvedPath,
         queryParameters: {
           if (attachCustomQuery && customQuery != null)
             ...?await customQuery?.call(),
@@ -78,13 +108,19 @@ class DioClient {
   }
 
   /// Download file from the given [url]
+  ///
+  /// [pathParameters] replaces `{placeholder}` segments in [path] before the
+  /// request is sent. Set [attachCustomPathParameters] to `false` to skip any
+  /// client-level `customPathParameters`.
   Future<Response> download<T>(String path,
       {required dynamic savePath,
+      Map<String, dynamic> pathParameters = const {},
       Map<String, dynamic> headers = const {},
       Map<String, dynamic> query = const {},
       Options? options,
       bool attachCustomHeaders = true,
       bool attachCustomQuery = true,
+      bool attachCustomPathParameters = true,
       CancelToken? cancelToken,
       ProgressCallback? onReceiveProgress,
       bool deleteOnError = true,
@@ -92,8 +128,10 @@ class DioClient {
       Object? data,
       PlayxNetworkLoggerSettings? logSettings,
       FileAccessMode fileAccessMode = FileAccessMode.write}) async {
+    final resolvedPath =
+        await _resolvePath(path, pathParameters, attachCustomPathParameters);
     return _getDioInstance(logSettings: logSettings).download(
-      path,
+      resolvedPath,
       savePath,
       queryParameters: {
         if (attachCustomQuery && customQuery != null)
@@ -118,22 +156,30 @@ class DioClient {
   }
 
   /// sends a [POST] request to the given [url]
+  ///
+  /// [pathParameters] replaces `{placeholder}` segments in [path] before the
+  /// request is sent. Set [attachCustomPathParameters] to `false` to skip any
+  /// client-level `customPathParameters`.
   Future<Response> post<T>(
     String path, {
     Object body = const {},
+    Map<String, dynamic> pathParameters = const {},
     Map<String, dynamic> headers = const {},
     Map<String, dynamic> query = const {},
     Options? options,
     String? contentType,
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
+    bool attachCustomPathParameters = true,
     CancelToken? cancelToken,
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
     PlayxNetworkLoggerSettings? logSettings,
   }) async {
+    final resolvedPath =
+        await _resolvePath(path, pathParameters, attachCustomPathParameters);
     return _getDioInstance(logSettings: logSettings).post(
-      path,
+      resolvedPath,
       data: body,
       queryParameters: {
         if (attachCustomQuery && customQuery != null)
@@ -155,20 +201,29 @@ class DioClient {
     );
   }
 
+  /// sends a [DELETE] request to the given [url]
+  ///
+  /// [pathParameters] replaces `{placeholder}` segments in [path] before the
+  /// request is sent. Set [attachCustomPathParameters] to `false` to skip any
+  /// client-level `customPathParameters`.
   Future<Response> delete<T>(
     String path, {
     Object body = const {},
+    Map<String, dynamic> pathParameters = const {},
     Map<String, dynamic> headers = const {},
     Map<String, dynamic> query = const {},
     Options? options,
     String? contentType,
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
+    bool attachCustomPathParameters = true,
     CancelToken? cancelToken,
     PlayxNetworkLoggerSettings? logSettings,
   }) async {
+    final resolvedPath =
+        await _resolvePath(path, pathParameters, attachCustomPathParameters);
     return _getDioInstance(logSettings: logSettings).delete(
-      path,
+      resolvedPath,
       data: body,
       queryParameters: {
         if (attachCustomQuery && customQuery != null)
@@ -188,22 +243,31 @@ class DioClient {
     );
   }
 
+  /// sends a [PUT] request to the given [url]
+  ///
+  /// [pathParameters] replaces `{placeholder}` segments in [path] before the
+  /// request is sent. Set [attachCustomPathParameters] to `false` to skip any
+  /// client-level `customPathParameters`.
   Future<Response> put<T>(
     String path, {
     Object body = const {},
+    Map<String, dynamic> pathParameters = const {},
     Map<String, dynamic> headers = const {},
     Map<String, dynamic> query = const {},
     Options? options,
     String? contentType,
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
+    bool attachCustomPathParameters = true,
     CancelToken? cancelToken,
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
     PlayxNetworkLoggerSettings? logSettings,
   }) async {
+    final resolvedPath =
+        await _resolvePath(path, pathParameters, attachCustomPathParameters);
     return _getDioInstance(logSettings: logSettings).put(
-      path,
+      resolvedPath,
       data: body,
       queryParameters: {
         if (attachCustomQuery && customQuery != null)
@@ -225,22 +289,31 @@ class DioClient {
     );
   }
 
+  /// sends a [PATCH] request to the given [url]
+  ///
+  /// [pathParameters] replaces `{placeholder}` segments in [path] before the
+  /// request is sent. Set [attachCustomPathParameters] to `false` to skip any
+  /// client-level `customPathParameters`.
   Future<Response> patch<T>(
     String path, {
     Object body = const {},
+    Map<String, dynamic> pathParameters = const {},
     Map<String, dynamic> headers = const {},
     Map<String, dynamic> query = const {},
     Options? options,
     String? contentType,
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
+    bool attachCustomPathParameters = true,
     CancelToken? cancelToken,
     ProgressCallback? onSendProgress,
     ProgressCallback? onReceiveProgress,
     PlayxNetworkLoggerSettings? logSettings,
   }) async {
+    final resolvedPath =
+        await _resolvePath(path, pathParameters, attachCustomPathParameters);
     return _getDioInstance(logSettings: logSettings).patch(
-      path,
+      resolvedPath,
       data: body,
       queryParameters: {
         if (attachCustomQuery && customQuery != null)
