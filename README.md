@@ -159,8 +159,8 @@ The `PlayxStreamFormat` enum controls how raw byte chunks are decoded:
 | Format | Element type | Description |
 |--------|--------------|-------------|
 | `PlayxStreamFormat.bytes` | `List<int>` | Raw byte chunks, no decoding. |
-| `PlayxStreamFormat.text` | `String` | UTF-8 decoded text per chunk. |
-| `PlayxStreamFormat.json` | `Object` | JSON-decoded value per chunk. |
+| `PlayxStreamFormat.text` | `String` | UTF-8 decoded text per chunk (multibyte characters split across chunks are reassembled). |
+| `PlayxStreamFormat.json` | `Object` | NDJSON: one JSON-decoded value per line. Terminate each document with a newline. A malformed line emits an `UnableToProcessException` error event and the stream continues. |
 | `PlayxStreamFormat.sse` | `PlayxSseEvent` | Server-Sent Events. |
 
 ### Example: Consuming an SSE endpoint

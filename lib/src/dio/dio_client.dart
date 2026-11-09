@@ -262,6 +262,35 @@ class DioClient {
     );
   }
 
+  /// Builds the [Options] for a streaming request.
+  ///
+  /// Headers are merged with this precedence (later wins): client-level
+  /// `customHeaders`, then `options.headers`, then the per-request [headers].
+  /// Unlike a plain `copyWith(headers: ...)`, headers already set on the
+  /// caller's [options] are kept.
+  ///
+  /// Streams can stay idle for a long time between events, so unless the
+  /// caller sets `options.receiveTimeout` the receive timeout is disabled
+  /// (`Duration.zero`) instead of cutting the stream off after the Dio default.
+  Future<Options> _resolveStreamOptions({
+    Options? options,
+    required Map<String, dynamic> headers,
+    required bool attachCustomHeaders,
+    String? contentType,
+  }) async {
+    return (options ?? Options()).copyWith(
+      headers: {
+        if (attachCustomHeaders && customHeaders != null)
+          ...?await customHeaders?.call(),
+        ...?options?.headers,
+        ...headers,
+      },
+      contentType: contentType ?? options?.contentType,
+      responseType: ResponseType.stream,
+      receiveTimeout: options?.receiveTimeout ?? Duration.zero,
+    );
+  }
+
   /// Sends a [GET] request and returns the response as a raw [ResponseBody]
   /// stream instead of waiting for the whole body.
   ///
@@ -286,13 +315,10 @@ class DioClient {
           ...?await customQuery?.call(),
         ...query,
       },
-      options: (options ?? Options()).copyWith(
-        headers: {
-          if (attachCustomHeaders && customHeaders != null)
-            ...?await customHeaders?.call(),
-          ...headers,
-        },
-        responseType: ResponseType.stream,
+      options: await _resolveStreamOptions(
+        options: options,
+        headers: headers,
+        attachCustomHeaders: attachCustomHeaders,
       ),
       cancelToken: cancelToken,
     );
@@ -322,14 +348,11 @@ class DioClient {
           ...?await customQuery?.call(),
         ...query,
       },
-      options: (options ?? Options()).copyWith(
-        headers: {
-          if (attachCustomHeaders && customHeaders != null)
-            ...?await customHeaders?.call(),
-          ...headers,
-        },
+      options: await _resolveStreamOptions(
+        options: options,
+        headers: headers,
+        attachCustomHeaders: attachCustomHeaders,
         contentType: contentType,
-        responseType: ResponseType.stream,
       ),
       cancelToken: cancelToken,
     );

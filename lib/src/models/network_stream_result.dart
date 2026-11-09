@@ -130,48 +130,36 @@ sealed class NetworkStreamResult<T> {
     };
   }
 
-  /// Maps the network stream request whether it's success or error to your
-  /// desired model asynchronously in an isolate.
-  Future<NetworkStreamResult<S>> mapStreamAsyncInIsolate<S>({
-    required Mapper<Stream<T>, NetworkStreamResult<S>> mapper,
-    String? exceptionMessage,
-    bool useWorkManager = true,
-  }) async {
-    try {
-      final result = await MapUtils.mapAsyncInIsolate(
-        data: this,
-        mapper: (NetworkStreamResult<T> res) async {
-          return switch (res) {
-            NetworkStreamSuccess<T>() => await mapper(res.data),
-            NetworkStreamError<T>() => NetworkStreamResult.error(res.error),
-          };
-        },
-        useWorkManager: useWorkManager,
-      );
-      return result as NetworkStreamResult<S>;
-    } catch (e) {
-      return NetworkStreamResult.error(UnableToProcessException(
-        errorMessage: exceptionMessage ??
-            _exceptionMessages?.unableToProcess ??
-            'unableToProcess',
-        statusCode: -1,
-        shouldShowApiError: false,
-      ));
-    }
-  }
-
   /// Convenience: convert this [NetworkStreamResult] into a regular
   /// [NetworkResult] by collecting the success stream into a [List].
   ///
   /// Returns a [NetworkResult] of [List<T>] containing all emitted events on
-  /// success, or the original error on failure.
+  /// success, or the original error on failure. If the stream emits an error
+  /// while being collected, it is returned as a [NetworkResult.error] instead
+  /// of being thrown.
+  ///
+  /// Note that this waits for the stream to complete, so it never returns for
+  /// endless streams (for example a long-lived SSE connection). Cancel the
+  /// request with a cancel token, or consume the stream directly, in that case.
   Future<NetworkResult<List<T>>> toList() async {
     return switch (this) {
-      NetworkStreamSuccess<T>() => NetworkResult.success(
-          await (this as NetworkStreamSuccess<T>).data.toList()),
+      NetworkStreamSuccess<T>() => await _collect(),
       NetworkStreamError<T>() =>
         NetworkResult.error((this as NetworkStreamError<T>).error),
     };
+  }
+
+  Future<NetworkResult<List<T>>> _collect() async {
+    try {
+      return NetworkResult.success(
+          await (this as NetworkStreamSuccess<T>).data.toList());
+    } on NetworkException catch (e) {
+      return NetworkResult.error(e);
+    } catch (_) {
+      return NetworkResult.error(UnexpectedErrorException(
+        errorMessage: _exceptionMessages?.unexpectedError ?? 'unexpectedError',
+      ));
+    }
   }
 
   ExceptionMessage? get _exceptionMessages => GetIt.instance

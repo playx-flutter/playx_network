@@ -4,27 +4,28 @@ import 'dart:convert';
 /// before being emitted by `PlayxNetworkClient.getStream` /
 /// `PlayxNetworkClient.postStream`.
 ///
-/// The decoding happens per chunk: each [List<int>] received from the network
-/// is converted into the corresponding type and emitted through the
-/// [Stream] returned by the network client.
+/// Decoding is done on the whole byte stream (see [decodeStream]), so
+/// multibyte UTF-8 characters and lines that are split across network chunks
+/// are reassembled correctly.
 enum PlayxStreamFormat {
   /// Emits raw byte chunks (`List<int>`) as received from the server without
   /// any decoding. Use this when you need the raw payload (e.g. binary file
   /// downloads, protocol buffers, etc.).
   bytes,
 
-  /// Decodes each byte chunk as UTF-8 text and emits a [String] per chunk.
-  /// This is the most common format for text/event streams, NDJSON and
-  /// plain-text streaming endpoints.
+  /// Decodes the stream as UTF-8 text and emits a [String] per network chunk.
+  /// Multibyte characters split across chunks are reassembled, so a chunk may
+  /// be empty-free but is not guaranteed to end on a line boundary.
   text,
 
-  /// Decodes each byte chunk as UTF-8 text and then tries to parse it as a
-  /// single JSON object, emitting [Map<String, dynamic>] / [List<dynamic>]
-  /// per chunk.
+  /// Decodes the stream as newline-delimited JSON (NDJSON): the stream is
+  /// split into lines and each non-empty line is parsed as one JSON document,
+  /// emitting [Map<String, dynamic>] / [List<dynamic>] per line.
   ///
-  /// Use this when each server chunk is a complete JSON document (for example
-  /// a single SSE `data:` payload that already has the `data:` prefix
-  /// stripped, or an endpoint that returns one JSON object per line).
+  /// Each JSON document must therefore be terminated by a newline (a final
+  /// document without a trailing newline is still emitted when the stream
+  /// closes). A line that is not valid JSON produces a [FormatException] error
+  /// event and the stream continues with the next line.
   json,
 
   /// Decodes the stream as Server-Sent Events (SSE) and emits an
@@ -42,7 +43,12 @@ enum PlayxStreamFormat {
         PlayxStreamFormat.sse => PlayxSseEvent,
       };
 
-  /// Decodes a single raw byte [chunk] into the format's element type.
+  /// Decodes a single, self-contained raw byte [chunk] into the format's
+  /// element type.
+  ///
+  /// This works on one chunk in isolation, so it does not handle characters or
+  /// documents split across chunks. Prefer [decodeStream] for real network
+  /// streams.
   ///
   /// For [bytes] the same chunk is returned.
   /// For [text] the chunk is UTF-8 decoded.
@@ -68,14 +74,25 @@ enum PlayxStreamFormat {
   /// Transforms the raw byte [stream] into a stream of decoded elements
   /// according to this format.
   ///
-  /// For [sse] this is a stateful parser that buffers lines across chunks and
-  /// emits an [PlayxSseEvent] whenever a blank-line delimiter is encountered.
+  /// - [bytes] passes the chunks through untouched.
+  /// - [text] uses a streaming UTF-8 decoder.
+  /// - [json] splits the decoded text into lines and parses each one.
+  /// - [sse] is a stateful parser that buffers lines across chunks and emits
+  ///   a [PlayxSseEvent] whenever a blank-line delimiter is encountered.
   Stream<dynamic> decodeStream(Stream<List<int>> stream) {
     switch (this) {
       case PlayxStreamFormat.bytes:
+        return stream;
       case PlayxStreamFormat.text:
+        return const Utf8Decoder(allowMalformed: true)
+            .bind(stream)
+            .where((text) => text.isNotEmpty);
       case PlayxStreamFormat.json:
-        return stream.map(decodeChunk).where((e) => e != null);
+        return const Utf8Decoder(allowMalformed: true)
+            .bind(stream)
+            .transform(const LineSplitter())
+            .where((line) => line.trim().isNotEmpty)
+            .map(jsonDecode);
       case PlayxStreamFormat.sse:
         return _PlayxSseParser(stream).parse();
     }
@@ -87,7 +104,8 @@ enum PlayxStreamFormat {
 /// The fields mirror the SSE wire format:
 /// - [event] is the value of the last `event:` line (defaults to `'message'`).
 /// - [data] contains the concatenated `data:` lines joined with `\n`.
-/// - [id] is the value of the last `id:` line, if any.
+/// - [id] is the last event id seen on the stream so far (it persists across
+///   events until the server changes it), if any.
 /// - [retry] is the reconnection hint, if any.
 class PlayxSseEvent {
   /// The event type. Defaults to `'message'` when the server does not specify
@@ -143,151 +161,111 @@ class PlayxSseEvent {
   int get hashCode => Object.hash(event, data, id, retry);
 }
 
-/// Stateful SSE parser that converts a raw byte stream into [PlayxSseEvent]s.
+/// Stateful SSE parser that converts a raw byte stream into [PlayxSseEvent]s,
+/// following the HTML "Server-sent events" processing model.
 class _PlayxSseParser {
   _PlayxSseParser(this._stream);
 
   final Stream<List<int>> _stream;
 
+  // Per-event fields, reset after each dispatch.
+  String? _event;
+  final List<String> _dataLines = <String>[];
+  int? _retry;
+
+  // Persists across events, per the spec's "last event ID buffer".
+  String? _lastEventId;
+
   Stream<PlayxSseEvent> parse() async* {
-    final buffer = StringBuffer();
-    String? currentEvent;
-    final dataLines = <String>[];
-    String? currentId;
-    int? currentRetry;
+    var carry = '';
+    var first = true;
 
-    await for (final chunk in _stream) {
-      final text = utf8.decode(chunk, allowMalformed: true);
-      buffer.write(text);
+    await for (final text
+        in const Utf8Decoder(allowMalformed: true).bind(_stream)) {
+      var buffer = carry + text;
+      if (first && buffer.isNotEmpty) {
+        // Strip a leading byte order mark.
+        if (buffer.codeUnitAt(0) == 0xFEFF) buffer = buffer.substring(1);
+        first = false;
+      }
 
-      // Process complete lines (terminated by \n).
-      // Keep the trailing partial line in the buffer.
-      while (true) {
-        final content = buffer.toString();
-        final newlineIndex = content.indexOf('\n');
-        if (newlineIndex == -1) break;
-
-        final rawLine = content.substring(0, newlineIndex);
-        // Clear consumed content, keep the rest (partial line) in buffer.
-        buffer
-          ..clear()
-          ..write(content.substring(newlineIndex + 1));
-
-        // Strip a single trailing \r (CRLF handling).
-        final line = rawLine.endsWith('\r')
-            ? rawLine.substring(0, rawLine.length - 1)
-            : rawLine;
-
-        // Empty line → dispatch event (SSE spec).
-        if (line.isEmpty) {
-          if (dataLines.isNotEmpty || currentId != null) {
-            yield PlayxSseEvent(
-              event: currentEvent ?? 'message',
-              data: dataLines.join('\n'),
-              id: currentId,
-              retry: currentRetry,
-            );
-          }
-          currentEvent = null;
-          dataLines.clear();
-          currentId = null;
-          currentRetry = null;
+      var start = 0;
+      var i = 0;
+      while (i < buffer.length) {
+        final unit = buffer.codeUnitAt(i);
+        if (unit != 0x0A && unit != 0x0D) {
+          i++;
           continue;
         }
+        // A trailing '\r' might be the first half of '\r\n'; wait for more.
+        if (unit == 0x0D && i == buffer.length - 1) break;
 
-        // Comment line starts with ':'.
-        if (line.startsWith(':')) {
-          continue;
-        }
+        final line = buffer.substring(start, i);
+        i += (unit == 0x0D && buffer.codeUnitAt(i + 1) == 0x0A) ? 2 : 1;
+        start = i;
 
-        final colonIndex = line.indexOf(':');
-        final field = colonIndex == -1 ? line : line.substring(0, colonIndex);
-        // Per spec: strip a single leading space from the value.
-        var value = '';
-        if (colonIndex != -1) {
-          value = line.substring(colonIndex + 1);
-          if (value.startsWith(' ')) {
-            value = value.substring(1);
-          }
-        }
-
-        switch (field) {
-          case 'event':
-            currentEvent = value;
-            break;
-          case 'data':
-            dataLines.add(value);
-            break;
-          case 'id':
-            currentId = value.isEmpty ? null : value;
-            break;
-          case 'retry':
-            final parsed = int.tryParse(value);
-            if (parsed != null) {
-              currentRetry = parsed;
-            }
-            break;
-          default:
-            // Unknown fields are ignored per the SSE spec.
-            break;
-        }
+        final event = _processLine(line);
+        if (event != null) yield event;
       }
+      carry = buffer.substring(start);
     }
 
-    // Process any remaining content in the buffer (no trailing newline).
-    final remaining = buffer.toString().trim();
-    if (remaining.isNotEmpty) {
-      buffer.clear();
-      final line = remaining.endsWith('\r')
-          ? remaining.substring(0, remaining.length - 1)
-          : remaining;
+    // A trailing partial line (no line terminator) is incomplete and is
+    // discarded. A fully received event that was never closed by a blank line
+    // is still flushed, because some servers omit the final delimiter.
+    final pending = _dispatch();
+    if (pending != null) yield pending;
+  }
 
-      if (line.isEmpty) {
-        // Already handled by trim above.
-      } else if (line.startsWith(':')) {
-        // Comment — ignore.
-      } else {
-        final colonIndex = line.indexOf(':');
-        final field = colonIndex == -1 ? line : line.substring(0, colonIndex);
-        var value = '';
-        if (colonIndex != -1) {
-          value = line.substring(colonIndex + 1);
-          if (value.startsWith(' ')) {
-            value = value.substring(1);
-          }
+  /// Processes one complete [line]. Returns an event when [line] is the blank
+  /// line that terminates an event.
+  PlayxSseEvent? _processLine(String line) {
+    if (line.isEmpty) return _dispatch();
+    if (line.startsWith(':')) return null; // comment
+
+    final colonIndex = line.indexOf(':');
+    final field = colonIndex == -1 ? line : line.substring(0, colonIndex);
+    var value = colonIndex == -1 ? '' : line.substring(colonIndex + 1);
+    if (value.startsWith(' ')) value = value.substring(1);
+
+    switch (field) {
+      case 'event':
+        _event = value;
+      case 'data':
+        _dataLines.add(value);
+      case 'id':
+        // Per spec, ids containing NULL are ignored.
+        if (!value.contains('\u0000')) {
+          _lastEventId = value.isEmpty ? null : value;
         }
-
-        switch (field) {
-          case 'event':
-            currentEvent = value;
-            break;
-          case 'data':
-            dataLines.add(value);
-            break;
-          case 'id':
-            currentId = value.isEmpty ? null : value;
-            break;
-          case 'retry':
-            final parsed = int.tryParse(value);
-            if (parsed != null) {
-              currentRetry = parsed;
-            }
-            break;
-          default:
-            break;
-        }
-      }
+      case 'retry':
+        final parsed = int.tryParse(value);
+        if (parsed != null && parsed >= 0) _retry = parsed;
+      default:
+        // Unknown fields are ignored per the SSE spec.
+        break;
     }
+    return null;
+  }
 
-    // Flush any pending event when the stream closes without a trailing
-    // blank line (some servers omit the final delimiter).
-    if (dataLines.isNotEmpty || currentId != null) {
-      yield PlayxSseEvent(
-        event: currentEvent ?? 'message',
-        data: dataLines.join('\n'),
-        id: currentId,
-        retry: currentRetry,
-      );
-    }
+  /// Builds the pending event, if any, and resets the per-event state.
+  ///
+  /// An event without any `data:` line (for example an id-only or retry-only
+  /// block) is not dispatched; the id stays in [_lastEventId] and the retry
+  /// hint is kept for the next dispatched event.
+  PlayxSseEvent? _dispatch() {
+    final event = _event;
+    _event = null;
+    if (_dataLines.isEmpty) return null;
+
+    final result = PlayxSseEvent(
+      event: (event == null || event.isEmpty) ? 'message' : event,
+      data: _dataLines.join('\n'),
+      id: _lastEventId,
+      retry: _retry,
+    );
+    _dataLines.clear();
+    _retry = null;
+    return result;
   }
 }

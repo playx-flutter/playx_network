@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -131,7 +132,174 @@ PlayxNetworkClient _client(Dio dio) => PlayxNetworkClient(
 // PlayxStreamFormat tests
 // ---------------------------------------------------------------------------
 
+/// Adapter whose response stream is driven manually by the test.
+class _ControlledAdapter implements HttpClientAdapter {
+  _ControlledAdapter({this.captured});
+
+  final Map<String, dynamic>? captured;
+  final controller = StreamController<Uint8List>();
+  var upstreamCancelled = false;
+
+  _ControlledAdapter init() {
+    return this;
+  }
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    captured?.addAll(options.headers);
+    captured?['receiveTimeout'] = options.receiveTimeout;
+    return ResponseBody(
+      controller.stream,
+      200,
+      onClose: () => upstreamCancelled = true,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
+}
+
+Dio _dioWith(HttpClientAdapter adapter) => Dio(BaseOptions(
+      baseUrl: 'https://example.com',
+      validateStatus: (_) => true,
+    ))
+      ..httpClientAdapter = adapter;
+
 void main() {
+  group('stream lifecycle fixes', () {
+    test('cancelling the listener closes the response body', () async {
+      final adapter = _ControlledAdapter().init();
+      final result = await _client(_dioWith(adapter))
+          .getStream<String>('/s', format: PlayxStreamFormat.text);
+      final sub = result.data!.listen((_) {});
+      adapter.controller.add(Uint8List.fromList(utf8.encode('a')));
+      await Future<void>.delayed(Duration.zero);
+      await sub.cancel();
+      expect(adapter.upstreamCancelled, isTrue);
+    });
+
+    test('pausing the listener pauses the upstream', () async {
+      final adapter = _ControlledAdapter().init();
+      final result = await _client(_dioWith(adapter))
+          .getStream<String>('/s', format: PlayxStreamFormat.text);
+      final received = <String>[];
+      final sub = result.data!.listen(received.add);
+      await Future<void>.delayed(Duration.zero);
+      sub.pause();
+      adapter.controller.add(Uint8List.fromList(utf8.encode('a')));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(received, isEmpty);
+      sub.resume();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(received, ['a']);
+      await sub.cancel();
+    });
+
+    test('stream completes after a source error', () async {
+      final adapter = _ControlledAdapter().init();
+      final result = await _client(_dioWith(adapter))
+          .getStream<String>('/s', format: PlayxStreamFormat.text);
+      final errors = <Object>[];
+      final done = Completer<void>();
+      result.data!.listen((_) {}, onError: errors.add, onDone: done.complete);
+      adapter.controller.add(Uint8List.fromList(utf8.encode('a')));
+      adapter.controller.addError(const SocketException('dropped'));
+      await done.future.timeout(const Duration(seconds: 2));
+      expect(errors.single, isA<NetworkException>());
+    });
+
+    test('cancel token emits a single RequestCanceledException', () async {
+      final adapter = _ControlledAdapter().init();
+      final token = CancelToken();
+      final result = await _client(_dioWith(adapter)).getStream<String>('/s',
+          format: PlayxStreamFormat.text, cancelToken: token);
+      final errors = <Object>[];
+      final done = Completer<void>();
+      result.data!.listen((_) {}, onError: errors.add, onDone: done.complete);
+      token.cancel();
+      adapter.controller.addError(DioException.requestCancelled(
+          requestOptions: RequestOptions(path: '/s'), reason: 'x'));
+      await done.future.timeout(const Duration(seconds: 2));
+      expect(errors, hasLength(1));
+      expect(errors.single, isA<RequestCanceledException>());
+    });
+
+    test('malformed NDJSON line is reported and the stream continues',
+        () async {
+      final adapter = _ControlledAdapter().init();
+      final result = await _client(_dioWith(adapter))
+          .getStream<Object>('/s', format: PlayxStreamFormat.json);
+      final values = <Object>[];
+      final errors = <Object>[];
+      final done = Completer<void>();
+      result.data!
+          .listen(values.add, onError: errors.add, onDone: done.complete);
+      adapter.controller
+          .add(Uint8List.fromList(utf8.encode('{"a":1}\nnot json\n{"b":2}\n')));
+      await adapter.controller.close();
+      await done.future.timeout(const Duration(seconds: 2));
+      expect(values, hasLength(2));
+      expect(errors.single, isA<UnableToProcessException>());
+    });
+
+    test('error response body reaches the errorMapper', () async {
+      final dio = _dioWith(_StreamAdapter(
+        statusCode: 422,
+        chunks: [utf8.encode('{"message":"bad input"}')],
+      ));
+      final result = await _client(dio).getStream<String>('/s',
+          format: PlayxStreamFormat.text,
+          errorMapper: (e) => (e as Map)['message'] as String);
+      expect(result.isError, isTrue);
+      expect(result.error!.message, 'bad input');
+    });
+
+    test('toList returns an error result when the stream errors', () async {
+      final adapter = _ControlledAdapter().init();
+      final result = await _client(_dioWith(adapter))
+          .getStream<String>('/s', format: PlayxStreamFormat.text);
+      final future = result.toList();
+      adapter.controller.add(Uint8List.fromList(utf8.encode('a')));
+      adapter.controller.addError(const SocketException('dropped'));
+      final list = await future.timeout(const Duration(seconds: 2));
+      expect(list.isError, isTrue);
+    });
+
+    test('getSse sends SSE headers without dropping options.headers', () async {
+      final captured = <String, dynamic>{};
+      final adapter = _ControlledAdapter(captured: captured).init();
+      final client = PlayxNetworkClient(
+        dio: _dioWith(adapter),
+        settings: _defaultSettings,
+        customHeaders: () async => {'authorization': 'Bearer t'},
+      );
+      await client.getSse('/s',
+          options: Options(headers: {'X-A': '1'}), headers: {'X-B': '2'});
+      expect(captured['Accept'], 'text/event-stream');
+      expect(captured['Cache-Control'], 'no-cache');
+      expect(captured['X-A'], '1');
+      expect(captured['X-B'], '2');
+      expect(captured['authorization'], 'Bearer t');
+      expect(captured['receiveTimeout'], Duration.zero);
+    });
+
+    test('caller Accept header is not overridden by getSse', () async {
+      final captured = <String, dynamic>{};
+      final adapter = _ControlledAdapter(captured: captured).init();
+      await _client(_dioWith(adapter))
+          .getSse('/s', headers: {'accept': 'text/plain'});
+      expect(captured['accept'], 'text/plain');
+      expect(captured.containsKey('Accept'), isFalse);
+    });
+  });
+
   group('PlayxStreamFormat', () {
     group('elementType', () {
       test('bytes returns List<int>', () {
@@ -223,10 +391,10 @@ void main() {
         expect(result, ['hello ', 'world']);
       });
 
-      test('json emits decoded objects', () async {
+      test('json emits decoded objects (NDJSON)', () async {
         final stream = Stream.fromIterable([
-          utf8.encode('{"a": 1}'),
-          utf8.encode('{"b": 2}'),
+          utf8.encode('{"a": 1}\n'),
+          utf8.encode('{"b": 2}\n'),
         ]);
         final result =
             await PlayxStreamFormat.json.decodeStream(stream).toList();
@@ -235,11 +403,33 @@ void main() {
         expect((result[1] as Map)['b'], 2);
       });
 
-      test('json filters out null chunks (empty/whitespace)', () async {
+      test('text reassembles multibyte characters split across chunks',
+          () async {
+        final bytes = utf8.encode('😀');
+        final result = await PlayxStreamFormat.text
+            .decodeStream(Stream.fromIterable([
+              bytes.sublist(0, 2),
+              bytes.sublist(2),
+            ]))
+            .toList();
+        expect(result.join(), '😀');
+      });
+
+      test('json handles multiple and split documents per chunk', () async {
+        final result = await PlayxStreamFormat.json
+            .decodeStream(Stream.fromIterable([
+              utf8.encode('{"a":1}\n{"b"'),
+              utf8.encode(':2}\n{"c":3}'),
+            ]))
+            .toList();
+        expect(result.map((e) => (e as Map).keys.single), ['a', 'b', 'c']);
+      });
+
+      test('json filters out empty/whitespace lines', () async {
         final stream = Stream.fromIterable([
-          utf8.encode(''),
-          utf8.encode('{"a": 1}'),
-          utf8.encode('   '),
+          utf8.encode('\n'),
+          utf8.encode('{"a": 1}\n'),
+          utf8.encode('   \n'),
         ]);
         final result =
             await PlayxStreamFormat.json.decodeStream(stream).toList();
@@ -436,11 +626,74 @@ void main() {
     test('flushes pending event when stream closes without trailing blank line',
         () async {
       final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
-        utf8.encode('data: no-newline-at-end'),
+        utf8.encode('data: no-blank-line\n'),
       ]));
       final events = await stream.toList();
       expect(events, hasLength(1));
-      expect((events[0] as PlayxSseEvent).data, 'no-newline-at-end');
+      expect((events[0] as PlayxSseEvent).data, 'no-blank-line');
+    });
+
+    test('discards a trailing partial line when the stream closes', () async {
+      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
+        utf8.encode('data: {"par'),
+      ]));
+      expect(await stream.toList(), isEmpty);
+    });
+
+    test('supports bare CR line endings and CRLF split across chunks',
+        () async {
+      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
+        utf8.encode('data: a\r\r'),
+        utf8.encode('data: b\r'),
+        utf8.encode('\n\r\n'),
+      ]));
+      final events = (await stream.toList()).cast<PlayxSseEvent>();
+      expect(events.map((e) => e.data), ['a', 'b']);
+    });
+
+    test('strips a leading BOM', () async {
+      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
+        [0xEF, 0xBB, 0xBF, ...utf8.encode('data: hi\n\n')],
+      ]));
+      final events = (await stream.toList()).cast<PlayxSseEvent>();
+      expect(events.single.data, 'hi');
+    });
+
+    test('id-only block is not dispatched but id persists to later events',
+        () async {
+      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
+        utf8.encode('id: 5\n\ndata: x\n\ndata: y\n\n'),
+      ]));
+      final events = (await stream.toList()).cast<PlayxSseEvent>();
+      expect(events.map((e) => e.data), ['x', 'y']);
+      expect(events.map((e) => e.id), ['5', '5']);
+    });
+
+    test('retry-only block is kept for the next event', () async {
+      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
+        utf8.encode('retry: 3000\n\ndata: x\n\n'),
+      ]));
+      final events = (await stream.toList()).cast<PlayxSseEvent>();
+      expect(events.single.retry, 3000);
+    });
+
+    test('reassembles multibyte characters split across chunks', () async {
+      final bytes = utf8.encode('data: مرحبا😀\n\n');
+      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
+        bytes.sublist(0, 8),
+        bytes.sublist(8, bytes.length - 5),
+        bytes.sublist(bytes.length - 5),
+      ]));
+      final events = (await stream.toList()).cast<PlayxSseEvent>();
+      expect(events.single.data, 'مرحبا😀');
+    });
+
+    test('handles a large chunk with many lines', () async {
+      final text = List.generate(20000, (i) => 'data: $i\n\n').join();
+      final events = await PlayxStreamFormat.sse
+          .decodeStream(Stream.fromIterable([utf8.encode(text)]))
+          .toList();
+      expect(events, hasLength(20000));
     });
 
     test('does not emit event for heartbeat (comment only)', () async {
@@ -641,8 +894,8 @@ void main() {
       dio.httpClientAdapter = _StreamAdapter(
         statusCode: 200,
         chunks: [
-          utf8.encode('{"i": 1}'),
-          utf8.encode('{"i": 2}'),
+          utf8.encode('{"i": 1}\n'),
+          utf8.encode('{"i": 2}\n'),
         ],
       );
 

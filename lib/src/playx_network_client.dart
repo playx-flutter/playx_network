@@ -837,6 +837,7 @@ class PlayxNetworkClient {
     final resolvedCancelToken = cancelTag != null
         ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
         : cancelToken;
+    final streamToken = _streamToken(resolvedCancelToken);
     try {
       final res = await _dioClient.getStream(
         path,
@@ -845,15 +846,16 @@ class PlayxNetworkClient {
         options: options,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
-        cancelToken: resolvedCancelToken,
+        cancelToken: streamToken,
         logSettings: settings?.logSettings,
       );
-      return _apiHandler.handleStreamResult<T>(
+      return await _apiHandler.handleStreamResult<T>(
         responseBody: res,
         statusCode: res.statusCode,
         statusMessage: res.statusMessage,
         format: format,
         cancelToken: resolvedCancelToken,
+        abort: () => streamToken.cancel(),
         errorMapper: errorMapper,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
@@ -895,6 +897,7 @@ class PlayxNetworkClient {
     final resolvedCancelToken = cancelTag != null
         ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
         : cancelToken;
+    final streamToken = _streamToken(resolvedCancelToken);
     try {
       final res = await _dioClient.postStream(
         path,
@@ -905,15 +908,16 @@ class PlayxNetworkClient {
         contentType: contentType,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
-        cancelToken: resolvedCancelToken,
+        cancelToken: streamToken,
         logSettings: settings?.logSettings,
       );
-      return _apiHandler.handleStreamResult<T>(
+      return await _apiHandler.handleStreamResult<T>(
         responseBody: res,
         statusCode: res.statusCode,
         statusMessage: res.statusMessage,
         format: format,
         cancelToken: resolvedCancelToken,
+        abort: () => streamToken.cancel(),
         errorMapper: errorMapper,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
@@ -934,9 +938,9 @@ class PlayxNetworkClient {
   /// Convenience method for consuming Server-Sent Events (SSE) via a [GET]
   /// request. Returns a [NetworkStreamResult] of [PlayxSseEvent].
   ///
-  /// This is equivalent to calling [getStream] with
-  /// `format: PlayxStreamFormat.sse` but returns the strongly-typed
-  /// [PlayxSseEvent] stream directly.
+  /// This is [getStream] with `format: PlayxStreamFormat.sse`, plus the
+  /// `Accept: text/event-stream` and `Cache-Control: no-cache` headers unless
+  /// you set them yourself in [headers] or `options.headers`.
   Future<NetworkStreamResult<PlayxSseEvent>> getSse(
     String path, {
     Map<String, dynamic> headers = const {},
@@ -950,49 +954,28 @@ class PlayxNetworkClient {
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
-  }) async {
-    final resolvedCancelToken = cancelTag != null
-        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
-        : cancelToken;
-    try {
-      final res = await _dioClient.getStream(
+  }) =>
+      getStream<PlayxSseEvent>(
         path,
-        headers: headers,
+        format: PlayxStreamFormat.sse,
+        headers: _withSseHeaders(headers, options),
         query: query,
         options: options,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
-        cancelToken: resolvedCancelToken,
-        logSettings: settings?.logSettings,
-      );
-      return _apiHandler.handleSseStreamResult(
-        responseBody: res,
-        statusCode: res.statusCode,
-        statusMessage: res.statusMessage,
-        cancelToken: resolvedCancelToken,
+        cancelToken: cancelToken,
+        cancelTag: cancelTag,
+        cancelOld: cancelOld,
         errorMapper: errorMapper,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
       );
-      // ignore: avoid_catches_without_on_clauses
-    } catch (error) {
-      return NetworkStreamResult.error(_apiHandler
-          .handleDioException(
-            error: error,
-            shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
-            settings: settings,
-            errorMapper: errorMapper,
-          )
-          .error!);
-    }
-  }
 
   /// Convenience method for consuming Server-Sent Events (SSE) via a [POST]
   /// request. Returns a [NetworkStreamResult] of [PlayxSseEvent].
   ///
-  /// This is equivalent to calling [postStream] with
-  /// `format: PlayxStreamFormat.sse` but returns the strongly-typed
-  /// [PlayxSseEvent] stream directly.
+  /// This is [postStream] with `format: PlayxStreamFormat.sse`, plus the SSE
+  /// request headers described in [getSse].
   Future<NetworkStreamResult<PlayxSseEvent>> postSse(
     String path, {
     Object body = const {},
@@ -1008,42 +991,47 @@ class PlayxNetworkClient {
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
-  }) async {
-    final resolvedCancelToken = cancelTag != null
-        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
-        : cancelToken;
-    try {
-      final res = await _dioClient.postStream(
+  }) =>
+      postStream<PlayxSseEvent>(
         path,
+        format: PlayxStreamFormat.sse,
         body: body,
-        headers: headers,
+        headers: _withSseHeaders(headers, options),
         query: query,
         options: options,
         contentType: contentType,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
-        cancelToken: resolvedCancelToken,
-        logSettings: settings?.logSettings,
-      );
-      return _apiHandler.handleSseStreamResult(
-        responseBody: res,
-        statusCode: res.statusCode,
-        statusMessage: res.statusMessage,
-        cancelToken: resolvedCancelToken,
+        cancelToken: cancelToken,
+        cancelTag: cancelTag,
+        cancelOld: cancelOld,
         errorMapper: errorMapper,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
       );
-      // ignore: avoid_catches_without_on_clauses
-    } catch (error) {
-      return NetworkStreamResult.error(_apiHandler
-          .handleDioException(
-            error: error,
-            shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
-            settings: settings,
-            errorMapper: errorMapper,
-          )
-          .error!);
-    }
+
+  /// Creates a [CancelToken] owned by a single stream request and linked to
+  /// the caller's [parent] token. Cancelling [parent] cancels the request;
+  /// the library can cancel the request to release the connection (when the
+  /// stream listener cancels) without ever cancelling the caller's token.
+  CancelToken _streamToken(CancelToken? parent) {
+    final token = CancelToken();
+    parent?.whenCancel.then((e) => token.cancel(e.error));
+    return token;
+  }
+
+  /// Adds the default SSE request headers unless the caller already set them.
+  Map<String, dynamic> _withSseHeaders(
+    Map<String, dynamic> headers,
+    Options? options,
+  ) {
+    bool has(String name) => [headers, options?.headers ?? const {}].any(
+          (map) => map.keys.any((key) => key.toLowerCase() == name),
+        );
+    return {
+      if (!has('accept')) 'Accept': 'text/event-stream',
+      if (!has('cache-control')) 'Cache-Control': 'no-cache',
+      ...headers,
+    };
   }
 }
