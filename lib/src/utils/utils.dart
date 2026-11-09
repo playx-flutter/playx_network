@@ -1,5 +1,3 @@
-export 'path_utils.dart';
-
 bool? isResponseBlank(dynamic value) {
   if (value is String) {
     return value.toString().trim().isEmpty;

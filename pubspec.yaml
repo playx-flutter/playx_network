@@ -18,7 +18,7 @@ topics:
 dependencies:
   flutter:
     sdk: flutter
-  dio: ^5.9.2
+  dio: ^5.10.0
   sentry_dio: ^9.16.0
   talker: ^5.1.16
   talker_dio_logger: ^5.1.16

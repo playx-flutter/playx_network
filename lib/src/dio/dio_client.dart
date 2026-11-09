@@ -39,6 +39,8 @@ class DioClient {
     Map<String, dynamic> pathParameters,
     bool attachCustomPathParameters,
   ) async {
+    // Nothing to substitute, so avoid running the (possibly async) callback.
+    if (!path.contains('{')) return path;
     final merged = <String, dynamic>{
       if (attachCustomPathParameters && customPathParameters != null)
         ...?await customPathParameters?.call(),

@@ -3,7 +3,7 @@
 ## 1.1.0
 - **Path Parameters Support**: Added `pathParameters` parameter to all network requests to substitute `{placeholder}` segments in the request path before the request is sent (e.g. `'users/{userId}'` + `{'userId': 42}` → `'users/42'`). Values are URL-encoded for safe path segments.
 - **Custom Path Parameters**: Added `customPathParameters` to `PlayxNetworkClient` (and `attachCustomPathParameters` per request) to attach app-wide path segments to every request, mirroring `customQuery`/`attachCustomQuery`.
-- **Bugfix**: Fixed non-exhaustive switch over `DioExceptionType` in `ApiHandler` by adding the `transformTimeout` case introduced in Dio 5.11.
+- **Bugfix**: Fixed non-exhaustive switch over `DioExceptionType` in `ApiHandler` by adding the `transformTimeout` case introduced in Dio 5.10 (minimum Dio version is now `^5.10.0`).
 
 ## 1.0.0
 - **Nested JSON Key Extraction**: Added `dataKey` parameter to all network requests to extract nested JSON values before parsing.

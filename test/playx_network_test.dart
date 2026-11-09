@@ -98,13 +98,25 @@ void main() {
       );
     });
 
-    test('skips null values but replaces non-null ones', () {
+    test('throws when a placeholder in the path maps to null', () {
       expect(
-        substitutePathParameters(
-          'a/{x}/b/{y}',
-          const {'x': null, 'y': 5},
-        ),
-        'a/{x}/b/5',
+        () =>
+            substitutePathParameters('a/{x}/b/{y}', const {'x': null, 'y': 5}),
+        throwsArgumentError,
+      );
+    });
+
+    test('ignores null values for keys not present in the path', () {
+      expect(
+        substitutePathParameters('a/{y}', const {'x': null, 'y': 5}),
+        'a/5',
+      );
+    });
+
+    test('does not re-substitute values containing placeholders', () {
+      expect(
+        substitutePathParameters('a/{x}/{y}', const {'x': '{y}', 'y': 'Z'}),
+        'a/%7By%7D/Z',
       );
     });
 
@@ -201,8 +213,7 @@ void main() {
       expect(interceptor.lastPath, 'v2/users/9');
     });
 
-    test(
-        'attachCustomPathParameters=false skips custom path parameters',
+    test('attachCustomPathParameters=false skips custom path parameters',
         () async {
       final interceptor = _PathCapturingInterceptor();
       final dio = Dio(BaseOptions(baseUrl: 'https://example.com/api/'))
