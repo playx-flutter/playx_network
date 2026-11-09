@@ -334,6 +334,103 @@ class DioClient {
       onReceiveProgress: onReceiveProgress,
     );
   }
+
+  /// Builds the [Options] for a streaming request.
+  ///
+  /// Headers are merged with this precedence (later wins): client-level
+  /// `customHeaders`, then `options.headers`, then the per-request [headers].
+  /// Unlike a plain `copyWith(headers: ...)`, headers already set on the
+  /// caller's [options] are kept.
+  ///
+  /// Streams can stay idle for a long time between events, so unless the
+  /// caller sets `options.receiveTimeout` the receive timeout is disabled
+  /// (`Duration.zero`) instead of cutting the stream off after the Dio default.
+  Future<Options> _resolveStreamOptions({
+    Options? options,
+    required Map<String, dynamic> headers,
+    required bool attachCustomHeaders,
+    String? contentType,
+  }) async {
+    return (options ?? Options()).copyWith(
+      headers: {
+        if (attachCustomHeaders && customHeaders != null)
+          ...?await customHeaders?.call(),
+        ...?options?.headers,
+        ...headers,
+      },
+      contentType: contentType ?? options?.contentType,
+      responseType: ResponseType.stream,
+      receiveTimeout: options?.receiveTimeout ?? Duration.zero,
+    );
+  }
+
+  /// Sends a [GET] request and returns the response as a raw [ResponseBody]
+  /// stream instead of waiting for the whole body.
+  ///
+  /// The returned [ResponseBody.stream] can be consumed chunk-by-chunk. The
+  /// caller is responsible for handling the stream lifecycle (listening and
+  /// cancelling).
+  Future<ResponseBody> getStream(
+    String path, {
+    Map<String, dynamic> headers = const {},
+    Map<String, dynamic> query = const {},
+    Options? options,
+    bool attachCustomHeaders = true,
+    bool attachCustomQuery = true,
+    CancelToken? cancelToken,
+    PlayxNetworkLoggerSettings? logSettings,
+  }) async {
+    final dio = _getDioInstance(logSettings: logSettings);
+    final response = await dio.get<ResponseBody>(
+      path,
+      queryParameters: {
+        if (attachCustomQuery && customQuery != null)
+          ...?await customQuery?.call(),
+        ...query,
+      },
+      options: await _resolveStreamOptions(
+        options: options,
+        headers: headers,
+        attachCustomHeaders: attachCustomHeaders,
+      ),
+      cancelToken: cancelToken,
+    );
+    return response.data!;
+  }
+
+  /// Sends a [POST] request and returns the response as a raw [ResponseBody]
+  /// stream instead of waiting for the whole body.
+  Future<ResponseBody> postStream(
+    String path, {
+    Object body = const {},
+    Map<String, dynamic> headers = const {},
+    Map<String, dynamic> query = const {},
+    Options? options,
+    String? contentType,
+    bool attachCustomHeaders = true,
+    bool attachCustomQuery = true,
+    CancelToken? cancelToken,
+    PlayxNetworkLoggerSettings? logSettings,
+  }) async {
+    final dio = _getDioInstance(logSettings: logSettings);
+    final response = await dio.post<ResponseBody>(
+      path,
+      data: body,
+      queryParameters: {
+        if (attachCustomQuery && customQuery != null)
+          ...?await customQuery?.call(),
+        ...query,
+      },
+      options: await _resolveStreamOptions(
+        options: options,
+        headers: headers,
+        attachCustomHeaders: attachCustomHeaders,
+        contentType: contentType,
+      ),
+      cancelToken: cancelToken,
+    );
+    return response.data!;
+  }
 }
 
 extension DioClientExtensions on Dio {

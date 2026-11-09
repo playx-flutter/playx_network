@@ -126,6 +126,10 @@ Here is all available methods of `PlayxNetworkClient` :
 | deleteList<T>    | sends a `DELETE` request to the given url and returns `NetworkResult` of List of Type [T] model.                        |
 | patch<T>         | sends a `PATCH` request to the given url and returns `NetworkResult` of Type [T] model.|
 | patchList<T>     | sends a `PATCH` request to the given url and returns `NetworkResult` of List of Type [T] model.                        |
+| getStream<T>     | sends a `GET` request and returns `NetworkStreamResult` wrapping a `Stream` of decoded events. |
+| postStream<T>    | sends a `POST` request and returns `NetworkStreamResult` wrapping a `Stream` of decoded events. |
+| getSse           | sends a `GET` request and returns `NetworkStreamResult` of `PlayxSseEvent` for SSE endpoints. |
+| postSse          | sends a `POST` request and returns `NetworkStreamResult` of `PlayxSseEvent` for SSE endpoints. |
 
 ## Nested JSON Key Extraction
 You can extract nested JSON values directly from the response before parsing using dot-notation with the `dataKey` parameter.
@@ -181,6 +185,64 @@ final result = await _client.get(
 ```
 
 To skip the client-level `customPathParameters` for a single request, pass `attachCustomPathParameters: false`. Per-request `pathParameters` take precedence over `customPathParameters` for the same key.
+
+## Streaming Support
+`PlayxNetworkClient` can consume streaming endpoints (Server-Sent Events, NDJSON, chunked text/binary) via `getStream` and `postStream`.
+
+Each streaming method returns a `NetworkStreamResult` — a sealed wrapper that either provides a `Stream` of decoded events (`NetworkStreamSuccess`) or a `NetworkException` (`NetworkStreamError`) if the request failed before any data was emitted.
+
+The `PlayxStreamFormat` enum controls how raw byte chunks are decoded:
+
+| Format | Element type | Description |
+|--------|--------------|-------------|
+| `PlayxStreamFormat.bytes` | `List<int>` | Raw byte chunks, no decoding. |
+| `PlayxStreamFormat.text` | `String` | UTF-8 decoded text per chunk (multibyte characters split across chunks are reassembled). |
+| `PlayxStreamFormat.json` | `Object` | NDJSON: one JSON-decoded value per line. Terminate each document with a newline. A malformed line emits an `UnableToProcessException` error event and the stream continues. |
+| `PlayxStreamFormat.sse` | `PlayxSseEvent` | Server-Sent Events. |
+
+### Example: Consuming an SSE endpoint
+
+```dart
+final result = await _client.getStream(
+  '/events',
+  format: PlayxStreamFormat.sse,
+);
+
+result.when(
+  success: (events) {
+    // events is a Stream<PlayxSseEvent>
+    events.listen(
+      (event) => print('Received: ${event.event} → ${event.data}'),
+      onError: (e) => print('Stream error: $e'),
+      onDone: () => print('Stream closed'),
+    );
+  },
+  error: (error) => print('Request failed: ${error.message}'),
+);
+```
+
+For convenience, `getSse` and `postSse` return a strongly-typed `NetworkStreamResult<PlayxSseEvent>` directly:
+
+```dart
+final result = await _client.getSse('/events');
+```
+
+### Example: Collecting a stream into a list
+
+```dart
+final result = await _client.getStream<String>(
+  '/stream',
+  format: PlayxStreamFormat.text,
+);
+
+final listResult = await result.toList(); // NetworkResult<List<String>>
+listResult.when(
+  success: (chunks) => print('Received ${chunks.length} chunks'),
+  error: (error) => print('Error: ${error.message}'),
+);
+```
+
+The returned stream is a single-subscription stream and supports cancellation via `cancelToken` or `cancelTag`, just like regular requests.
 
 ## Smart Request Cancellation
 Manage and cancel multiple requests easily using `cancelTag`. 

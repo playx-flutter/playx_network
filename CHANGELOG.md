@@ -4,6 +4,13 @@
 - **Path Parameters Support**: Added `pathParameters` parameter to all network requests to substitute `{placeholder}` segments in the request path before the request is sent (e.g. `'users/{userId}'` + `{'userId': 42}` → `'users/42'`). Values are URL-encoded for safe path segments.
 - **Custom Path Parameters**: Added `customPathParameters` to `PlayxNetworkClient` (and `attachCustomPathParameters` per request) to attach app-wide path segments to every request, mirroring `customQuery`/`attachCustomQuery`.
 - **Bugfix**: Fixed non-exhaustive switch over `DioExceptionType` in `ApiHandler` by adding the `transformTimeout` case introduced in Dio 5.10 (minimum Dio version is now `^5.10.0`).
+- **Streaming Support**: Added `getStream` and `postStream` methods to `PlayxNetworkClient` for consuming streaming endpoints (SSE, NDJSON, chunked text/binary) via `NetworkStreamResult`.
+- **SSE Support**: Added `getSse` and `postSse` convenience methods and `PlayxSseEvent` model for parsing Server-Sent Events.
+- **PlayxStreamFormat**: New enum that controls how stream chunks are decoded (`bytes`, `text`, `json`, `sse`).
+- **NetworkStreamResult**: New sealed wrapper (analogous to `NetworkResult`) wrapping a `Stream` of decoded events or a `NetworkException`. `toList()` returns a `NetworkResult.error` if the stream errors (and never completes for endless streams).
+- **Stream lifecycle**: Cancelling the stream listener, cancelling the token, or a source error now aborts the HTTP request, the listener's pause/resume is honoured, and the stream always completes after a terminal error. Error response bodies are read (up to 64 KB) so `errorMapper` receives the server's message.
+- **Stream decoding**: `text`/`json`/`sse` use streaming UTF-8 decoding. `PlayxStreamFormat.json` is now line-delimited (NDJSON). The SSE parser follows the spec (CR/LF/CRLF, BOM, persistent last event id, no events from partial lines or data-less blocks).
+- **Stream requests**: `options.headers` are merged instead of replaced, `getSse`/`postSse` send `Accept: text/event-stream`, and the idle receive timeout is disabled unless `options.receiveTimeout` is set.
 
 ## 1.0.0
 - **Nested JSON Key Extraction**: Added `dataKey` parameter to all network requests to extract nested JSON values before parsing.

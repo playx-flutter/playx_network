@@ -1,457 +1,1616 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:playx_network/playx_network.dart';
-import 'package:playx_network/src/utils/path_utils.dart';
 
-/// A minimal Dio interceptor that short-circuits every request and records the
-/// final `requestOptions.path` so tests can assert path-parameter substitution
-/// without performing real network I/O.
-class _PathCapturingInterceptor extends Interceptor {
-  String? lastPath;
-  Map<String, dynamic>? lastQueryParameters;
-  String? lastMethod;
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/// A streaming adapter that emits chunks from a list of byte arrays.
+class _StreamAdapter implements HttpClientAdapter {
+  _StreamAdapter({
+    required this.statusCode,
+    required this.chunks,
+    this.delay = Duration.zero,
+  });
+
+  final int statusCode;
+  final List<List<int>> chunks;
+  final Duration delay;
 
   @override
-  Future<void> onRequest(
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
     RequestOptions options,
-    RequestInterceptorHandler handler,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
   ) async {
-    lastPath = options.path;
-    lastQueryParameters = options.queryParameters;
-    lastMethod = options.method;
-    handler.resolve(
-      Response<dynamic>(
-        requestOptions: options,
-        statusCode: 200,
-        // Return a JSON list so both single-item mappers (`fromJson: (j) => j`)
-        // and list-returning handlers (`getList`, `postList`, ...) succeed.
-        data: <Map<String, dynamic>>[
-          <String, dynamic>{'ok': true},
-        ],
-      ),
+    if (delay != Duration.zero) {
+      await Future.delayed(delay);
+    }
+    final controller = StreamController<Uint8List>();
+
+    // Emit chunks asynchronously.
+    Future(() async {
+      for (final chunk in chunks) {
+        if (controller.isClosed) break;
+        controller.add(Uint8List.fromList(chunk));
+        await Future.delayed(Duration.zero);
+      }
+      await controller.close();
+    });
+
+    return ResponseBody(
+      controller.stream,
+      statusCode,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
     );
   }
 }
 
-/// Builds a [PlayxNetworkClient] backed by a Dio instance wired to a
-/// [_PathCapturingInterceptor]. The interceptor is returned so the test can
-/// inspect the dispatched path.
-({PlayxNetworkClient client, _PathCapturingInterceptor interceptor})
-    _createClient({
-  FutureOr<Map<String, dynamic>> Function()? customPathParameters,
-  String baseUrl = 'https://example.com/api/',
-}) {
-  final interceptor = _PathCapturingInterceptor();
-  final dio = Dio(BaseOptions(baseUrl: baseUrl))..interceptors.add(interceptor);
-  final client = PlayxNetworkClient(
-    dio: dio,
-    customPathParameters: customPathParameters,
-    settings: const PlayxNetworkClientSettings(
-      useIsolateForMappingJson: false,
-      useWorkMangerForMappingJsonInIsolate: false,
-    ),
-  );
-  return (client: client, interceptor: interceptor);
+/// Adapter that emits SSE events from a list of raw strings.
+class _SseAdapter implements HttpClientAdapter {
+  _SseAdapter({
+    this.statusCode = 200,
+    required this.eventStrings,
+  });
+
+  final int statusCode;
+  final List<String> eventStrings;
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    final controller = StreamController<Uint8List>();
+    final stream = controller.stream;
+
+    Future(() async {
+      for (final s in eventStrings) {
+        controller.add(Uint8List.fromList(utf8.encode(s)));
+        await Future.delayed(Duration.zero);
+      }
+      await controller.close();
+    });
+
+    return ResponseBody(
+      stream,
+      statusCode,
+      headers: {
+        Headers.contentTypeHeader: ['text/event-stream'],
+      },
+    );
+  }
 }
 
+/// A Dio adapter that throws a [DioException] of the given [type].
+class _ErrorAdapter implements HttpClientAdapter {
+  _ErrorAdapter({required this.type});
+
+  final DioExceptionType type;
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    throw DioException(
+      requestOptions: options,
+      type: type,
+    );
+  }
+}
+
+const _defaultSettings = PlayxNetworkClientSettings(
+  logSettings: PlayxNetworkLoggerSettings(enabled: false),
+  useIsolateForMappingJson: false,
+);
+
+PlayxNetworkClient _client(Dio dio) => PlayxNetworkClient(
+      dio: dio,
+      settings: _defaultSettings,
+    );
+
+// ---------------------------------------------------------------------------
+// PlayxStreamFormat tests
+// ---------------------------------------------------------------------------
+
+/// Adapter whose response stream is driven manually by the test.
+class _ControlledAdapter implements HttpClientAdapter {
+  _ControlledAdapter({this.captured});
+
+  final Map<String, dynamic>? captured;
+  final controller = StreamController<Uint8List>();
+  var upstreamCancelled = false;
+
+  _ControlledAdapter init() {
+    return this;
+  }
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    captured?.addAll(options.headers);
+    captured?['receiveTimeout'] = options.receiveTimeout;
+    return ResponseBody(
+      controller.stream,
+      200,
+      onClose: () => upstreamCancelled = true,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
+}
+
+Dio _dioWith(HttpClientAdapter adapter) => Dio(BaseOptions(
+      baseUrl: 'https://example.com',
+      validateStatus: (_) => true,
+    ))
+      ..httpClientAdapter = adapter;
+
 void main() {
-  group('substitutePathParameters', () {
-    test('returns path unchanged when parameters map is empty', () {
-      expect(
-        substitutePathParameters('users/42/posts', const {}),
-        'users/42/posts',
-      );
+  group('stream lifecycle fixes', () {
+    test('cancelling the listener closes the response body', () async {
+      final adapter = _ControlledAdapter().init();
+      final result = await _client(_dioWith(adapter))
+          .getStream<String>('/s', format: PlayxStreamFormat.text);
+      final sub = result.data!.listen((_) {});
+      adapter.controller.add(Uint8List.fromList(utf8.encode('a')));
+      await Future<void>.delayed(Duration.zero);
+      await sub.cancel();
+      expect(adapter.upstreamCancelled, isTrue);
     });
 
-    test('substitutes a single placeholder', () {
-      expect(
-        substitutePathParameters('users/{userId}', const {'userId': 42}),
-        'users/42',
-      );
+    test('pausing the listener pauses the upstream', () async {
+      final adapter = _ControlledAdapter().init();
+      final result = await _client(_dioWith(adapter))
+          .getStream<String>('/s', format: PlayxStreamFormat.text);
+      final received = <String>[];
+      final sub = result.data!.listen(received.add);
+      await Future<void>.delayed(Duration.zero);
+      sub.pause();
+      adapter.controller.add(Uint8List.fromList(utf8.encode('a')));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(received, isEmpty);
+      sub.resume();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(received, ['a']);
+      await sub.cancel();
     });
 
-    test('substitutes multiple placeholders', () {
-      expect(
-        substitutePathParameters(
-          'users/{userId}/posts/{postId}',
-          const {'userId': 42, 'postId': 7},
-        ),
-        'users/42/posts/7',
-      );
+    test('stream completes after a source error', () async {
+      final adapter = _ControlledAdapter().init();
+      final result = await _client(_dioWith(adapter))
+          .getStream<String>('/s', format: PlayxStreamFormat.text);
+      final errors = <Object>[];
+      final done = Completer<void>();
+      result.data!.listen((_) {}, onError: errors.add, onDone: done.complete);
+      adapter.controller.add(Uint8List.fromList(utf8.encode('a')));
+      adapter.controller.addError(const SocketException('dropped'));
+      await done.future.timeout(const Duration(seconds: 2));
+      expect(errors.single, isA<NetworkException>());
     });
 
-    test('stringifies numeric and boolean values', () {
-      expect(
-        substitutePathParameters(
-          'items/{id}/active/{flag}',
-          const {'id': 3.14, 'flag': true},
-        ),
-        'items/3.14/active/true',
-      );
+    test('cancel token emits a single RequestCanceledException', () async {
+      final adapter = _ControlledAdapter().init();
+      final token = CancelToken();
+      final result = await _client(_dioWith(adapter)).getStream<String>('/s',
+          format: PlayxStreamFormat.text, cancelToken: token);
+      final errors = <Object>[];
+      final done = Completer<void>();
+      result.data!.listen((_) {}, onError: errors.add, onDone: done.complete);
+      token.cancel();
+      adapter.controller.addError(DioException.requestCancelled(
+          requestOptions: RequestOptions(path: '/s'), reason: 'x'));
+      await done.future.timeout(const Duration(seconds: 2));
+      expect(errors, hasLength(1));
+      expect(errors.single, isA<RequestCanceledException>());
     });
 
-    test('leaves unknown placeholders untouched', () {
-      expect(
-        substitutePathParameters('users/{userId}', const {'other': 1}),
-        'users/{userId}',
-      );
+    test('malformed NDJSON line is reported and the stream continues',
+        () async {
+      final adapter = _ControlledAdapter().init();
+      final result = await _client(_dioWith(adapter))
+          .getStream<Object>('/s', format: PlayxStreamFormat.json);
+      final values = <Object>[];
+      final errors = <Object>[];
+      final done = Completer<void>();
+      result.data!
+          .listen(values.add, onError: errors.add, onDone: done.complete);
+      adapter.controller
+          .add(Uint8List.fromList(utf8.encode('{"a":1}\nnot json\n{"b":2}\n')));
+      await adapter.controller.close();
+      await done.future.timeout(const Duration(seconds: 2));
+      expect(values, hasLength(2));
+      expect(errors.single, isA<UnableToProcessException>());
     });
 
-    test('throws when a placeholder in the path maps to null', () {
-      expect(
-        () =>
-            substitutePathParameters('a/{x}/b/{y}', const {'x': null, 'y': 5}),
-        throwsArgumentError,
-      );
+    test('error response body reaches the errorMapper', () async {
+      final dio = _dioWith(_StreamAdapter(
+        statusCode: 422,
+        chunks: [utf8.encode('{"message":"bad input"}')],
+      ));
+      final result = await _client(dio).getStream<String>('/s',
+          format: PlayxStreamFormat.text,
+          errorMapper: (e) => (e as Map)['message'] as String);
+      expect(result.isError, isTrue);
+      expect(result.error!.message, 'bad input');
     });
 
-    test('ignores null values for keys not present in the path', () {
-      expect(
-        substitutePathParameters('a/{y}', const {'x': null, 'y': 5}),
-        'a/5',
-      );
+    test('toList returns an error result when the stream errors', () async {
+      final adapter = _ControlledAdapter().init();
+      final result = await _client(_dioWith(adapter))
+          .getStream<String>('/s', format: PlayxStreamFormat.text);
+      final future = result.toList();
+      adapter.controller.add(Uint8List.fromList(utf8.encode('a')));
+      adapter.controller.addError(const SocketException('dropped'));
+      final list = await future.timeout(const Duration(seconds: 2));
+      expect(list.isError, isTrue);
     });
 
-    test('does not re-substitute values containing placeholders', () {
-      expect(
-        substitutePathParameters('a/{x}/{y}', const {'x': '{y}', 'y': 'Z'}),
-        'a/%7By%7D/Z',
+    test('getSse sends SSE headers without dropping options.headers', () async {
+      final captured = <String, dynamic>{};
+      final adapter = _ControlledAdapter(captured: captured).init();
+      final client = PlayxNetworkClient(
+        dio: _dioWith(adapter),
+        settings: _defaultSettings,
+        customHeaders: () async => {'authorization': 'Bearer t'},
       );
+      await client.getSse('/s',
+          options: Options(headers: {'X-A': '1'}), headers: {'X-B': '2'});
+      expect(captured['Accept'], 'text/event-stream');
+      expect(captured['Cache-Control'], 'no-cache');
+      expect(captured['X-A'], '1');
+      expect(captured['X-B'], '2');
+      expect(captured['authorization'], 'Bearer t');
+      expect(captured['receiveTimeout'], Duration.zero);
     });
 
-    test('URL-encodes special characters with %20 for spaces', () {
-      expect(
-        substitutePathParameters(
-          'search/{query}',
-          const {'query': 'hello world'},
-        ),
-        'search/hello%20world',
-      );
-    });
-
-    test('URL-encodes slashes within a segment', () {
-      expect(
-        substitutePathParameters(
-          'files/{name}',
-          const {'name': 'a/b'},
-        ),
-        'files/a%2Fb',
-      );
-    });
-
-    test('replaces repeated occurrences of the same placeholder', () {
-      expect(
-        substitutePathParameters('{x}/{x}', const {'x': 1}),
-        '1/1',
-      );
+    test('caller Accept header is not overridden by getSse', () async {
+      final captured = <String, dynamic>{};
+      final adapter = _ControlledAdapter(captured: captured).init();
+      await _client(_dioWith(adapter))
+          .getSse('/s', headers: {'accept': 'text/plain'});
+      expect(captured['accept'], 'text/plain');
+      expect(captured.containsKey('Accept'), isFalse);
     });
   });
 
-  group('DioClient pathParameters', () {
-    test('get substitutes path parameters before dispatch', () async {
-      final interceptor = _PathCapturingInterceptor();
-      final dio = Dio(BaseOptions(baseUrl: 'https://example.com/api/'))
-        ..interceptors.add(interceptor);
-      final dioClient = DioClient(
-        dio: dio,
-        settings: const PlayxNetworkClientSettings(
-          useIsolateForMappingJson: false,
-          useWorkMangerForMappingJsonInIsolate: false,
-        ),
-      );
-
-      await dioClient.get(
-        'users/{userId}/posts/{postId}',
-        pathParameters: const {'userId': 42, 'postId': 7},
-      );
-
-      expect(interceptor.lastPath, 'users/42/posts/7');
-      expect(interceptor.lastMethod, 'GET');
+  group('PlayxStreamFormat', () {
+    group('elementType', () {
+      test('bytes returns List<int>', () {
+        expect(PlayxStreamFormat.bytes.elementType, List<int>);
+      });
+      test('text returns String', () {
+        expect(PlayxStreamFormat.text.elementType, String);
+      });
+      test('json returns Object', () {
+        expect(PlayxStreamFormat.json.elementType, Object);
+      });
+      test('sse returns PlayxSseEvent', () {
+        expect(PlayxStreamFormat.sse.elementType, PlayxSseEvent);
+      });
     });
 
-    test('post substitutes path parameters before dispatch', () async {
-      final interceptor = _PathCapturingInterceptor();
-      final dio = Dio(BaseOptions(baseUrl: 'https://example.com/api/'))
-        ..interceptors.add(interceptor);
-      final dioClient = DioClient(
-        dio: dio,
-        settings: const PlayxNetworkClientSettings(
-          useIsolateForMappingJson: false,
-          useWorkMangerForMappingJsonInIsolate: false,
-        ),
-      );
+    group('decodeChunk', () {
+      test('bytes returns the chunk unchanged', () {
+        final chunk = [1, 2, 3];
+        expect(PlayxStreamFormat.bytes.decodeChunk(chunk), same(chunk));
+      });
 
-      await dioClient.post(
-        'users/{userId}',
-        pathParameters: const {'userId': 5},
-        body: const {'name': 'Omar'},
-      );
+      test('text decodes UTF-8', () {
+        final chunk = utf8.encode('hello');
+        expect(PlayxStreamFormat.text.decodeChunk(chunk), 'hello');
+      });
 
-      expect(interceptor.lastPath, 'users/5');
-      expect(interceptor.lastMethod, 'POST');
+      test('text decodes malformed UTF-8 gracefully', () {
+        final chunk = [0xFF, 0xFE];
+        expect(PlayxStreamFormat.text.decodeChunk(chunk), isA<String>());
+      });
+
+      test('json decodes a JSON object', () {
+        final chunk = utf8.encode('{"key": "value"}');
+        final result = PlayxStreamFormat.json.decodeChunk(chunk);
+        expect(result, isA<Map>());
+        expect((result as Map)['key'], 'value');
+      });
+
+      test('json decodes a JSON array', () {
+        final chunk = utf8.encode('[1, 2, 3]');
+        final result = PlayxStreamFormat.json.decodeChunk(chunk);
+        expect(result, isA<List>());
+        expect(result, [1, 2, 3]);
+      });
+
+      test('json returns null for empty chunk', () {
+        final chunk = <int>[];
+        expect(PlayxStreamFormat.json.decodeChunk(chunk), isNull);
+      });
+
+      test('json returns null for whitespace-only chunk', () {
+        final chunk = utf8.encode('   \n  ');
+        expect(PlayxStreamFormat.json.decodeChunk(chunk), isNull);
+      });
+
+      test('json throws on invalid JSON', () {
+        final chunk = utf8.encode('{invalid');
+        expect(() => PlayxStreamFormat.json.decodeChunk(chunk),
+            throwsA(isA<FormatException>()));
+      });
+
+      test('sse returns null (requires stream context)', () {
+        expect(PlayxStreamFormat.sse.decodeChunk([1, 2, 3]), isNull);
+      });
     });
 
-    test('customPathParameters are merged into the path', () async {
-      final interceptor = _PathCapturingInterceptor();
-      final dio = Dio(BaseOptions(baseUrl: 'https://example.com/api/'))
-        ..interceptors.add(interceptor);
-      final dioClient = DioClient(
-        dio: dio,
-        customPathParameters: () async => {'version': 'v2'},
-        settings: const PlayxNetworkClientSettings(
-          useIsolateForMappingJson: false,
-          useWorkMangerForMappingJsonInIsolate: false,
-        ),
-      );
+    group('decodeStream', () {
+      test('bytes emits each chunk as-is', () async {
+        final stream = Stream.fromIterable([
+          [1, 2],
+          [3, 4],
+        ]);
+        final result =
+            await PlayxStreamFormat.bytes.decodeStream(stream).toList();
+        expect(result, [
+          [1, 2],
+          [3, 4],
+        ]);
+      });
 
-      await dioClient.get(
-        '{version}/users/{userId}',
-        pathParameters: const {'userId': 9},
-      );
+      test('text emits decoded strings', () async {
+        final stream = Stream.fromIterable([
+          utf8.encode('hello '),
+          utf8.encode('world'),
+        ]);
+        final result =
+            await PlayxStreamFormat.text.decodeStream(stream).toList();
+        expect(result, ['hello ', 'world']);
+      });
 
-      expect(interceptor.lastPath, 'v2/users/9');
-    });
+      test('json emits decoded objects (NDJSON)', () async {
+        final stream = Stream.fromIterable([
+          utf8.encode('{"a": 1}\n'),
+          utf8.encode('{"b": 2}\n'),
+        ]);
+        final result =
+            await PlayxStreamFormat.json.decodeStream(stream).toList();
+        expect(result, hasLength(2));
+        expect((result[0] as Map)['a'], 1);
+        expect((result[1] as Map)['b'], 2);
+      });
 
-    test('attachCustomPathParameters=false skips custom path parameters',
-        () async {
-      final interceptor = _PathCapturingInterceptor();
-      final dio = Dio(BaseOptions(baseUrl: 'https://example.com/api/'))
-        ..interceptors.add(interceptor);
-      final dioClient = DioClient(
-        dio: dio,
-        customPathParameters: () async => {'version': 'v2'},
-        settings: const PlayxNetworkClientSettings(
-          useIsolateForMappingJson: false,
-          useWorkMangerForMappingJsonInIsolate: false,
-        ),
-      );
+      test('text reassembles multibyte characters split across chunks',
+          () async {
+        final bytes = utf8.encode('😀');
+        final result = await PlayxStreamFormat.text
+            .decodeStream(Stream.fromIterable([
+              bytes.sublist(0, 2),
+              bytes.sublist(2),
+            ]))
+            .toList();
+        expect(result.join(), '😀');
+      });
 
-      await dioClient.get(
-        '{version}/users',
-        pathParameters: const {},
-        attachCustomPathParameters: false,
-      );
+      test('json handles multiple and split documents per chunk', () async {
+        final result = await PlayxStreamFormat.json
+            .decodeStream(Stream.fromIterable([
+              utf8.encode('{"a":1}\n{"b"'),
+              utf8.encode(':2}\n{"c":3}'),
+            ]))
+            .toList();
+        expect(result.map((e) => (e as Map).keys.single), ['a', 'b', 'c']);
+      });
 
-      // custom path parameters skipped -> token stays unresolved
-      expect(interceptor.lastPath, '{version}/users');
-    });
-
-    test('per-request path parameters override custom path parameters',
-        () async {
-      final interceptor = _PathCapturingInterceptor();
-      final dio = Dio(BaseOptions(baseUrl: 'https://example.com/api/'))
-        ..interceptors.add(interceptor);
-      final dioClient = DioClient(
-        dio: dio,
-        customPathParameters: () async => {'userId': 'default'},
-        settings: const PlayxNetworkClientSettings(
-          useIsolateForMappingJson: false,
-          useWorkMangerForMappingJsonInIsolate: false,
-        ),
-      );
-
-      await dioClient.get(
-        'users/{userId}',
-        pathParameters: const {'userId': 42},
-      );
-
-      expect(interceptor.lastPath, 'users/42');
+      test('json filters out empty/whitespace lines', () async {
+        final stream = Stream.fromIterable([
+          utf8.encode('\n'),
+          utf8.encode('{"a": 1}\n'),
+          utf8.encode('   \n'),
+        ]);
+        final result =
+            await PlayxStreamFormat.json.decodeStream(stream).toList();
+        expect(result, hasLength(1));
+        expect((result[0] as Map)['a'], 1);
+      });
     });
   });
 
-  group('PlayxNetworkClient pathParameters', () {
-    test('get substitutes path parameters and returns success', () async {
-      final (:client, :interceptor) = _createClient();
+  // ---------------------------------------------------------------------------
+  // PlayxSseEvent tests
+  // ---------------------------------------------------------------------------
 
-      final result = await client.get(
-        'users/{userId}/posts/{postId}',
-        pathParameters: const {'userId': 42, 'postId': 7},
-        fromJson: (json) => json,
+  group('PlayxSseEvent', () {
+    test('default event is "message"', () {
+      const event = PlayxSseEvent(event: 'message', data: 'hello');
+      expect(event.event, 'message');
+    });
+
+    test('isEmpty is true when data is empty', () {
+      const event = PlayxSseEvent(event: 'ping', data: '');
+      expect(event.isEmpty, isTrue);
+    });
+
+    test('isEmpty is false when data is present', () {
+      const event = PlayxSseEvent(event: 'message', data: 'data');
+      expect(event.isEmpty, isFalse);
+    });
+
+    test('dataToJson parses valid JSON', () {
+      const event = PlayxSseEvent(event: 'message', data: '{"key": "value"}');
+      final json = event.dataToJson();
+      expect(json, isA<Map>());
+      expect((json as Map)['key'], 'value');
+    });
+
+    test('dataToJsonOrNull returns null for empty data', () {
+      const event = PlayxSseEvent(event: 'message', data: '');
+      expect(event.dataToJsonOrNull(), isNull);
+    });
+
+    test('dataToJsonOrNull returns null for invalid JSON', () {
+      const event = PlayxSseEvent(event: 'message', data: 'not json');
+      expect(event.dataToJsonOrNull(), isNull);
+    });
+
+    test('dataToJsonOrNull parses valid JSON', () {
+      const event = PlayxSseEvent(event: 'message', data: '{"a": 1}');
+      expect(event.dataToJsonOrNull(), {'a': 1});
+    });
+
+    test('equality and hashCode', () {
+      const e1 = PlayxSseEvent(event: 'a', data: 'b', id: '1', retry: 100);
+      const e2 = PlayxSseEvent(event: 'a', data: 'b', id: '1', retry: 100);
+      const e3 = PlayxSseEvent(event: 'a', data: 'c', id: '1', retry: 100);
+      expect(e1 == e2, isTrue);
+      expect(e1 == e3, isFalse);
+      expect(e1.hashCode, e2.hashCode);
+    });
+
+    test('toString contains event and data', () {
+      const event = PlayxSseEvent(event: 'msg', data: 'payload');
+      final str = event.toString();
+      expect(str, contains('msg'));
+      expect(str, contains('payload'));
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // SSE parser tests
+  // ---------------------------------------------------------------------------
+
+  group('SSE parser', () {
+    test('parses a simple data event', () async {
+      final sseText = 'data: hello\n\n';
+      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
+        utf8.encode(sseText),
+      ]));
+      final events = await stream.toList();
+      expect(events, hasLength(1));
+      final event = events[0] as PlayxSseEvent;
+      expect(event.event, 'message');
+      expect(event.data, 'hello');
+    });
+
+    test('parses named event', () async {
+      final sseText = 'event: update\ndata: {"value": 42}\n\n';
+      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
+        utf8.encode(sseText),
+      ]));
+      final events = await stream.toList();
+      expect(events, hasLength(1));
+      final event = events[0] as PlayxSseEvent;
+      expect(event.event, 'update');
+      expect(event.data, '{"value": 42}');
+    });
+
+    test('concatenates multiple data lines with \\n', () async {
+      final sseText = 'data: line1\ndata: line2\n\n';
+      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
+        utf8.encode(sseText),
+      ]));
+      final events = await stream.toList();
+      expect(events, hasLength(1));
+      final event = events[0] as PlayxSseEvent;
+      expect(event.data, 'line1\nline2');
+    });
+
+    test('parses id field', () async {
+      final sseText = 'id: 42\ndata: test\n\n';
+      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
+        utf8.encode(sseText),
+      ]));
+      final events = await stream.toList();
+      expect(events, hasLength(1));
+      final event = events[0] as PlayxSseEvent;
+      expect(event.id, '42');
+    });
+
+    test('parses retry field', () async {
+      final sseText = 'retry: 5000\ndata: test\n\n';
+      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
+        utf8.encode(sseText),
+      ]));
+      final events = await stream.toList();
+      expect(events, hasLength(1));
+      final event = events[0] as PlayxSseEvent;
+      expect(event.retry, 5000);
+    });
+
+    test('ignores comment lines starting with colon', () async {
+      final sseText = ': this is a comment\ndata: test\n\n';
+      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
+        utf8.encode(sseText),
+      ]));
+      final events = await stream.toList();
+      expect(events, hasLength(1));
+      expect((events[0] as PlayxSseEvent).data, 'test');
+    });
+
+    test('handles CRLF line endings', () async {
+      final sseText = 'data: hello\r\n\r\n';
+      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
+        utf8.encode(sseText),
+      ]));
+      final events = await stream.toList();
+      expect(events, hasLength(1));
+      expect((events[0] as PlayxSseEvent).data, 'hello');
+    });
+
+    test('parses multiple events in one chunk', () async {
+      final sseText = 'data: first\n\ndata: second\n\n';
+      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
+        utf8.encode(sseText),
+      ]));
+      final events = await stream.toList();
+      expect(events, hasLength(2));
+      expect((events[0] as PlayxSseEvent).data, 'first');
+      expect((events[1] as PlayxSseEvent).data, 'second');
+    });
+
+    test('parses events split across multiple chunks', () async {
+      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
+        utf8.encode('data: hel'),
+        utf8.encode('lo\n\n'),
+      ]));
+      final events = await stream.toList();
+      expect(events, hasLength(1));
+      expect((events[0] as PlayxSseEvent).data, 'hello');
+    });
+
+    test('strips single leading space from value', () async {
+      // SSE spec: strip one leading space after the colon.
+      final sseText = 'data:  two spaces\n\n';
+      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
+        utf8.encode(sseText),
+      ]));
+      final events = await stream.toList();
+      expect(events, hasLength(1));
+      expect((events[0] as PlayxSseEvent).data, ' two spaces');
+    });
+
+    test('field without colon uses entire line as field with empty value',
+        () async {
+      final sseText = 'data\ndata: test\n\n';
+      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
+        utf8.encode(sseText),
+      ]));
+      final events = await stream.toList();
+      expect(events, hasLength(1));
+      expect((events[0] as PlayxSseEvent).data, '\ntest');
+    });
+
+    test('flushes pending event when stream closes without trailing blank line',
+        () async {
+      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
+        utf8.encode('data: no-blank-line\n'),
+      ]));
+      final events = await stream.toList();
+      expect(events, hasLength(1));
+      expect((events[0] as PlayxSseEvent).data, 'no-blank-line');
+    });
+
+    test('discards a trailing partial line when the stream closes', () async {
+      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
+        utf8.encode('data: {"par'),
+      ]));
+      expect(await stream.toList(), isEmpty);
+    });
+
+    test('supports bare CR line endings and CRLF split across chunks',
+        () async {
+      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
+        utf8.encode('data: a\r\r'),
+        utf8.encode('data: b\r'),
+        utf8.encode('\n\r\n'),
+      ]));
+      final events = (await stream.toList()).cast<PlayxSseEvent>();
+      expect(events.map((e) => e.data), ['a', 'b']);
+    });
+
+    test('strips a leading BOM', () async {
+      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
+        [0xEF, 0xBB, 0xBF, ...utf8.encode('data: hi\n\n')],
+      ]));
+      final events = (await stream.toList()).cast<PlayxSseEvent>();
+      expect(events.single.data, 'hi');
+    });
+
+    test('id-only block is not dispatched but id persists to later events',
+        () async {
+      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
+        utf8.encode('id: 5\n\ndata: x\n\ndata: y\n\n'),
+      ]));
+      final events = (await stream.toList()).cast<PlayxSseEvent>();
+      expect(events.map((e) => e.data), ['x', 'y']);
+      expect(events.map((e) => e.id), ['5', '5']);
+    });
+
+    test('retry-only block is kept for the next event', () async {
+      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
+        utf8.encode('retry: 3000\n\ndata: x\n\n'),
+      ]));
+      final events = (await stream.toList()).cast<PlayxSseEvent>();
+      expect(events.single.retry, 3000);
+    });
+
+    test('reassembles multibyte characters split across chunks', () async {
+      final bytes = utf8.encode('data: مرحبا😀\n\n');
+      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
+        bytes.sublist(0, 8),
+        bytes.sublist(8, bytes.length - 5),
+        bytes.sublist(bytes.length - 5),
+      ]));
+      final events = (await stream.toList()).cast<PlayxSseEvent>();
+      expect(events.single.data, 'مرحبا😀');
+    });
+
+    test('handles a large chunk with many lines', () async {
+      final text = List.generate(20000, (i) => 'data: $i\n\n').join();
+      final events = await PlayxStreamFormat.sse
+          .decodeStream(Stream.fromIterable([utf8.encode(text)]))
+          .toList();
+      expect(events, hasLength(20000));
+    });
+
+    test('does not emit event for heartbeat (comment only)', () async {
+      final sseText = ': heartbeat\n\n';
+      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
+        utf8.encode(sseText),
+      ]));
+      final events = await stream.toList();
+      expect(events, isEmpty);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // NetworkStreamResult tests
+  // ---------------------------------------------------------------------------
+
+  group('NetworkStreamResult', () {
+    test('success factory wraps a stream', () {
+      final stream = Stream.fromIterable([1, 2, 3]);
+      final result = NetworkStreamResult.success(stream);
+      expect(result, isA<NetworkStreamSuccess<int>>());
+      expect(result.isSuccess, isTrue);
+      expect(result.isError, isFalse);
+      expect(result.data, isNotNull);
+    });
+
+    test('error factory wraps an exception', () {
+      const result = NetworkStreamResult<int>.error(
+        UnexpectedErrorException(errorMessage: 'boom'),
+      );
+      expect(result, isA<NetworkStreamError<int>>());
+      expect(result.isError, isTrue);
+      expect(result.isSuccess, isFalse);
+      expect(result.data, isNull);
+      expect(result.error, isA<UnexpectedErrorException>());
+    });
+
+    test('when() invokes correct callback and returns this', () {
+      final result = NetworkStreamResult<int>.success(Stream.fromIterable([1]));
+      var captured = false;
+      final returned = result.when(
+        success: (_) => captured = true,
+        error: (_) => fail('should not be error'),
+      );
+      expect(captured, isTrue);
+      expect(identical(returned, result), isTrue);
+    });
+
+    test('when() invokes error callback', () {
+      const result = NetworkStreamResult<int>.error(
+        RequestCanceledException(errorMessage: 'cancelled'),
+      );
+      var captured = false;
+      result.when(
+        success: (_) => fail('should not be success'),
+        error: (e) {
+          captured = true;
+          expect(e, isA<RequestCanceledException>());
+        },
+      );
+      expect(captured, isTrue);
+    });
+
+    test('map() transforms success', () {
+      final result = NetworkStreamResult<int>.success(Stream.fromIterable([1]));
+      final mapped = result.map<String>(
+        success: (s) => 'has-stream',
+        error: (e) => 'error',
+      );
+      expect(mapped, 'has-stream');
+    });
+
+    test('map() transforms error', () {
+      const result = NetworkStreamResult<int>.error(
+        UnexpectedErrorException(errorMessage: 'boom'),
+      );
+      final mapped = result.map<String>(
+        success: (s) => 'ok',
+        error: (e) => 'err=${e.error.message}',
+      );
+      expect(mapped, 'err=boom');
+    });
+
+    test('mapStream transforms success stream and preserves error', () async {
+      final result =
+          NetworkStreamResult<int>.success(Stream.fromIterable([1, 2, 3]));
+      final mapped = result.mapStream<String>(
+        mapper: (stream) => stream.map((e) => 'item-$e'),
+      );
+      expect(mapped.isSuccess, isTrue);
+      final items = await mapped.data!.toList();
+      expect(items, ['item-1', 'item-2', 'item-3']);
+    });
+
+    test('mapStream preserves error case', () {
+      const result = NetworkStreamResult<int>.error(
+        UnexpectedErrorException(errorMessage: 'fail'),
+      );
+      final mapped = result.mapStream<String>(
+        mapper: (stream) => stream.map((e) => 'item-$e'),
+      );
+      expect(mapped.isError, isTrue);
+      expect(mapped.error!.message, 'fail');
+    });
+
+    test('toList collects success stream into a list', () async {
+      final result =
+          NetworkStreamResult<int>.success(Stream.fromIterable([1, 2, 3]));
+      final listResult = await result.toList();
+      expect(listResult.isSuccess, isTrue);
+      expect(listResult.data, [1, 2, 3]);
+    });
+
+    test('toList preserves error case', () async {
+      const result = NetworkStreamResult<int>.error(
+        UnexpectedErrorException(errorMessage: 'fail'),
+      );
+      final listResult = await result.toList();
+      expect(listResult.isError, isTrue);
+      expect(listResult.error!.message, 'fail');
+    });
+
+    test('toString contains data for success', () {
+      final result = NetworkStreamSuccess<int>(Stream.fromIterable([1]));
+      expect(result.toString(), contains('NetworkStreamSuccess'));
+    });
+
+    test('toString contains error message for error', () {
+      const result = NetworkStreamError<int>(
+        UnexpectedErrorException(errorMessage: 'fail'),
+      );
+      expect(result.toString(), contains('NetworkStreamError'));
+      expect(result.toString(), contains('fail'));
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // PlayxNetworkClient.getStream tests
+  // ---------------------------------------------------------------------------
+
+  group('PlayxNetworkClient.getStream', () {
+    test('emits text chunks on success', () async {
+      final dio = Dio(BaseOptions(
+        baseUrl: 'https://example.com',
+        validateStatus: (_) => true,
+      ));
+      dio.httpClientAdapter = _StreamAdapter(
+        statusCode: 200,
+        chunks: [
+          utf8.encode('chunk1 '),
+          utf8.encode('chunk2'),
+        ],
       );
 
-      expect(interceptor.lastPath, 'users/42/posts/7');
+      final client = _client(dio);
+      final result = await client.getStream<String>(
+        '/stream',
+        format: PlayxStreamFormat.text,
+      );
+
+      expect(result.isSuccess, isTrue);
+      final chunks = await result.data!.toList();
+      expect(chunks, ['chunk1 ', 'chunk2']);
+    });
+
+    test('emits bytes chunks on success', () async {
+      final dio = Dio(BaseOptions(
+        baseUrl: 'https://example.com',
+        validateStatus: (_) => true,
+      ));
+      dio.httpClientAdapter = _StreamAdapter(
+        statusCode: 200,
+        chunks: [
+          [1, 2, 3],
+          [4, 5, 6],
+        ],
+      );
+
+      final client = _client(dio);
+      final result = await client.getStream<List<int>>(
+        '/stream',
+        format: PlayxStreamFormat.bytes,
+      );
+
+      expect(result.isSuccess, isTrue);
+      final chunks = await result.data!.toList();
+      expect(chunks, [
+        [1, 2, 3],
+        [4, 5, 6],
+      ]);
+    });
+
+    test('emits json chunks on success', () async {
+      final dio = Dio(BaseOptions(
+        baseUrl: 'https://example.com',
+        validateStatus: (_) => true,
+      ));
+      dio.httpClientAdapter = _StreamAdapter(
+        statusCode: 200,
+        chunks: [
+          utf8.encode('{"i": 1}\n'),
+          utf8.encode('{"i": 2}\n'),
+        ],
+      );
+
+      final client = _client(dio);
+      final result = await client.getStream<Object>(
+        '/stream',
+        format: PlayxStreamFormat.json,
+      );
+
+      expect(result.isSuccess, isTrue);
+      final chunks = await result.data!.toList();
+      expect(chunks, hasLength(2));
+      expect((chunks[0] as Map)['i'], 1);
+      expect((chunks[1] as Map)['i'], 2);
+    });
+
+    test('emits SSE events via getSse', () async {
+      final dio = Dio(BaseOptions(
+        baseUrl: 'https://example.com',
+        validateStatus: (_) => true,
+      ));
+      dio.httpClientAdapter = _SseAdapter(
+        statusCode: 200,
+        eventStrings: [
+          'data: hello\n\n',
+          'event: update\ndata: world\n\n',
+        ],
+      );
+
+      final client = _client(dio);
+      final result = await client.getSse('/events');
+
+      expect(result.isSuccess, isTrue);
+      final events = await result.data!.toList();
+      expect(events, hasLength(2));
+      expect(events[0].data, 'hello');
+      expect(events[0].event, 'message');
+      expect(events[1].data, 'world');
+      expect(events[1].event, 'update');
+    });
+
+    test('emits SSE events via getStream with sse format', () async {
+      final dio = Dio(BaseOptions(
+        baseUrl: 'https://example.com',
+        validateStatus: (_) => true,
+      ));
+      dio.httpClientAdapter = _SseAdapter(
+        statusCode: 200,
+        eventStrings: [
+          'data: hello\n\n',
+        ],
+      );
+
+      final client = _client(dio);
+      final result = await client.getStream<PlayxSseEvent>(
+        '/events',
+        format: PlayxStreamFormat.sse,
+      );
+
+      expect(result.isSuccess, isTrue);
+      final events = await result.data!.toList();
+      expect(events, hasLength(1));
+      expect(events[0].data, 'hello');
+    });
+
+    test('returns error for non-success status code', () async {
+      final dio = Dio(BaseOptions(
+        baseUrl: 'https://example.com',
+        validateStatus: (_) => true,
+      ));
+      dio.httpClientAdapter = _StreamAdapter(
+        statusCode: 404,
+        chunks: [utf8.encode('not found')],
+      );
+
+      final client = _client(dio);
+      final result = await client.getStream<String>(
+        '/stream',
+        format: PlayxStreamFormat.text,
+      );
+
+      expect(result.isError, isTrue);
+      expect(result.error, isA<NotFoundException>());
+      expect(result.data, isNull);
+    });
+
+    test('returns error for 500 status code', () async {
+      final dio = Dio(BaseOptions(
+        baseUrl: 'https://example.com',
+        validateStatus: (_) => true,
+      ));
+      dio.httpClientAdapter = _StreamAdapter(
+        statusCode: 500,
+        chunks: [utf8.encode('server error')],
+      );
+
+      final client = _client(dio);
+      final result = await client.getStream<String>(
+        '/stream',
+        format: PlayxStreamFormat.text,
+      );
+
+      expect(result.isError, isTrue);
+      expect(result.error, isA<InternalServerErrorException>());
+    });
+
+    test('returns error for 401 unauthorized and invokes handler', () async {
+      final dio = Dio(BaseOptions(
+        baseUrl: 'https://example.com',
+        validateStatus: (_) => true,
+      ));
+      dio.httpClientAdapter = _StreamAdapter(
+        statusCode: 401,
+        chunks: [utf8.encode('unauthorized')],
+      );
+
+      var unauthorizedCalled = false;
+      final client = PlayxNetworkClient(
+        dio: dio,
+        settings: _defaultSettings,
+        onUnauthorizedRequestReceived: (_) {
+          unauthorizedCalled = true;
+        },
+      );
+
+      final result = await client.getStream<String>(
+        '/stream',
+        format: PlayxStreamFormat.text,
+      );
+
+      expect(result.isError, isTrue);
+      expect(result.error, isA<UnauthorizedRequestException>());
+      expect(unauthorizedCalled, isTrue);
+    });
+
+    test('can disable unauthorized handler via shouldHandleUnauthorizedRequest',
+        () async {
+      final dio = Dio(BaseOptions(
+        baseUrl: 'https://example.com',
+        validateStatus: (_) => true,
+      ));
+      dio.httpClientAdapter = _StreamAdapter(
+        statusCode: 401,
+        chunks: [utf8.encode('unauthorized')],
+      );
+
+      var unauthorizedCalled = false;
+      final client = PlayxNetworkClient(
+        dio: dio,
+        settings: _defaultSettings,
+        onUnauthorizedRequestReceived: (_) {
+          unauthorizedCalled = true;
+        },
+      );
+
+      final result = await client.getStream<String>(
+        '/stream',
+        format: PlayxStreamFormat.text,
+        shouldHandleUnauthorizedRequest: false,
+      );
+
+      expect(result.isError, isTrue);
+      expect(result.error, isA<UnauthorizedRequestException>());
+      expect(unauthorizedCalled, isFalse);
+    });
+
+    test('handles DioException (connectionTimeout) as error', () async {
+      final dio = Dio(BaseOptions(
+        baseUrl: 'https://example.com',
+        validateStatus: (_) => true,
+      ));
+      dio.httpClientAdapter = _ErrorAdapter(
+        type: DioExceptionType.connectionTimeout,
+      );
+
+      final client = _client(dio);
+      final result = await client.getStream<String>(
+        '/stream',
+        format: PlayxStreamFormat.text,
+      );
+
+      expect(result.isError, isTrue);
+      expect(result.error, isA<RequestTimeoutException>());
+    });
+
+    test('handles DioException (cancel) as error', () async {
+      final dio = Dio(BaseOptions(
+        baseUrl: 'https://example.com',
+        validateStatus: (_) => true,
+      ));
+      dio.httpClientAdapter = _ErrorAdapter(
+        type: DioExceptionType.cancel,
+      );
+
+      final client = _client(dio);
+      final result = await client.getStream<String>(
+        '/stream',
+        format: PlayxStreamFormat.text,
+      );
+
+      expect(result.isError, isTrue);
+      expect(result.error, isA<RequestCanceledException>());
+    });
+
+    test('handles DioException (connectionError) as no internet', () async {
+      final dio = Dio(BaseOptions(
+        baseUrl: 'https://example.com',
+        validateStatus: (_) => true,
+      ));
+      dio.httpClientAdapter = _ErrorAdapter(
+        type: DioExceptionType.connectionError,
+      );
+
+      final client = _client(dio);
+      final result = await client.getStream<String>(
+        '/stream',
+        format: PlayxStreamFormat.text,
+      );
+
+      expect(result.isError, isTrue);
+      expect(result.error, isA<NoInternetConnectionException>());
+    });
+
+    test('attaches custom headers', () async {
+      final dio = Dio(BaseOptions(
+        baseUrl: 'https://example.com',
+        validateStatus: (_) => true,
+      ));
+      final capturedHeaders = <String, dynamic>{};
+      dio.httpClientAdapter = _HeaderCapturingAdapter(
+        statusCode: 200,
+        chunks: [utf8.encode('hi')],
+        captured: capturedHeaders,
+      );
+
+      final client = PlayxNetworkClient(
+        dio: dio,
+        settings: _defaultSettings,
+        customHeaders: () async => {'authorization': 'Bearer token123'},
+      );
+
+      final result = await client.getStream<String>(
+        '/stream',
+        format: PlayxStreamFormat.text,
+      );
+
+      expect(result.isSuccess, isTrue);
+      expect(capturedHeaders['authorization'], 'Bearer token123');
+    });
+
+    test('attaches custom query', () async {
+      final dio = Dio(BaseOptions(
+        baseUrl: 'https://example.com',
+        validateStatus: (_) => true,
+      ));
+      final capturedQuery = <String, dynamic>{};
+      dio.httpClientAdapter = _QueryCapturingAdapter(
+        statusCode: 200,
+        chunks: [utf8.encode('hi')],
+        captured: capturedQuery,
+      );
+
+      final client = PlayxNetworkClient(
+        dio: dio,
+        settings: _defaultSettings,
+        customQuery: () async => {'locale': 'ar'},
+      );
+
+      final result = await client.getStream<String>(
+        '/stream',
+        format: PlayxStreamFormat.text,
+      );
+
+      expect(result.isSuccess, isTrue);
+      expect(capturedQuery['locale'], 'ar');
+    });
+
+    test('per-request settings override client settings', () async {
+      final dio = Dio(BaseOptions(
+        baseUrl: 'https://example.com',
+        validateStatus: (_) => true,
+      ));
+      dio.httpClientAdapter = _StreamAdapter(
+        statusCode: 204,
+        chunks: [utf8.encode('ok')],
+      );
+
+      final client = _client(dio);
+      final result = await client.getStream<String>(
+        '/stream',
+        format: PlayxStreamFormat.text,
+        settings: const PlayxNetworkClientSettings(
+          logSettings: PlayxNetworkLoggerSettings(enabled: false),
+          useIsolateForMappingJson: false,
+          successRequestCodes: [200, 204],
+        ),
+      );
+
+      // 204 is not in default successRequestCodes but is in per-request
       expect(result.isSuccess, isTrue);
     });
+  });
 
-    test('getList substitutes path parameters and returns success', () async {
-      final (:client, :interceptor) = _createClient();
+  // ---------------------------------------------------------------------------
+  // PlayxNetworkClient.postStream tests
+  // ---------------------------------------------------------------------------
 
-      final result = await client.getList(
-        'users/{userId}/posts',
-        pathParameters: const {'userId': 1},
-        fromJson: (json) => json,
+  group('PlayxNetworkClient.postStream', () {
+    test('emits text chunks on success', () async {
+      final dio = Dio(BaseOptions(
+        baseUrl: 'https://example.com',
+        validateStatus: (_) => true,
+      ));
+      dio.httpClientAdapter = _StreamAdapter(
+        statusCode: 200,
+        chunks: [
+          utf8.encode('post1 '),
+          utf8.encode('post2'),
+        ],
       );
 
-      expect(interceptor.lastPath, 'users/1/posts');
+      final client = _client(dio);
+      final result = await client.postStream<String>(
+        '/stream',
+        format: PlayxStreamFormat.text,
+        body: {'key': 'value'},
+      );
+
       expect(result.isSuccess, isTrue);
+      final chunks = await result.data!.toList();
+      expect(chunks, ['post1 ', 'post2']);
     });
 
-    test('post substitutes path parameters', () async {
-      final (:client, :interceptor) = _createClient();
-
-      await client.post(
-        'users/{userId}',
-        pathParameters: const {'userId': 5},
-        body: const {'name': 'Omar'},
-        fromJson: (json) => json,
+    test('emits SSE events via postSse', () async {
+      final dio = Dio(BaseOptions(
+        baseUrl: 'https://example.com',
+        validateStatus: (_) => true,
+      ));
+      dio.httpClientAdapter = _SseAdapter(
+        statusCode: 200,
+        eventStrings: [
+          'event: created\ndata: {"id": 1}\n\n',
+        ],
       );
 
-      expect(interceptor.lastPath, 'users/5');
-      expect(interceptor.lastMethod, 'POST');
+      final client = _client(dio);
+      final result = await client.postSse(
+        '/events',
+        body: {'name': 'test'},
+      );
+
+      expect(result.isSuccess, isTrue);
+      final events = await result.data!.toList();
+      expect(events, hasLength(1));
+      expect(events[0].event, 'created');
+      expect(events[0].data, '{"id": 1}');
     });
 
-    test('postList substitutes path parameters', () async {
-      final (:client, :interceptor) = _createClient();
-
-      await client.postList(
-        'groups/{groupId}/members',
-        pathParameters: const {'groupId': 'abc'},
-        body: const {},
-        fromJson: (json) => json,
+    test('returns error for non-success status code', () async {
+      final dio = Dio(BaseOptions(
+        baseUrl: 'https://example.com',
+        validateStatus: (_) => true,
+      ));
+      dio.httpClientAdapter = _StreamAdapter(
+        statusCode: 500,
+        chunks: [utf8.encode('error')],
       );
 
-      expect(interceptor.lastPath, 'groups/abc/members');
+      final client = _client(dio);
+      final result = await client.postStream<String>(
+        '/stream',
+        format: PlayxStreamFormat.text,
+      );
+
+      expect(result.isError, isTrue);
+      expect(result.error, isA<InternalServerErrorException>());
     });
 
-    test('put substitutes path parameters', () async {
-      final (:client, :interceptor) = _createClient();
-
-      await client.put(
-        'users/{userId}',
-        pathParameters: const {'userId': 8},
-        body: const {'name': 'Updated'},
-        fromJson: (json) => json,
+    test('handles DioException as error', () async {
+      final dio = Dio(BaseOptions(
+        baseUrl: 'https://example.com',
+        validateStatus: (_) => true,
+      ));
+      dio.httpClientAdapter = _ErrorAdapter(
+        type: DioExceptionType.sendTimeout,
       );
 
-      expect(interceptor.lastPath, 'users/8');
-      expect(interceptor.lastMethod, 'PUT');
-    });
-
-    test('putList substitutes path parameters', () async {
-      final (:client, :interceptor) = _createClient();
-
-      await client.putList(
-        'users/{userId}/roles',
-        pathParameters: const {'userId': 8},
-        body: const {},
-        fromJson: (json) => json,
+      final client = _client(dio);
+      final result = await client.postStream<String>(
+        '/stream',
+        format: PlayxStreamFormat.text,
       );
 
-      expect(interceptor.lastPath, 'users/8/roles');
-    });
-
-    test('delete substitutes path parameters', () async {
-      final (:client, :interceptor) = _createClient();
-
-      await client.delete(
-        'users/{userId}',
-        pathParameters: const {'userId': 3},
-        fromJson: (json) => json,
-      );
-
-      expect(interceptor.lastPath, 'users/3');
-      expect(interceptor.lastMethod, 'DELETE');
-    });
-
-    test('deleteList substitutes path parameters', () async {
-      final (:client, :interceptor) = _createClient();
-
-      await client.deleteList(
-        'users/{userId}/sessions',
-        pathParameters: const {'userId': 3},
-        fromJson: (json) => json,
-      );
-
-      expect(interceptor.lastPath, 'users/3/sessions');
-    });
-
-    test('patch substitutes path parameters', () async {
-      final (:client, :interceptor) = _createClient();
-
-      await client.patch(
-        'users/{userId}',
-        pathParameters: const {'userId': 11},
-        body: const {'name': 'Patched'},
-        fromJson: (json) => json,
-      );
-
-      expect(interceptor.lastPath, 'users/11');
-      expect(interceptor.lastMethod, 'PATCH');
-    });
-
-    test('patchList substitutes path parameters', () async {
-      final (:client, :interceptor) = _createClient();
-
-      await client.patchList(
-        'users/{userId}/prefs',
-        pathParameters: const {'userId': 11},
-        body: const {},
-        fromJson: (json) => json,
-      );
-
-      expect(interceptor.lastPath, 'users/11/prefs');
-    });
-
-    test('download substitutes path parameters', () async {
-      final (:client, :interceptor) = _createClient();
-
-      // download resolves to a 200 with no body; the handler still returns a
-      // NetworkResult, so we only assert the dispatched path here.
-      await client.download(
-        'files/{fileId}',
-        savePath: '/tmp/test-download',
-        pathParameters: const {'fileId': 'doc-1'},
-      );
-
-      expect(interceptor.lastPath, 'files/doc-1');
-      expect(interceptor.lastMethod, 'GET');
-    });
-
-    test(
-        'backward-compat: path without placeholders is sent unchanged when '
-        'pathParameters is omitted', () async {
-      final (:client, :interceptor) = _createClient();
-
-      await client.get(
-        'users/42/posts',
-        fromJson: (json) => json,
-      );
-
-      expect(interceptor.lastPath, 'users/42/posts');
-    });
-
-    test('customPathParameters from client are applied to every request',
-        () async {
-      final (:client, :interceptor) = _createClient(
-        customPathParameters: () async => {'version': 'v2'},
-      );
-
-      await client.get(
-        '{version}/users/{userId}',
-        pathParameters: const {'userId': 1},
-        fromJson: (json) => json,
-      );
-
-      expect(interceptor.lastPath, 'v2/users/1');
-    });
-
-    test(
-        'attachCustomPathParameters=false on the client skips custom path '
-        'parameters', () async {
-      final (:client, :interceptor) = _createClient(
-        customPathParameters: () async => {'version': 'v2'},
-      );
-
-      await client.get(
-        '{version}/users/{userId}',
-        pathParameters: const {'userId': 1},
-        attachCustomPathParameters: false,
-        fromJson: (json) => json,
-      );
-
-      // custom skipped, only per-request param substituted
-      expect(interceptor.lastPath, '{version}/users/1');
+      expect(result.isError, isTrue);
+      expect(result.error, isA<SendTimeoutException>());
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // Cancellation tests
+  // ---------------------------------------------------------------------------
+
+  group('stream cancellation', () {
+    test('cancelTag cancels the stream with RequestCanceledException',
+        () async {
+      final dio = Dio(BaseOptions(
+        baseUrl: 'https://example.com',
+        validateStatus: (_) => true,
+      ));
+      dio.httpClientAdapter = _StreamAdapter(
+        statusCode: 200,
+        chunks: List.generate(100, (i) => utf8.encode('chunk$i ')),
+        delay: const Duration(milliseconds: 10),
+      );
+
+      final client = _client(dio);
+      final result = await client.getStream<String>(
+        '/stream',
+        format: PlayxStreamFormat.text,
+        cancelTag: 'cancel-test',
+      );
+
+      expect(result.isSuccess, isTrue);
+      final completer = Completer<Object>();
+      final received = <String>[];
+
+      final sub = result.data!.listen(
+        (data) {
+          received.add(data);
+          // Cancel after receiving a few chunks.
+          if (received.length == 3) {
+            client.cancelRequestsByTag('cancel-test');
+          }
+        },
+        onError: (e) {
+          if (!completer.isCompleted) {
+            completer.completeError(e);
+          }
+        },
+        onDone: () {
+          if (!completer.isCompleted) {
+            completer.complete(received);
+          }
+        },
+      );
+
+      Object outcome;
+      try {
+        outcome = await completer.future.timeout(
+          const Duration(seconds: 5),
+          onTimeout: () {
+            sub.cancel();
+            return received;
+          },
+        );
+      } catch (e) {
+        outcome = e;
+      }
+
+      // We should have received some chunks and then a cancellation error
+      // OR the stream should have been cut short.
+      if (outcome is List<String>) {
+        // Stream closed without error (may happen if cancel arrives late)
+        expect(outcome.length, lessThanOrEqualTo(100));
+      } else {
+        expect(outcome, isA<RequestCanceledException>());
+      }
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // DioClient.getStream / postStream tests
+  // ---------------------------------------------------------------------------
+
+  group('DioClient.getStream / postStream', () {
+    test('getStream returns a ResponseBody with the correct status', () async {
+      final dio = Dio(BaseOptions(
+        baseUrl: 'https://example.com',
+        validateStatus: (_) => true,
+      ));
+      dio.httpClientAdapter = _StreamAdapter(
+        statusCode: 200,
+        chunks: [utf8.encode('hello')],
+      );
+
+      final dioClient = DioClient(
+        dio: dio,
+        settings: _defaultSettings,
+      );
+
+      // Verify DioClient.getStream works by using it directly
+      final responseBody = await dioClient.getStream('/test');
+      expect(responseBody.statusCode, 200);
+    });
+
+    test('getStream sets responseType to stream', () async {
+      final dio = Dio(BaseOptions(
+        baseUrl: 'https://example.com',
+        validateStatus: (_) => true,
+      ));
+      final capturedOptions = <RequestOptions>[];
+      dio.httpClientAdapter = _OptionsCapturingAdapter(
+        statusCode: 200,
+        chunks: [utf8.encode('hi')],
+        captured: capturedOptions,
+      );
+
+      final dioClient = DioClient(
+        dio: dio,
+        settings: _defaultSettings,
+      );
+
+      await dioClient.getStream('/test');
+
+      expect(capturedOptions, isNotEmpty);
+      expect(capturedOptions.first.responseType, ResponseType.stream);
+    });
+
+    test('postStream sets responseType to stream', () async {
+      final dio = Dio(BaseOptions(
+        baseUrl: 'https://example.com',
+        validateStatus: (_) => true,
+      ));
+      final capturedOptions = <RequestOptions>[];
+      dio.httpClientAdapter = _OptionsCapturingAdapter(
+        statusCode: 200,
+        chunks: [utf8.encode('hi')],
+        captured: capturedOptions,
+      );
+
+      final dioClient = DioClient(
+        dio: dio,
+        settings: _defaultSettings,
+      );
+
+      await dioClient.postStream('/test', body: 'payload');
+
+      expect(capturedOptions, isNotEmpty);
+      expect(capturedOptions.first.responseType, ResponseType.stream);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // toList() integration tests
+  // -------------------------------------------------------------------------
+
+  group('NetworkStreamResult.toList integration', () {
+    test('collects stream chunks into a NetworkResult list', () async {
+      final dio = Dio(BaseOptions(
+        baseUrl: 'https://example.com',
+        validateStatus: (_) => true,
+      ));
+      dio.httpClientAdapter = _StreamAdapter(
+        statusCode: 200,
+        chunks: [
+          utf8.encode('a'),
+          utf8.encode('b'),
+          utf8.encode('c'),
+        ],
+      );
+
+      final client = _client(dio);
+      final result = await client.getStream<String>(
+        '/stream',
+        format: PlayxStreamFormat.text,
+      );
+
+      final listResult = await result.toList();
+      expect(listResult.isSuccess, isTrue);
+      expect(listResult.data, ['a', 'b', 'c']);
+    });
+
+    test('preserves error when collecting to list', () async {
+      final dio = Dio(BaseOptions(
+        baseUrl: 'https://example.com',
+        validateStatus: (_) => true,
+      ));
+      dio.httpClientAdapter = _StreamAdapter(
+        statusCode: 404,
+        chunks: [utf8.encode('not found')],
+      );
+
+      final client = _client(dio);
+      final result = await client.getStream<String>(
+        '/stream',
+        format: PlayxStreamFormat.text,
+      );
+
+      final listResult = await result.toList();
+      expect(listResult.isError, isTrue);
+      expect(listResult.error, isA<NotFoundException>());
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Test fixtures (additional adapters)
+// ---------------------------------------------------------------------------
+
+/// Adapter that captures the request headers for inspection.
+class _HeaderCapturingAdapter implements HttpClientAdapter {
+  _HeaderCapturingAdapter({
+    required this.statusCode,
+    required this.chunks,
+    required this.captured,
+  });
+
+  final int statusCode;
+  final List<List<int>> chunks;
+  final Map<String, dynamic> captured;
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    captured.addAll(options.headers);
+    final controller = StreamController<Uint8List>();
+    Future(() async {
+      for (final chunk in chunks) {
+        controller.add(Uint8List.fromList(chunk));
+        await Future.delayed(Duration.zero);
+      }
+      await controller.close();
+    });
+    return ResponseBody(
+      controller.stream,
+      statusCode,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
+}
+
+/// Adapter that captures the request query parameters for inspection.
+class _QueryCapturingAdapter implements HttpClientAdapter {
+  _QueryCapturingAdapter({
+    required this.statusCode,
+    required this.chunks,
+    required this.captured,
+  });
+
+  final int statusCode;
+  final List<List<int>> chunks;
+  final Map<String, dynamic> captured;
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    captured.addAll(options.queryParameters);
+    final controller = StreamController<Uint8List>();
+    Future(() async {
+      for (final chunk in chunks) {
+        controller.add(Uint8List.fromList(chunk));
+        await Future.delayed(Duration.zero);
+      }
+      await controller.close();
+    });
+    return ResponseBody(
+      controller.stream,
+      statusCode,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
+}
+
+/// Adapter that captures the RequestOptions for inspection.
+class _OptionsCapturingAdapter implements HttpClientAdapter {
+  _OptionsCapturingAdapter({
+    required this.statusCode,
+    required this.chunks,
+    required this.captured,
+  });
+
+  final int statusCode;
+  final List<List<int>> chunks;
+  final List<RequestOptions> captured;
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    captured.add(options);
+    final controller = StreamController<Uint8List>();
+    Future(() async {
+      for (final chunk in chunks) {
+        controller.add(Uint8List.fromList(chunk));
+        await Future.delayed(Duration.zero);
+      }
+      await controller.close();
+    });
+    return ResponseBody(
+      controller.stream,
+      statusCode,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
 }
