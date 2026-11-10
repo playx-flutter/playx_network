@@ -12,7 +12,7 @@ or add it to `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  playx_network: ^1.1.0
+  playx_network: ^2.0.0
 ```
 
 Then import it. The package re-exports `dio`, so you don't need a separate import for `Dio`, `Options` or `CancelToken`:

@@ -1,8 +1,8 @@
 # Changelog
 
-## 1.1.0
+## 2.0.0
 
-A large release: streaming, path parameters, custom error objects, a finer-grained set of connection errors, and many fixes to error handling. There is also a new [documentation site](https://playx-flutter.github.io/playx_network/).
+A major release: it raises the minimum Dart and Flutter versions and adds new exception types (see the breaking changes below). It brings streaming, path parameters, custom error objects, a finer-grained set of connection errors, and many fixes to error handling. There is also a new [documentation site](https://playx-flutter.github.io/playx_network/).
 
 ### Breaking changes
 
