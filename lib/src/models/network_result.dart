@@ -162,3 +162,15 @@ sealed class NetworkResult<T> {
       ? GetIt.instance.get<ExceptionMessage>(instanceName: 'exception_messages')
       : null;
 }
+
+/// Typed access to the custom error object of a failed [NetworkResult].
+extension NetworkResultErrorExtra<T> on NetworkResult<T> {
+  /// Returns the custom error object produced by the `errorExtraMapper` as
+  /// [E], or `null` when the result is a success, there is no extra data, or it
+  /// is not an [E].
+  ///
+  /// ```dart
+  /// final apiError = result.errorExtraAs<ApiError>();
+  /// ```
+  E? errorExtraAs<E>() => error?.extraAs<E>();
+}

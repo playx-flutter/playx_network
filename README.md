@@ -376,6 +376,40 @@ You can customize error message for the client and use your own messages.
     );
    ```
 
+## Custom Error Objects
+`errorMapper` converts an error response into the message string. If your API returns a structured error (a code, field errors, ...) you can also map it to your own object with `errorExtraMapper`. The object is exposed as `extra` on the `ApiException`, with typed accessors `result.errorExtraAs<E>()` and `exception.extraAs<E>()`:
+
+```dart
+class ApiError {
+  ApiError(this.code, this.fields);
+  factory ApiError.fromJson(dynamic json) =>
+      ApiError(json['code'], Map<String, String>.from(json['fields'] ?? {}));
+  final String code;
+  final Map<String, String> fields;
+}
+
+final client = PlayxNetworkClient(
+  dio: Dio(BaseOptions(baseUrl: _baseUrl)),
+  errorMapper: (json) => json['message'] as String?,   // still the message
+  errorExtraMapper: ApiError.fromJson,                 // the error object
+);
+
+final result = await client.post<User>('users', fromJson: User.fromJson);
+
+// Directly from the result:
+final apiError = result.errorExtraAs<ApiError>();
+
+// Or from the exception, without casting to ApiException:
+result.when(
+  success: (user) {},
+  error: (error) => print('${error.message} / ${error.extraAs<ApiError>()?.code}'),
+);
+```
+
+Both return `null` if there is no extra data, it is another type, or the error is not an API error.
+
+`errorExtraMapper` can also be passed per request, and it overrides the client-level one. `extra` is `null` when no mapper is set, when the mapper returns `null`, or when it throws (the failure is logged and the message from `errorMapper` is still returned). Only API errors (`ApiException` and its subclasses) carry `extra`; errors such as timeouts and no connection have no response body.
+
 ## Map Network Result
 After getting the result from the API We can easily map the result to any type we want.
 - Here is an example that maps list of cats to list of image urls.
