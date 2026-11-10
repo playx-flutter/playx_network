@@ -1,0 +1,93 @@
+site_name: Playx Network
+site_description: A Dio wrapper with typed results, better error handling, streaming and zero try/catch.
+site_url: https://playx-flutter.github.io/playx_network/
+repo_url: https://github.com/playx-flutter/playx_network
+repo_name: playx-flutter/playx_network
+edit_uri: edit/main/docs/
+
+exclude_docs: |
+  requirements.txt
+copyright: Copyright &copy; Sourcya
+
+theme:
+  name: material
+  logo: assets/logo.svg
+  favicon: assets/logo.svg
+  font:
+    text: Inter
+    code: JetBrains Mono
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: light blue
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - toc.follow
+    - content.code.copy
+    - content.tabs.link
+  icon:
+    repo: fontawesome/brands/github
+
+extra_css:
+  - stylesheets/extra.css
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/playx-flutter/playx_network
+    - icon: simple/dart
+      link: https://pub.dev/packages/playx_network
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets:
+      base_path: ["."]
+      check_paths: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - Guides:
+      - Making requests: guides/requests.md
+      - Handling results: guides/results.md
+      - Error handling: guides/errors.md
+      - Connection failures: guides/connection-failures.md
+      - Streaming and SSE: guides/streaming.md
+      - Cancellation: guides/cancellation.md
+      - Logging: guides/logging.md
+      - Testing: guides/testing.md
+  - Configuration: configuration.md
+  - Changelog: changelog.md
+  - API reference: https://playx-flutter.github.io/playx_network/api/

@@ -10,6 +10,10 @@ export 'package:playx_network/src/models/exceptions/message/exception_message.da
 export 'package:playx_network/src/models/exceptions/network_exception.dart';
 export 'package:playx_network/src/models/logger/logger_settings.dart';
 export 'package:playx_network/src/models/network_result.dart';
+export 'package:playx_network/src/models/typedefs.dart';
+export 'package:playx_network/src/models/network_stream_result.dart';
+export 'package:playx_network/src/models/playx_sse_event.dart';
+export 'package:playx_network/src/models/playx_stream_format.dart';
 export 'package:playx_network/src/models/settings/playx_network_client_settings.dart';
 export 'package:playx_network/src/manager/playx_cancel_token_manager.dart';
 export 'package:playx_network/src/playx_network_client.dart';

@@ -20,6 +20,22 @@ class DefaultArabicExceptionMessage extends ExceptionMessage {
   String get internalServerError => "عذرا ، هناك خطأ داخلي في الخادم";
 
   @override
+  String get receiveTimeout =>
+      "عذرا ، استغرق الخادم وقتا طويلا في إرسال الاستجابة.";
+
+  @override
+  String get secureConnectionError =>
+      "عذرا ، تعذر إنشاء اتصال آمن بالخادم. قد تكون شهادته غير صالحة.";
+
+  @override
+  String get serverUnreachable =>
+      "عذرا ، تعذر الوصول إلى الخادم. يرجى المحاولة لاحقا.";
+
+  @override
+  String get corsError =>
+      "عذرا ، تم حظر الطلب من المتصفح. قد لا يسمح الخادم بالطلبات من هذا الموقع (CORS).";
+
+  @override
   String get noInternetConnection => "عذرا ، لا يوجد اتصال بالإنترنت.";
 
   @override

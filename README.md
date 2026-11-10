@@ -1,295 +1,161 @@
-# Playx  Network
-[![pub package](https://img.shields.io/pub/v/playx_network.svg?color=1284C5)](https://pub.dev/packages/playx_network)
+# Playx Network
 
-Wrapper around [`Dio`](https://pub.dev/packages/dio) that can perform API requests with better error handling and easily get the result of any API request.
+[![pub package](https://img.shields.io/pub/v/playx_network.svg?color=1284C5)](https://pub.dev/packages/playx_network)
+[![CI](https://github.com/playx-flutter/playx_network/actions/workflows/ci.yml/badge.svg)](https://github.com/playx-flutter/playx_network/actions/workflows/ci.yml)
+[![pub points](https://img.shields.io/pub/points/playx_network?color=1284C5)](https://pub.dev/packages/playx_network/score)
+[![documentation](https://img.shields.io/badge/docs-playx--flutter.github.io-1284C5)](https://playx-flutter.github.io/playx_network/)
+
+A [Dio](https://pub.dev/packages/dio) wrapper that turns every request into a typed result, gives errors names you can act on, and removes the try/catch.
+
+**[Read the documentation](https://playx-flutter.github.io/playx_network/)** · [API reference](https://playx-flutter.github.io/playx_network/api/) · [Changelog](CHANGELOG.md)
 
 ## Features
-- Perform GET, POST, PUT, PATCH, and DELETE HTTP methods for retrieving from and sending data to a server.
-- Better Error handling for API and [`Dio`](https://pub.dev/packages/dio) Errors with the ability to customize these errors.
-- Each request is wrapped by `NetworkResult` which returns whether success or failure of the API request.
-- No need to use try catch anymore as every request is handled.
-- Logs network calls in a pretty, easy to read format
 
-## Installation
+- **A result, never an exception.** Every request returns a `NetworkResult`: success with your model, or an error with a typed exception.
+- **Errors you can act on.** Offline, server unreachable, CORS, bad certificate, timeouts, `404`, `422`... each has its own exception and message, ready to show to users.
+- **Your models and your errors.** `fromJson` for the data, `errorMapper` for the message and `errorExtraMapper` for your own error object.
+- **Parsing off the UI thread.** Map large responses in an isolate, and cancel the work with the request.
+- **Streaming and SSE.** Consume Server-Sent Events, NDJSON and chunked responses as typed streams.
+- **Smart cancellation.** Cancel by token or by tag, or let a new request replace the old one.
+- **Conveniences.** Path parameters, `dataKey` extraction, custom headers and query, per-request settings, downloads.
+- **Pretty logs.** Request, response and error logging through [Talker](https://pub.dev/packages/talker_dio_logger), with hidden headers and filters.
+- **Works with any `Dio`.** Bring your own instance, interceptors and adapter. Easy to test with a fake adapter.
 
-In `pubspec.yaml` add these lines to `dependencies`
+## Install
 
-playx_network: ^0.7.0
-```  
+```bash
+flutter pub add playx_network
+```
 
-## Usage
+Requires **Dart 3.12** and **Flutter 3.44** or newer.
 
-We can use `PlayxNetworkClient`  to perform GET, POST, PUT, PATCH, and DELETE HTTP methods for retrieving from and sending data to a server.
+## Quick start
 
-To use it we need to :
-
-- Setup `PlayxNetworkClient` an configure it based on your needs.
-  You should create only one instance of this network client to be used for the app depending on your use case.
-   ```dart
-   final PlayxNetworkClient _client = PlayxNetworkClient(
-      //you can customize your dio options like base URL, connection time out.
-      dio: Dio(
-        BaseOptions(
-          baseUrl: _baseUrl,
-          connectTimeout: const Duration(seconds: 20),
-          sendTimeout: const Duration(seconds: 20),
-        ),
-      ),
-      //If you want to attach a token to the client or add any custom headers to all requests.
-      customHeaders: () async => {
-        'authorization': 'Bearer token'
-      },
-      //Function that converts json error response from api to error message.
-      // You should specify how to extract error message from the response.
-      // defaults to as below:
-      errorMapper: (json) {
-        if (json.containsKey('message')) {
-          return json['message'] as String? ;
-        }
-        return null;
-      },
-    );
-  ```
-- Now we can use the client to perform any GET, POST, PUT, and DELETE HTTP method.
-
-  For example we will perfrom a `GET` request that gets list of cats using this api :
-  `https://api.thecatapi.com/v1/images/search?limit=10`
-
-    - First create a model for the data returned from the api.
-      It should contain a from json function that takes dynamic json and converts it to the model.
-        ```dart
-      class Cat {
-           String? id;
-           String? url;
-           num? width;
-           num? height;
-  
-          Cat({
-            this.id, 
-            this.url, 
-            this.width, 
-            this.height,});
-  
-            Cat.fromJson(dynamic json) {
-                  id = json['id'];
-                  url = json['url'];
-                 width = json['width'];
-                height = json['height'];
-              }
-  
-          Map<String, dynamic> toJson() {
-             final map = <String, dynamic>{};
-             map['id'] = id;
-             map['url'] = url;
-             map['width'] = width;
-             map['height'] = height;
-          return map;
-       }}  
-      ```
-    - Perform the GET request :
-      ```dart
-          //gets list of cats by getting cats endpoint.
-          final result = await _client.getList(catsEndpoint,
-          // pass your own queries.
-          query: {
-            'limit': '10',
-          },
-          // Pass the from json function that was created in the cat model.
-          fromJson: Cat.fromJson);
-        ```
-    - Handle The request result :
-       ```dart
-         result.when(success: (cats) {
-         //Handles success here as it returns list of cats.
-         }, error: (error) {
-           //handle error here and display the error message.
-           print("Error is : ${error.message}");
-        });
-      ```
-
-      Just like that you can perform any GET, POST, PUT, and DELETE HTTP method and return it's result whether   success or failure with better error handling.
-
-
-
-## Available Methods :
-Here is all available methods of `PlayxNetworkClient` :
-
-| Method           | Description                                                |
-| -----------      | :--------------------------------------------------------  |
-| get<T>           | sends a `GET` request to the given url and returns `NetworkResult` of Type [T] model.|
-| getList<T>       | sends a `GET` request to the given url and returns `NetworkResult` of List of Type [T] model.                        |
-| post<T>          | sends a `POST` request to the given url and returns `NetworkResult` of Type [T] model.|
-| postList<T>      | sends a `POST` request to the given url and returns `NetworkResult` of List of Type [T] model.                        |
-| put<T>           | sends a `PUT` request to the given url and returns `NetworkResult` of Type [T] model.|
-| putList<T>       | sends a `PUT` request to the given url and returns `NetworkResult` of List of Type [T] model.                        |
-| delete<T>        | sends a `DELETE` request to the given url and returns `NetworkResult` of Type [T] model.|
-| deleteList<T>    | sends a `DELETE` request to the given url and returns `NetworkResult` of List of Type [T] model.                        |
-| patch<T>         | sends a `PATCH` request to the given url and returns `NetworkResult` of Type [T] model.|
-| patchList<T>     | sends a `PATCH` request to the given url and returns `NetworkResult` of List of Type [T] model.                        |
-
-## Nested JSON Key Extraction
-You can extract nested JSON values directly from the response before parsing using dot-notation with the `dataKey` parameter.
-This is useful when you want to target a specific field in a large JSON structure without mapping the outer layers.
+Create one client and reuse it:
 
 ```dart
-final result = await _client.get(
-  'forecast',
-  query: {
-    'latitude': '30.04',
-    'longitude': '31.23',
-    'current_weather': 'true',
-  },
-  // Extract 'current_weather' directly from the response
-  dataKey: 'current_weather',
-  fromJson: CurrentWeather.fromJson,
+import 'package:playx_network/playx_network.dart';
+
+final client = PlayxNetworkClient(
+  dio: Dio(BaseOptions(baseUrl: 'https://api.thecatapi.com/v1/')),
+  // Attached to every request, for example an auth token.
+  customHeaders: () async => {'authorization': 'Bearer $token'},
 );
 ```
 
-## Smart Request Cancellation
-Manage and cancel multiple requests easily using `cancelTag`. 
-By default, providing a `cancelTag` will automatically cancel any previous pending requests with the same tag (`cancelOld: true`).
+Describe your data with a `fromJson`, make a request, and handle the result:
 
 ```dart
-// Subsequent calls with the same tag will cancel previous ones automatically
-networkClient.getList(
-  '/search?q=query',
-  cancelTag: 'search_request',
+class Cat {
+  Cat({this.id, this.url});
+
+  factory Cat.fromJson(dynamic json) =>
+      Cat(id: json['id'] as String?, url: json['url'] as String?);
+
+  final String? id;
+  final String? url;
+}
+
+final result = await client.getList<Cat>(
+  'images/search',
+  query: {'limit': 10},
   fromJson: Cat.fromJson,
 );
 
-// You can also cancel requests manually
-networkClient.cancelRequestsByTag('search_request');
+result.when(
+  success: (cats) => print('Got ${cats.length} cats'),
+  error: (error) => print('Failed: ${error.message}'),
+);
 ```
 
-Additionally, if a request is canceled while JSON mapping is occurring in an isolate, the mapping process itself is also terminated to save resources.
+Or pattern match, and tell failures apart:
 
+```dart
+switch (result) {
+  case NetworkSuccess(:final data):
+    showCats(data);
+  case NetworkError(:final error):
+    final text = switch (error) {
+      NoInternetConnectionException() => 'You are offline',
+      ServerUnreachableException() => 'The server is not responding',
+      UnauthorizedRequestException() => 'Please sign in again',
+      ApiException(:final message) => message,
+      _ => 'Something went wrong',
+    };
+    showMessage(text);
+}
+```
 
-## Error Message customization:
-You can customize error message for the client and use your own messages.
+## Requests
 
-- Create  a class that extends `ExceptionMessage` and overrides all messages with your own messages like that :
+| Method | Sends | Returns |
+|--------|-------|---------|
+| `get<T>` / `getList<T>` | `GET` | `NetworkResult<T>` / `NetworkResult<List<T>>` |
+| `post<T>` / `postList<T>` | `POST` | `NetworkResult<T>` / `NetworkResult<List<T>>` |
+| `put<T>` / `putList<T>` | `PUT` | `NetworkResult<T>` / `NetworkResult<List<T>>` |
+| `patch<T>` / `patchList<T>` | `PATCH` | `NetworkResult<T>` / `NetworkResult<List<T>>` |
+| `delete<T>` / `deleteList<T>` | `DELETE` | `NetworkResult<T>` / `NetworkResult<List<T>>` |
+| `download` | `GET` | `NetworkResult<Response>` |
+| `getStream<T>` / `postStream<T>` | `GET` / `POST` | `NetworkStreamResult<T>` |
+| `getSse` / `postSse` | `GET` / `POST` | `NetworkStreamResult<PlayxSseEvent>` |
 
-   ```dart
-      class CustomExceptionMessage  extends ExceptionMessage{
-      const  CustomExceptionMessage();
- 
-       @override
-       String get badRequest =>  "Sorry, The API request is invalid or improperly formed.";
+A few things that make requests shorter:
 
-       @override
-       String get conflict => "Sorry, The request wasn't completed due to a conflict.";
+```dart
+// Path parameters, URL-encoded for you.
+await client.get<Post>('users/{userId}/posts/{postId}',
+    pathParameters: {'userId': 42, 'postId': 7}, fromJson: Post.fromJson);
 
-       @override
-       String get defaultError => "Sorry, Something went wrong.";
+// Read nested data out of an envelope.
+await client.get<User>('me', dataKey: 'payload.user', fromJson: User.fromJson);
 
-       @override
-       String get emptyResponse =>  "Sorry, Couldn't receive response from the server.";
+// Cancel the previous search when the user keeps typing.
+await client.getList<Product>('search',
+    query: {'q': query}, cancelTag: 'search', fromJson: Product.fromJson);
 
-       @override
-       String get formatException => "Sorry, The request wasn't formatted correctly.";
+// A DELETE with no body needs no mapper.
+await client.delete<void>('posts/{id}', pathParameters: {'id': 7});
+```
 
-       @override
-       String get internalServerError => "Sorry, There is an internal server error";
+## Documentation
 
-       @override
-       String get noInternetConnection =>  "Sorry, There is no internet connection.";
+The [documentation site](https://playx-flutter.github.io/playx_network/) covers everything in depth:
 
-       @override
-       String get notAcceptable => "Sorry, The request is not acceptable";
+| | |
+|---|---|
+| [Getting started](https://playx-flutter.github.io/playx_network/getting-started/) | Install, create the client, make a request. |
+| [Making requests](https://playx-flutter.github.io/playx_network/guides/requests/) | All methods, path parameters, `dataKey`, downloads, per-request overrides. |
+| [Handling results](https://playx-flutter.github.io/playx_network/guides/results/) | `when`, `map`, pattern matching, isolate mapping. |
+| [Error handling](https://playx-flutter.github.io/playx_network/guides/errors/) | Every exception, custom error objects, empty responses, `204`. |
+| [Connection failures](https://playx-flutter.github.io/playx_network/guides/connection-failures/) | Offline vs server down vs CORS vs TLS. |
+| [Streaming and SSE](https://playx-flutter.github.io/playx_network/guides/streaming/) | Server-Sent Events, NDJSON, lifecycle. |
+| [Cancellation](https://playx-flutter.github.io/playx_network/guides/cancellation/) | Tokens, tags and search-as-you-type. |
+| [Logging](https://playx-flutter.github.io/playx_network/guides/logging/) | Settings, filters and hidden headers. |
+| [Testing](https://playx-flutter.github.io/playx_network/guides/testing/) | A fake adapter for fast, offline tests. |
+| [Configuration](https://playx-flutter.github.io/playx_network/configuration/) | Every client parameter and setting. |
 
-       @override
-       String get notFound => "Sorry, The resource requested couldn't be found.";
+## Example
 
-       @override
-       String get requestCancelled => "Sorry, The request has been canceled";
+A runnable app lives in [`example/`](example). It performs requests against public APIs and shows the results and errors.
 
-       @override
-       String get requestTimeout => "Sorry, The request has timed out.";
+## Contributing
 
-       @override
-       String get sendTimeout =>  "Sorry, The request has send timeout in connection with API server";
+Issues and pull requests are welcome at [github.com/playx-flutter/playx_network](https://github.com/playx-flutter/playx_network). Before sending a change, run:
 
-       @override
-       String get serviceUnavailable => "Sorry, The service is unavailable";
-       
-       @override
-       String get unableToProcess => "Sorry, Couldn't process the data.";
-       
-       @override
-       String get unauthorizedRequest => "Sorry, The request is unauthorized.";
+```bash
+dart format .
+flutter analyze lib test
+flutter test --coverage
+```
 
-       @override
-       String get unexpectedError => "Sorry, Something went wrong.";
-       }
-     ```
-    -   Configure`PlayxNetworkClient`  to use `CustomExceptionMessage` that you have created.
-   ```dart
-   final PlayxNetworkClient _client = PlayxNetworkClient(
-      exceptionMessages: const CustomExceptionMessage(),
-    );
-   ```
+The documentation lives in [`docs/`](docs) and is built with [MkDocs Material](https://squidfunk.github.io/mkdocs-material/): `pip install -r docs/requirements.txt && mkdocs serve`.
 
-## Map Network Result
-After getting the result from the API We can easily map the result to any type we want.
-- Here is an example that maps list of cats to list of image urls.
-  ```dart
-    final NetworkResult<List<String?>> catImagesResult = result.map(success: (success) {
-      final data = success.data;
-      final images = data.map((e) => e.url).toList();
-      return NetworkResult.success(images);
-    }, error: (error) {
-      return NetworkResult<List<String?>>.error(error.error);
-    });
-  ```
+## See also
 
-- We can also map result asynchronously using `mapAsync` like that :
-  ```dart
-     final NetworkResult<List<String?>> catImagesAsyncResult =await result.mapAsync(success: (success) async{
-     final data = success.data;
-     final images = data.map((e) => e.url).toList();
-          return  NetworkResult.success(images);
-      }, error: (error)async {
-          return NetworkResult<List<String?>>.error(error.error);
-     });
-     ```
+- [Playx](https://pub.dev/packages/playx): the Playx ecosystem, less code and more productivity.
+- [playx_core](https://pub.dev/packages/playx_core): the shared classes and utilities this package builds on.
+- [playx_theme](https://pub.dev/packages/playx_theme): multi-theme support for Flutter apps.
 
+## License
 
-## Logging
-The package uses [`pretty_dio_logger`](https://pub.dev/packages/pretty_dio_logger) pacakge to log dio requests.
-### How it looks like
-
-#### VS Code
-
-![Request Example](https://github.com/Milad-Akarie/pretty_dio_logger/blob/master/images/request_log_vscode.png?raw=true 'Request Example')
-![Error Example](https://github.com/Milad-Akarie/pretty_dio_logger/blob/master/images/error_log_vscode.png?raw=true 'Error Example')
-
-### Android studio
-
-![Response Example](https://github.com/Milad-Akarie/pretty_dio_logger/blob/master/images/response_log_android_studio.png?raw=true 'Response Example')
-
-You can customize what is printed or whether it's enabled or not like this:
-   ```dart
-       final PlayxNetworkClient _client = PlayxNetworkClient(
-      //attach logger to the client to print API requests, works only on debug mode.
-      attachLoggerOnDebug: true,
-      // You can customize the logger settings.
-      logSettings: const LoggerSettings(
-        responseBody: true,
-        request = true,  
-        requestHeader = true,  
-        requestBody = true,  
-        responseHeader = false,  
-        error = true,  
-        maxWidth = 90,  
-        compact = true,
-      ),
-    );
-   ```
-
-## See Also:
-
-[Playx](https://pub.dev/packages/playx)  : Playx eco system helps with redundant features , less code , more productivity , better organizing.
-
-[Playx_theme](https://pub.dev/packages/playx_theme)  :Multi theme features for flutter apps from playx eco system.
-
-[Playx_core](https://pub.dev/packages/playx_core)  :Core package for playx eco system contains shared classes and utilities.      
+MIT, see [LICENSE](LICENSE).
