@@ -1080,15 +1080,48 @@ class PlayxNetworkClient {
       return await handle(await send());
       // ignore: avoid_catches_without_on_clauses
     } catch (error, stackTrace) {
+      var failure = error;
+      var failureTrace = stackTrace;
+
+      // A Dio with the default `validateStatus` throws for statuses outside
+      // 200-299 before they reach the handler. If the settings consider that
+      // status a success, handle it like any other response.
+      final accepted = _acceptedBadResponse(error, settings);
+      if (accepted != null) {
+        try {
+          return await handle(accepted);
+          // ignore: avoid_catches_without_on_clauses
+        } catch (e, s) {
+          failure = e;
+          failureTrace = s;
+        }
+      }
+
       return _apiHandler.handleDioException<R>(
-        error: error,
-        stackTrace: stackTrace,
+        error: failure,
+        stackTrace: failureTrace,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
         errorMapper: errorMapper,
         errorExtraMapper: errorExtraMapper,
       );
     }
+  }
+
+  /// The response of a `badResponse` [error] whose status code is one of the
+  /// success codes of the effective settings, or `null` for any other error.
+  Response<dynamic>? _acceptedBadResponse(
+    Object error,
+    PlayxNetworkClientSettings? settings,
+  ) {
+    if (error is! DioException || error.type != DioExceptionType.badResponse) {
+      return null;
+    }
+    final response = error.response;
+    final isSuccess = response != null &&
+        (settings ?? this.settings).successRequestCodes
+            .contains(response.statusCode);
+    return isSuccess ? response : null;
   }
 
   /// Sends a streaming request with [send] and wraps the response body in a
@@ -1105,25 +1138,49 @@ class PlayxNetworkClient {
     ErrorExtraMapper? errorExtraMapper,
   }) async {
     final streamToken = _streamToken(cancelToken);
+
+    Future<NetworkStreamResult<R>> handleBody(ResponseBody body) =>
+        _apiHandler.handleStreamResult<R>(
+          responseBody: body,
+          statusCode: body.statusCode,
+          statusMessage: body.statusMessage,
+          format: format,
+          cancelToken: cancelToken,
+          abort: () => streamToken.cancel(),
+          errorMapper: errorMapper,
+          errorExtraMapper: errorExtraMapper,
+          shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+          settings: settings,
+        );
+
     try {
-      final res = await send(streamToken);
-      return await _apiHandler.handleStreamResult<R>(
-        responseBody: res,
-        statusCode: res.statusCode,
-        statusMessage: res.statusMessage,
-        format: format,
-        cancelToken: cancelToken,
-        abort: () => streamToken.cancel(),
-        errorMapper: errorMapper,
-        errorExtraMapper: errorExtraMapper,
-        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
-        settings: settings,
-      );
+      return await handleBody(await send(streamToken));
       // ignore: avoid_catches_without_on_clauses
     } catch (error, stackTrace) {
+      var failure = error;
+      var failureTrace = stackTrace;
+
+      // A Dio with the default `validateStatus` throws for statuses outside
+      // 200-299 and leaves the body unread. Route it through the stream
+      // handler like any other response, so the server's error message (and
+      // extra data) is read, the unauthorized callback runs, and statuses the
+      // settings consider a success still produce a stream.
+      if (error is DioException && error.type == DioExceptionType.badResponse) {
+        final body = error.response?.data;
+        if (body is ResponseBody) {
+          try {
+            return await handleBody(body);
+            // ignore: avoid_catches_without_on_clauses
+          } catch (e, s) {
+            failure = e;
+            failureTrace = s;
+          }
+        }
+      }
+
       final failed = await _apiHandler.handleDioException<R>(
-        error: error,
-        stackTrace: stackTrace,
+        error: failure,
+        stackTrace: failureTrace,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
         errorMapper: errorMapper,

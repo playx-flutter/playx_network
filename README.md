@@ -376,6 +376,12 @@ You can customize error message for the client and use your own messages.
     );
    ```
 
+## Dio's `validateStatus`
+`PlayxNetworkClient.createDefaultDioClient` accepts every status code and lets the library decide, but you can pass your own `Dio`. A plain `Dio` uses the default `validateStatus`, which throws for anything outside 200-299 before the response reaches the library. This is handled:
+
+- Error responses (`404`, `422`, `500`, ...) keep the API message and the `errorExtraMapper` data, and unauthorized codes still call `onUnauthorizedRequestReceived`. This also holds for stream requests, where the body is read for you.
+- A status listed in `successRequestCodes` is treated as a success even if Dio rejected it, for example `successRequestCodes: [200, 201, 304]`. A `400` is always an error.
+
 ## Connection Failures
 Connection problems are reported with different exceptions, so you don't have to show "no internet" for every failed request:
 
