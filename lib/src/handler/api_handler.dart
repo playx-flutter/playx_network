@@ -767,6 +767,12 @@ class ApiHandler {
     final exceptionMessages = buildExceptionMessages(settings);
     final shouldShowApiErrors = buildShouldShowApiErrors(settings);
 
+    if (isTlsFailure(error)) {
+      return SecureConnectionException(
+        errorMessage: exceptionMessages.secureConnectionError,
+      );
+    }
+
     if (error is Exception) {
       try {
         NetworkException networkExceptions = UnexpectedErrorException(
@@ -802,8 +808,8 @@ class ApiHandler {
             DioExceptionType.sendTimeout => SendTimeoutException(
                 errorMessage: exceptionMessages.sendTimeout,
               ),
-            DioExceptionType.badCertificate => UnexpectedErrorException(
-                errorMessage: exceptionMessages.unexpectedError,
+            DioExceptionType.badCertificate => SecureConnectionException(
+                errorMessage: exceptionMessages.secureConnectionError,
               ),
             DioExceptionType.connectionError => buildConnectionException(
                 error: error,

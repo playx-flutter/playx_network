@@ -32,6 +32,10 @@ class DefaultEnglishExceptionMessage extends ExceptionMessage {
       "Sorry, The server took too long to send the response.";
 
   @override
+  String get secureConnectionError =>
+      "Sorry, We couldn't establish a secure connection to the server. Its certificate may be invalid.";
+
+  @override
   String get serverUnreachable =>
       "Sorry, We couldn't reach the server. Please try again later.";
 

@@ -387,6 +387,7 @@ Connection problems are reported with different exceptions, so you don't have to
 | `RequestTimeoutException` | Establishing the connection timed out. |
 | `SendTimeoutException` | Sending the request timed out. |
 | `ReceiveTimeoutException` | The server took too long to send the response. |
+| `SecureConnectionException` | The TLS/SSL connection failed: the server certificate is invalid, expired or untrusted, or the handshake failed. The server was reached, so this is not an offline problem. |
 
 Without any setup the exception is chosen from the operating system error (for example `ECONNREFUSED` becomes `ServerUnreachableException` and `ENETUNREACH` becomes `NoInternetConnectionException`). A failure that can't be identified, including a failed host lookup, is still reported as `NoInternetConnectionException`, as in earlier versions.
 
@@ -416,7 +417,7 @@ When the callback returns `false` the error is always `NoInternetConnectionExcep
 
 On the web a browser reveals nothing about why a request failed, so CORS, a down server and a bad certificate all look the same. `CorsException` is used unless `navigator.onLine` (or your callback) says the browser is offline. Treat it as "blocked or unreachable, most likely CORS".
 
-Add `serverUnreachable` and `corsError` to your own `ExceptionMessage` to customize the messages; they default to `defaultError`.
+Add `serverUnreachable`, `corsError`, `receiveTimeout` and `secureConnectionError` to your own `ExceptionMessage` to customize the messages. They default to `defaultError` (`receiveTimeout` defaults to `sendTimeout`), so existing message classes keep compiling.
 
 ## Custom Error Objects
 `errorMapper` converts an error response into the message string. If your API returns a structured error (a code, field errors, ...) you can also map it to your own object with `errorExtraMapper`. The object is exposed as `extra` on the `ApiException`, with typed accessors `result.errorExtraAs<E>()` and `exception.extraAs<E>()`:

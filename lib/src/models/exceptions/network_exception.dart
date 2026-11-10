@@ -240,6 +240,13 @@ class ReceiveTimeoutException extends NetworkException {
   const ReceiveTimeoutException({required super.errorMessage});
 }
 
+/// Exception for a failure to establish a secure (TLS/SSL) connection: the
+/// server certificate is invalid, expired or untrusted, or the TLS handshake
+/// failed. The server was reached, so this is not an offline problem.
+class SecureConnectionException extends NetworkException {
+  const SecureConnectionException({required super.errorMessage});
+}
+
 /// Exception for request cancellation.
 class RequestCanceledException extends NetworkException {
   const RequestCanceledException({required super.errorMessage});

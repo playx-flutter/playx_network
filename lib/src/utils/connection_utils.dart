@@ -70,9 +70,24 @@ ConnectionFailure classifyConnectionFailure(Object? cause) {
   return ConnectionFailure.unknown;
 }
 
+/// Whether [error] is a failed TLS/SSL handshake or a rejected certificate.
+///
+/// Dio reports a rejected certificate as `badCertificate`, but a failed
+/// handshake only arrives as an `unknown` (or `connectionError`) exception
+/// wrapping a [TlsException].
+bool isTlsFailure(Object? error) {
+  if (error is TlsException) return true;
+  if (error is DioException) {
+    return error.type == DioExceptionType.badCertificate ||
+        error.error is TlsException;
+  }
+  return false;
+}
+
 /// Whether [error] is a failure to establish or keep a connection (as opposed
-/// to a timeout, a bad status code, a cancellation, ...).
+/// to a timeout, a bad status code, a cancellation, a TLS failure, ...).
 bool isConnectionFailure(Object? error) {
+  if (isTlsFailure(error)) return false;
   if (error is SocketException) return true;
   if (error is DioException) {
     return error.type == DioExceptionType.connectionError ||
