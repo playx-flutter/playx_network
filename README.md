@@ -149,6 +149,54 @@ final result = await _client.get(
 );
 ```
 
+## Empty List Responses
+By default, a successful list request that comes back empty (an empty body or `[]`) returns an `EmptyResponseException`.
+If an empty list is a valid result for your API, enable `treatEmptyResponseAsSuccess` to get `NetworkResult.success([])` instead:
+
+```dart
+final client = PlayxNetworkClient(
+  dio: Dio(BaseOptions(baseUrl: _baseUrl)),
+  settings: const PlayxNetworkClientSettings(
+    treatEmptyResponseAsSuccess: true,
+  ),
+);
+
+// Or only for a single request:
+final result = await client.getList<Post>(
+  'posts',
+  fromJson: Post.fromJson,
+  settings: const PlayxNetworkClientSettings(treatEmptyResponseAsSuccess: true),
+);
+// result.data is [] when the server returns [] or an empty body.
+```
+
+This applies to list requests only (`getList`, `postList`, `putList`, `deleteList`, `patchList`). Requests that return a single object (`get`, `post`, ...) still return an `EmptyResponseException` for an empty body, because there is no empty value to return for an arbitrary model. Error status codes are not affected.
+
+### Delete requests without a body
+Many APIs answer `DELETE` with an empty `200` or `204`. For `delete`, `fromJson` is optional and an empty body is always a success:
+
+```dart
+// No mapper: any successful response is NetworkResult.success(null)
+final result = await client.delete<void>('posts/{id}', pathParameters: {'id': 7});
+
+// With a mapper: it is called with `null` when the body is empty
+// (no `dataKey` extraction is attempted), and with the body otherwise.
+final result = await client.delete<Post?>(
+  'posts/{id}',
+  pathParameters: {'id': 7},
+  fromJson: (json) => json == null ? null : Post.fromJson(json),
+);
+```
+
+Use `void` or a nullable type when you omit `fromJson`. A non-nullable `T` without a mapper (or a mapper that cannot handle `null`) returns an `UnableToProcessException`.
+
+### 204 No Content
+`successRequestCodes` defaults to `[200, 201]`, so a `204` response is treated as an error. If your API returns `204` for successful requests, add it:
+
+```dart
+const PlayxNetworkClientSettings(successRequestCodes: [200, 201, 204]);
+```
+
 ## Path Parameters
 You can substitute `{placeholder}` segments in the request path with concrete values using the `pathParameters` parameter.
 This keeps dynamic URLs readable and avoids manual string interpolation. Values are URL-encoded for safe path segments (spaces become `%20`).

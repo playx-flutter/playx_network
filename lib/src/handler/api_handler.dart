@@ -47,9 +47,23 @@ class ApiHandler {
           PlayxNetworkClientSettings? settings) =>
       (settings ?? this.settings).useWorkMangerForMappingJsonInIsolate;
 
+  bool treatEmptyResponseAsSuccess(PlayxNetworkClientSettings? settings) =>
+      (settings ?? this.settings).treatEmptyResponseAsSuccess;
+
+  /// Handles a response that maps to a single object of type [T].
+  ///
+  /// When [fromJson] is `null` any successful response is a success with a
+  /// `null` value (used by `delete` without a mapper); [T] must then be
+  /// nullable, `void` or `dynamic`.
+  ///
+  /// When [allowEmptyResponse] is `true`, a successful response with an empty
+  /// body (`null` or `""`) is a success: [fromJson] is called with `null` and
+  /// no `dataKey` extraction is attempted, instead of returning an
+  /// [EmptyResponseException].
   Future<NetworkResult<T>> handleNetworkResult<T>({
     required Response response,
-    required JsonMapper<T> fromJson,
+    required JsonMapper<T>? fromJson,
+    bool allowEmptyResponse = false,
     String? dataKey,
     CancelToken? cancelToken,
     ErrorMapper? errorMapper,
@@ -84,6 +98,31 @@ class ApiHandler {
           ));
         } else {
           final data = response.data;
+
+          if (fromJson == null) {
+            if (null is T) return NetworkResult.success(null as T);
+            return ApiHandler.unableToProcessException(
+              e: ArgumentError('fromJson is required when T is non-nullable'),
+              exceptionMessage: exceptionMessages.unableToProcess,
+              shouldShowApiErrors: shouldShowApiErrors,
+            );
+          }
+
+          if (allowEmptyResponse &&
+              (data == null || (data is String && data.isEmpty))) {
+            // Nothing to extract a `dataKey` from: the mapper gets `null`.
+            try {
+              return NetworkResult.success(await fromJson(null));
+              // ignore: avoid_catches_without_on_clauses
+            } catch (e, s) {
+              return ApiHandler.unableToProcessException(
+                e: e,
+                s: s,
+                exceptionMessage: exceptionMessages.unableToProcess,
+                shouldShowApiErrors: shouldShowApiErrors,
+              );
+            }
+          }
 
           if (data == null || (data is String && data.isEmpty)) {
             _printError(
@@ -202,6 +241,9 @@ class ApiHandler {
           final data = response.data;
 
           if (data == null || (data is String && data.isEmpty)) {
+            if (treatEmptyResponseAsSuccess(settings)) {
+              return NetworkResult.success(<T>[]);
+            }
             _printError(
               header: 'Playx Network Error :',
               text: exceptionMessages.emptyResponse,
@@ -267,7 +309,7 @@ class ApiHandler {
                 rethrow;
               }
 
-              if (result.isEmpty) {
+              if (result.isEmpty && !treatEmptyResponseAsSuccess(settings)) {
                 _printError(
                   header: 'Playx Network Error :',
                   text: exceptionMessages.emptyResponse,
