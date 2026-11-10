@@ -367,22 +367,30 @@ class DioClient {
   /// Sends a [GET] request and returns the response as a raw [ResponseBody]
   /// stream instead of waiting for the whole body.
   ///
+  /// [pathParameters] replaces `{placeholder}` segments in [path] before the
+  /// request is sent. Set [attachCustomPathParameters] to `false` to skip any
+  /// client-level `customPathParameters`.
+  ///
   /// The returned [ResponseBody.stream] can be consumed chunk-by-chunk. The
   /// caller is responsible for handling the stream lifecycle (listening and
   /// cancelling).
   Future<ResponseBody> getStream(
     String path, {
+    Map<String, dynamic> pathParameters = const {},
     Map<String, dynamic> headers = const {},
     Map<String, dynamic> query = const {},
     Options? options,
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
+    bool attachCustomPathParameters = true,
     CancelToken? cancelToken,
     PlayxNetworkLoggerSettings? logSettings,
   }) async {
+    final resolvedPath =
+        await _resolvePath(path, pathParameters, attachCustomPathParameters);
     final dio = _getDioInstance(logSettings: logSettings);
     final response = await dio.get<ResponseBody>(
-      path,
+      resolvedPath,
       queryParameters: {
         if (attachCustomQuery && customQuery != null)
           ...?await customQuery?.call(),
@@ -402,6 +410,7 @@ class DioClient {
   /// stream instead of waiting for the whole body.
   Future<ResponseBody> postStream(
     String path, {
+    Map<String, dynamic> pathParameters = const {},
     Object body = const {},
     Map<String, dynamic> headers = const {},
     Map<String, dynamic> query = const {},
@@ -409,12 +418,15 @@ class DioClient {
     String? contentType,
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
+    bool attachCustomPathParameters = true,
     CancelToken? cancelToken,
     PlayxNetworkLoggerSettings? logSettings,
   }) async {
+    final resolvedPath =
+        await _resolvePath(path, pathParameters, attachCustomPathParameters);
     final dio = _getDioInstance(logSettings: logSettings);
     final response = await dio.post<ResponseBody>(
-      path,
+      resolvedPath,
       data: body,
       queryParameters: {
         if (attachCustomQuery && customQuery != null)

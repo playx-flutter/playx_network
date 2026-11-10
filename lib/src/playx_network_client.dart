@@ -944,14 +944,18 @@ class PlayxNetworkClient {
   ///   error: (error) => print('Error: ${error.message}'),
   /// );
   /// ```
+  /// [pathParameters] replaces `{placeholder}` segments in [path] before the request is sent.
+  /// Set [attachCustomPathParameters] to `false` to skip any client-level `customPathParameters`.
   Future<NetworkStreamResult<T>> getStream<T>(
     String path, {
+    Map<String, dynamic> pathParameters = const {},
     required PlayxStreamFormat format,
     Map<String, dynamic> headers = const {},
     Map<String, dynamic> query = const {},
     Options? options,
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
+    bool attachCustomPathParameters = true,
     CancelToken? cancelToken,
     String? cancelTag,
     bool cancelOld = true,
@@ -967,11 +971,13 @@ class PlayxNetworkClient {
     try {
       final res = await _dioClient.getStream(
         path,
+        pathParameters: pathParameters,
         headers: headers,
         query: query,
         options: options,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
+        attachCustomPathParameters: attachCustomPathParameters,
         cancelToken: streamToken,
         logSettings: settings?.logSettings,
       );
@@ -1004,8 +1010,11 @@ class PlayxNetworkClient {
   /// [NetworkStreamResult] wrapping a [Stream] of decoded events.
   ///
   /// See [getStream] for the meaning of [format] and the streaming semantics.
+  /// [pathParameters] replaces `{placeholder}` segments in [path] before the request is sent.
+  /// Set [attachCustomPathParameters] to `false` to skip any client-level `customPathParameters`.
   Future<NetworkStreamResult<T>> postStream<T>(
     String path, {
+    Map<String, dynamic> pathParameters = const {},
     required PlayxStreamFormat format,
     Object body = const {},
     Map<String, dynamic> headers = const {},
@@ -1014,6 +1023,7 @@ class PlayxNetworkClient {
     String? contentType,
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
+    bool attachCustomPathParameters = true,
     CancelToken? cancelToken,
     String? cancelTag,
     bool cancelOld = true,
@@ -1029,6 +1039,7 @@ class PlayxNetworkClient {
     try {
       final res = await _dioClient.postStream(
         path,
+        pathParameters: pathParameters,
         body: body,
         headers: headers,
         query: query,
@@ -1036,6 +1047,7 @@ class PlayxNetworkClient {
         contentType: contentType,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
+        attachCustomPathParameters: attachCustomPathParameters,
         cancelToken: streamToken,
         logSettings: settings?.logSettings,
       );
@@ -1070,13 +1082,17 @@ class PlayxNetworkClient {
   /// This is [getStream] with `format: PlayxStreamFormat.sse`, plus the
   /// `Accept: text/event-stream` and `Cache-Control: no-cache` headers unless
   /// you set them yourself in [headers] or `options.headers`.
+  /// [pathParameters] replaces `{placeholder}` segments in [path] before the request is sent.
+  /// Set [attachCustomPathParameters] to `false` to skip any client-level `customPathParameters`.
   Future<NetworkStreamResult<PlayxSseEvent>> getSse(
     String path, {
+    Map<String, dynamic> pathParameters = const {},
     Map<String, dynamic> headers = const {},
     Map<String, dynamic> query = const {},
     Options? options,
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
+    bool attachCustomPathParameters = true,
     CancelToken? cancelToken,
     String? cancelTag,
     bool cancelOld = true,
@@ -1087,12 +1103,14 @@ class PlayxNetworkClient {
   }) =>
       getStream<PlayxSseEvent>(
         path,
+        pathParameters: pathParameters,
         format: PlayxStreamFormat.sse,
         headers: _withSseHeaders(headers, options),
         query: query,
         options: options,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
+        attachCustomPathParameters: attachCustomPathParameters,
         cancelToken: cancelToken,
         cancelTag: cancelTag,
         cancelOld: cancelOld,
@@ -1107,8 +1125,11 @@ class PlayxNetworkClient {
   ///
   /// This is [postStream] with `format: PlayxStreamFormat.sse`, plus the SSE
   /// request headers described in [getSse].
+  /// [pathParameters] replaces `{placeholder}` segments in [path] before the request is sent.
+  /// Set [attachCustomPathParameters] to `false` to skip any client-level `customPathParameters`.
   Future<NetworkStreamResult<PlayxSseEvent>> postSse(
     String path, {
+    Map<String, dynamic> pathParameters = const {},
     Object body = const {},
     Map<String, dynamic> headers = const {},
     Map<String, dynamic> query = const {},
@@ -1116,6 +1137,7 @@ class PlayxNetworkClient {
     String? contentType,
     bool attachCustomHeaders = true,
     bool attachCustomQuery = true,
+    bool attachCustomPathParameters = true,
     CancelToken? cancelToken,
     String? cancelTag,
     bool cancelOld = true,
@@ -1126,6 +1148,7 @@ class PlayxNetworkClient {
   }) =>
       postStream<PlayxSseEvent>(
         path,
+        pathParameters: pathParameters,
         format: PlayxStreamFormat.sse,
         body: body,
         headers: _withSseHeaders(headers, options),
@@ -1134,6 +1157,7 @@ class PlayxNetworkClient {
         contentType: contentType,
         attachCustomHeaders: attachCustomHeaders,
         attachCustomQuery: attachCustomQuery,
+        attachCustomPathParameters: attachCustomPathParameters,
         cancelToken: cancelToken,
         cancelTag: cancelTag,
         cancelOld: cancelOld,

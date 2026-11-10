@@ -213,7 +213,7 @@ final result = await _client.get(
 // The request is sent to: users/42/posts/7
 ```
 
-Path parameters work with every HTTP method (`get`, `getList`, `post`, `postList`, `put`, `putList`, `delete`, `deleteList`, `patch`, `patchList`, `download`).
+Path parameters work with every HTTP method (`get`, `getList`, `post`, `postList`, `put`, `putList`, `delete`, `deleteList`, `patch`, `patchList`, `download`) and with the streaming methods (`getStream`, `postStream`, `getSse`, `postSse`).
 
 You can also attach app-wide path segments to **every** request via `customPathParameters` on `PlayxNetworkClient`, mirroring `customQuery`:
 
