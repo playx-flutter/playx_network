@@ -1,25 +1,61 @@
 name: Publish to pub.dev
 
+# A pull request merged into main publishes the version in pubspec.yaml, unless
+# that version is already on pub.dev (so merges that are not releases are no-ops).
 on:
   pull_request:
-    types:
-      - closed
-    branches:
-      - 'main'
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: read
 
 jobs:
   publish:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v2
-      - name: Install Flutter
-        uses: subosito/flutter-action@v2
+      - uses: actions/checkout@v4
+
+      - name: Read the package version
+        id: package
+        run: |
+          echo "name=$(grep -m1 '^name:' pubspec.yaml | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+          echo "version=$(grep -m1 '^version:' pubspec.yaml | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+
+      - name: Check whether this version is new
+        id: check
+        run: |
+          status=$(curl -s -o /dev/null -w '%{http_code}' \
+            "https://pub.dev/api/packages/${{ steps.package.outputs.name }}/versions/${{ steps.package.outputs.version }}")
+          if [ "$status" = "200" ]; then
+            echo "Version ${{ steps.package.outputs.version }} is already published, nothing to do."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: subosito/flutter-action@v2
+        if: steps.check.outputs.publish == 'true'
+        with:
+          channel: stable
+          cache: true
+
       - name: Install dependencies
+        if: steps.check.outputs.publish == 'true'
         run: flutter pub get
-      - name: Format code
-        run: dart format .
-      - name: 'Publish package'
+
+      - name: Analyze
+        if: steps.check.outputs.publish == 'true'
+        run: flutter analyze --fatal-infos lib test
+
+      - name: Test
+        if: steps.check.outputs.publish == 'true'
+        run: flutter test
+
+      - name: Publish package
+        if: steps.check.outputs.publish == 'true'
         uses: k-paxian/dart-package-publisher@master
         with:
           credentialJson: ${{ secrets.CREDENTIAL_JSON }}
