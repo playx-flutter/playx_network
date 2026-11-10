@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.1.0
+- **BREAKING (minimum versions)**: Updated to `playx_core ^2.0.0`, which requires Dart `>=3.12.0` and Flutter `>=3.44.0`. These are now the minimum versions of `playx_network` as well.
+- **Dependencies**: Widened constraints so apps can pick their own versions: `dio ^5.11.1`, `sentry_dio >=9.16.0 <11.0.0`, `talker` and `talker_dio_logger` `>=5.1.16 <6.0.0`, `dio_web_adapter >=2.1.2 <3.0.0`. `sentry_dio` is only re-exported, so no source changes were needed; apps that move to `sentry_dio` 10 should read its migration notes (Android `minSdk` 26, Swift Package Manager on Apple platforms, span streaming on by default).
 - **Path Parameters Support**: Added `pathParameters` parameter to all network requests to substitute `{placeholder}` segments in the request path before the request is sent (e.g. `'users/{userId}'` + `{'userId': 42}` → `'users/42'`). Values are URL-encoded for safe path segments.
 - **Custom Path Parameters**: Added `customPathParameters` to `PlayxNetworkClient` (and `attachCustomPathParameters` per request) to attach app-wide path segments to every request, mirroring `customQuery`/`attachCustomQuery`.
 - **Bugfix**: Fixed non-exhaustive switch over `DioExceptionType` in `ApiHandler` by adding the `transformTimeout` case introduced in Dio 5.10 (minimum Dio version is now `^5.10.0`).
