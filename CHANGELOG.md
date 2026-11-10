@@ -1,30 +1,74 @@
 # Changelog
 
 ## 1.1.0
-- **Bugfix (invalid responses)**: A response body that cannot be parsed (for example invalid JSON) is now reported as `InvalidFormatException`. It was reported as `UnexpectedErrorException`, and the `InvalidFormatException` branch could never be reached.
-- **Bugfix (cancellation)**: Cancelling a request exactly while its response was being mapped could throw an uncaught `Bad state: Future already completed` from the cancellation helper. The race is now handled and the request returns a `RequestCanceledException`. Downloads also no longer let non-`Exception` errors (such as a `StateError`) escape the handler.
-- **Bugfix (default error parsing)**: `DefaultApiError` now reads Strapi's `message: [{messages: [...]}]` (that branch could never run), joins list messages such as `message: ["a", "b"]`, supports `{"error": "..."}`, and reads each field on its own so a wrongly typed `statusCode` no longer discards the message. Blank messages are treated as missing.
-- **Dio `validateStatus`**: Requests made with a `Dio` that keeps the default `validateStatus` are handled consistently. Error responses of stream requests (`getStream`, `postStream`, `getSse`, `postSse`) now keep the API message and `extra` data (they were lost because the body was never read), and a status listed in `successRequestCodes` that Dio rejects (for example `304`) is treated as a success for every request type instead of an error.
-- **Bugfix**: Per-request `settings` (custom `exceptionMessages`, `shouldShowApiErrors`, `unauthorizedRequestCodes`) are now applied to error status codes of `get`, `post`, `delete`, `getList` and the other requests, including errors Dio throws as `badResponse`. Previously only the client-level settings were used for those responses.
-- **TLS errors**: Added `SecureConnectionException` for rejected certificates (`badCertificate`) and failed TLS handshakes, which Dio reports as `unknown`/`connectionError` wrapping a `HandshakeException`. They were reported as `UnexpectedErrorException` or `NoInternetConnectionException`. Added a `secureConnectionError` message that defaults to `defaultError`. The `hasInternetConnection` callback is not called for them. **Note:** `NetworkException` is sealed, so an exhaustive `switch` over it needs the new case.
-- **Timeout mapping**: Added `ReceiveTimeoutException` for Dio's `receiveTimeout` (previously reported as `SendTimeoutException`) with a new `receiveTimeout` message that defaults to `sendTimeout` for existing `ExceptionMessage` subclasses. `transformTimeout` (parsing the response took too long) is now an `UnableToProcessException`. **Note:** `NetworkException` is sealed, so an exhaustive `switch` over it needs the new case; code that caught `SendTimeoutException` for slow responses should catch `ReceiveTimeoutException` too.
-- **Path parameters for streams**: `getStream`, `postStream`, `getSse` and `postSse` now accept `pathParameters` and `attachCustomPathParameters`, like every other request.
-- **Connection failures**: Added `ServerUnreachableException` (connection refused, reset, closed or timed out, no route to host) and, on the web, `CorsException`, so not every connection failure is reported as `NoInternetConnectionException`. The exception is chosen from the OS error; unidentified failures still map to `NoInternetConnectionException`. Added the optional `hasInternetConnection` callback on `PlayxNetworkClient` (for example backed by `connectivity_plus`) to tell the two apart reliably, and `serverUnreachable` / `corsError` messages on `ExceptionMessage` (they default to `defaultError`, so existing subclasses keep compiling). `package:web` is now a direct dependency. **Note:** `NetworkException` is a sealed class, so an exhaustive `switch` over it needs the two new cases.
-- **Custom error objects**: Added an optional `errorExtraMapper` (client-level and per request) that maps the error response to your own object, exposed as `ApiException.extra`, with typed accessors `result.errorExtraAs<E>()` and `exception.extraAs<E>()` (extensions, no cast needed). `ErrorMapper` is unchanged (still returns the message `String?`), so this is not a breaking change.
-- **Empty list responses as success**: Added `treatEmptyResponseAsSuccess` to `PlayxNetworkClientSettings` (default `false`). When enabled, list requests (`getList`, `postList`, ...) that succeed with an empty body (`null` or `""`) or an empty list (`[]`, including after `dataKey`/`itemDataKey`) return `NetworkResult.success([])` instead of an `EmptyResponseException`. It can be set on the client or per request through `settings`. Single-object requests are unchanged.
-- **Delete without a body**: `fromJson` is now optional on `delete`. Without it any successful response returns `NetworkResult.success(null)` (use `delete<void>`), and with it an empty body is a success and the mapper receives `null` (no `dataKey` extraction). Documented that `204 No Content` needs `successRequestCodes: [200, 201, 204]`; the default is unchanged.
-- **BREAKING (minimum versions)**: Updated to `playx_core ^2.0.0`, which requires Dart `>=3.12.0` and Flutter `>=3.44.0`. These are now the minimum versions of `playx_network` as well.
-- **Dependencies**: Widened constraints so apps can pick their own versions: `dio ^5.11.1`, `sentry_dio >=9.16.0 <11.0.0`, `talker` and `talker_dio_logger` `>=5.1.16 <6.0.0`, `dio_web_adapter >=2.1.2 <3.0.0`. `sentry_dio` is only re-exported, so no source changes were needed; apps that move to `sentry_dio` 10 should read its migration notes (Android `minSdk` 26, Swift Package Manager on Apple platforms, span streaming on by default).
-- **Path Parameters Support**: Added `pathParameters` parameter to all network requests to substitute `{placeholder}` segments in the request path before the request is sent (e.g. `'users/{userId}'` + `{'userId': 42}` → `'users/42'`). Values are URL-encoded for safe path segments.
-- **Custom Path Parameters**: Added `customPathParameters` to `PlayxNetworkClient` (and `attachCustomPathParameters` per request) to attach app-wide path segments to every request, mirroring `customQuery`/`attachCustomQuery`.
-- **Bugfix**: Fixed non-exhaustive switch over `DioExceptionType` in `ApiHandler` by adding the `transformTimeout` case introduced in Dio 5.10 (minimum Dio version is now `^5.10.0`).
-- **Streaming Support**: Added `getStream` and `postStream` methods to `PlayxNetworkClient` for consuming streaming endpoints (SSE, NDJSON, chunked text/binary) via `NetworkStreamResult`.
-- **SSE Support**: Added `getSse` and `postSse` convenience methods and `PlayxSseEvent` model for parsing Server-Sent Events.
-- **PlayxStreamFormat**: New enum that controls how stream chunks are decoded (`bytes`, `text`, `json`, `sse`).
-- **NetworkStreamResult**: New sealed wrapper (analogous to `NetworkResult`) wrapping a `Stream` of decoded events or a `NetworkException`. `toList()` returns a `NetworkResult.error` if the stream errors (and never completes for endless streams).
-- **Stream lifecycle**: Cancelling the stream listener, cancelling the token, or a source error now aborts the HTTP request, the listener's pause/resume is honoured, and the stream always completes after a terminal error. Error response bodies are read (up to 64 KB) so `errorMapper` receives the server's message.
-- **Stream decoding**: `text`/`json`/`sse` use streaming UTF-8 decoding. `PlayxStreamFormat.json` is now line-delimited (NDJSON). The SSE parser follows the spec (CR/LF/CRLF, BOM, persistent last event id, no events from partial lines or data-less blocks).
-- **Stream requests**: `options.headers` are merged instead of replaced, `getSse`/`postSse` send `Accept: text/event-stream`, and the idle receive timeout is disabled unless `options.receiveTimeout` is set.
+
+A large release: streaming, path parameters, custom error objects, a finer-grained set of connection errors, and many fixes to error handling. There is also a new [documentation site](https://playx-flutter.github.io/playx_network/).
+
+### Breaking changes
+
+- **Minimum versions**: `playx_core ^2.0.0` requires Dart `>=3.12.0` and Flutter `>=3.44.0`, so these are now the minimum versions of `playx_network` too.
+- **New exception types**: `NetworkException` is a sealed class, so an exhaustive `switch` over it must handle the new subclasses `ServerUnreachableException`, `CorsException`, `SecureConnectionException` and `ReceiveTimeoutException` (or keep a catch-all case).
+- **Slow responses**: Dio's `receiveTimeout` is now a `ReceiveTimeoutException` instead of a `SendTimeoutException`. Code that caught `SendTimeoutException` for slow responses should also catch `ReceiveTimeoutException`.
+
+### New features
+
+#### Streaming and SSE
+
+- `getStream` and `postStream` consume streaming endpoints (SSE, NDJSON, chunked text and binary) through the new sealed `NetworkStreamResult`, which has `when`, `map`, `mapAsync`, `mapStream`, `mapStreamAsync` and `toList()`.
+- `getSse` and `postSse` are conveniences for Server-Sent Events, with the `PlayxSseEvent` model. They send `Accept: text/event-stream`.
+- `PlayxStreamFormat` selects how bytes are decoded: `bytes`, `text`, `json` (one JSON document per line, NDJSON) or `sse`.
+- Decoding uses a streaming UTF-8 decoder, so multibyte characters split across chunks are reassembled. The SSE parser follows the specification: CR, LF and CRLF line endings, a leading BOM, a persistent last event id, and no events from partial lines or data-less blocks.
+- The stream follows its listener: pause and resume are honoured, and cancelling the subscription, cancelling the token, or a source error aborts the HTTP request. A stream always completes after a terminal error. Error response bodies are read (up to 64 KB) so the error mapper receives the server's message.
+- `toList()` returns a `NetworkResult.error` if the stream errors. It never completes for endless streams.
+- Streams support path parameters, and merge `options.headers` instead of replacing them. The idle receive timeout is disabled unless `options.receiveTimeout` is set.
+
+#### Path parameters
+
+- `pathParameters` substitutes `{placeholder}` segments in the path of every request (for example `'users/{userId}'` with `{'userId': 42}`). Values are URL-encoded.
+- `customPathParameters` on `PlayxNetworkClient` (and `attachCustomPathParameters` per request) supplies app-wide values, like `customQuery` does for query parameters.
+
+#### Custom error objects
+
+- `errorExtraMapper` (client-level and per request) maps an error response to your own object, exposed as `ApiException.extra`. Read it with `result.errorExtraAs<E>()` or `exception.extraAs<E>()`, no cast needed. `ErrorMapper` is unchanged.
+
+#### Empty responses
+
+- `treatEmptyResponseAsSuccess` (default `false`) returns `NetworkResult.success([])` for list requests that succeed with an empty body or an empty list, instead of an `EmptyResponseException`.
+- `fromJson` is optional on `delete`. Without it any successful response is `NetworkResult.success(null)` (use `delete<void>`), and with it an empty body is a success and the mapper receives `null`.
+- Documented that `204 No Content` needs `successRequestCodes: [200, 201, 204]`. The default is unchanged.
+
+#### Connection failures
+
+- `ServerUnreachableException` (connection refused, reset, closed or timed out, no route to host) and, on the web, `CorsException`, so not every failed connection is reported as `NoInternetConnectionException`. The exception is chosen from the OS error. A failure that can't be identified stays `NoInternetConnectionException`.
+- The optional `hasInternetConnection` callback on `PlayxNetworkClient` (for example backed by `connectivity_plus`) tells offline from unreachable reliably. It is only called after a connection failure.
+- `SecureConnectionException` for rejected certificates and failed TLS handshakes (Dio reports a handshake failure as `unknown` or `connectionError`). The connectivity callback is not called for them.
+- New `ExceptionMessage` getters `serverUnreachable`, `corsError`, `secureConnectionError` and `receiveTimeout`. They have defaults (`defaultError`, and `sendTimeout` for `receiveTimeout`), so existing subclasses keep compiling. English and Arabic provide their own.
+
+### Changes
+
+- A response body that cannot be parsed (for example invalid JSON) is reported as `InvalidFormatException`. It was an `UnexpectedErrorException`, and the `InvalidFormatException` branch could never be reached.
+- Dio's `transformTimeout` (parsing took too long) is an `UnableToProcessException`.
+- Requests made with a Dio that keeps the default `validateStatus` are handled consistently: error responses of stream requests keep the API message and `extra` data, and a status listed in `successRequestCodes` that Dio rejects (for example `304`) is a success for every request type.
+
+### Bug fixes
+
+- **Cancellation**: cancelling a request exactly while its response was being mapped could throw an uncaught `Bad state: Future already completed`. The race is handled and the request returns a `RequestCanceledException`. Downloads also no longer let non-`Exception` errors (such as a `StateError`) escape.
+- **Default error parsing**: `DefaultApiError` reads Strapi's `message: [{messages: [...]}]` (that branch could never run), joins list messages such as `message: ["a", "b"]`, supports `{"error": "..."}`, and reads each field on its own so a wrongly typed `statusCode` no longer discards the message. Blank messages are treated as missing.
+- **Per-request settings**: custom `exceptionMessages`, `shouldShowApiErrors` and `unauthorizedRequestCodes` passed in a request's `settings` now apply to error status codes of every request type, including errors Dio throws as `badResponse`. Only the client-level settings were used before.
+- Copying a `Dio` for per-request log settings no longer duplicates Dio's default interceptor.
+- Fixed the non-exhaustive switch over `DioExceptionType` by handling `transformTimeout`, introduced in Dio 5.10.
+
+### Dependencies
+
+- `playx_core ^2.0.0`, `dio ^5.11.1`.
+- Widened ranges so apps can pick their versions: `sentry_dio >=9.16.0 <11.0.0`, `talker` and `talker_dio_logger` `>=5.1.16 <6.0.0`, `dio_web_adapter >=2.1.2 <3.0.0`. `sentry_dio` is only re-exported; apps that move to `sentry_dio` 10 should read its migration notes (Android `minSdk` 26, Swift Package Manager on Apple platforms, span streaming on by default).
+- `package:web` is now a direct dependency.
+
+### Documentation and tooling
+
+- A documentation site with guides and the API reference, published to GitHub Pages.
+- A rewritten README.
+- CI runs format, analysis and tests with a 90% coverage gate on every pull request, validates the package with a publish dry run, and publishing skips versions that are already on pub.dev.
 
 ## 1.0.0
 - **Nested JSON Key Extraction**: Added `dataKey` parameter to all network requests to extract nested JSON values before parsing.
