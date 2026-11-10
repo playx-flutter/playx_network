@@ -8,9 +8,13 @@ import 'package:playx_network/src/handler/handler_logger.dart';
 import 'package:playx_network/src/handler/stream_response_handler.dart';
 import 'package:playx_network/src/utils/json_utils.dart';
 
-// ignore: avoid_classes_with_only_static_members
-/// This class is responsible for handling the network response and extract error from it.
-/// and return the result whether it was successful or not.
+/// Turns Dio responses and errors into results.
+///
+/// It maps successful responses to models (single, list and download results),
+/// and delegates the rest: failures become exceptions through [ExceptionMapper],
+/// streaming responses are handled by [StreamResponseHandler] and logging goes
+/// through [HandlerLogger]. Per-request `settings` passed to its methods
+/// override the client-level [settings].
 class ApiHandler {
   ApiHandler({
     required ErrorMapper errorMapper,
@@ -38,32 +42,10 @@ class ApiHandler {
     log: _log,
   );
 
-  ExceptionMessage buildExceptionMessages(
-          PlayxNetworkClientSettings? settings) =>
-      (settings ?? this.settings).exceptionMessages;
-
-  bool buildShouldShowApiErrors(PlayxNetworkClientSettings? settings) =>
-      (settings ?? this.settings).shouldShowApiErrors;
-
-  bool attachLogSettings(PlayxNetworkClientSettings? settings) =>
-      (settings ?? this.settings).logSettings.enabled;
-
-  List<int> buildUnauthorizedRequestCodes(
-          PlayxNetworkClientSettings? settings) =>
-      (settings ?? this.settings).unauthorizedRequestCodes;
-
-  List<int> buildSuccessCodes(PlayxNetworkClientSettings? settings) =>
-      (settings ?? this.settings).successRequestCodes;
-
-  bool useIsolateForMappingJson(PlayxNetworkClientSettings? settings) =>
-      (settings ?? this.settings).useIsolateForMappingJson;
-
-  bool useWorkManagerForMappingJsonInIsolate(
-          PlayxNetworkClientSettings? settings) =>
-      (settings ?? this.settings).useWorkMangerForMappingJsonInIsolate;
-
-  bool treatEmptyResponseAsSuccess(PlayxNetworkClientSettings? settings) =>
-      (settings ?? this.settings).treatEmptyResponseAsSuccess;
+  /// The effective settings: the per-request [override] if given, otherwise
+  /// the client-level ones.
+  PlayxNetworkClientSettings _cfg(PlayxNetworkClientSettings? override) =>
+      override ?? settings;
 
   /// Returns the exception for [response] when its status code is not one of
   /// the success codes (a `400` is always an error), or `null` for a success.
@@ -76,7 +58,7 @@ class ApiHandler {
     PlayxNetworkClientSettings? settings,
   }) {
     final isSuccess = response.statusCode != HttpStatus.badRequest &&
-        buildSuccessCodes(settings).contains(response.statusCode);
+        _cfg(settings).successRequestCodes.contains(response.statusCode);
     if (isSuccess) return null;
 
     final exception = _mapper.fromResponse(
@@ -103,7 +85,7 @@ class ApiHandler {
     dynamic data,
     PlayxNetworkClientSettings? settings,
   ) {
-    final exceptionMessages = buildExceptionMessages(settings);
+    final exceptionMessages = _cfg(settings).exceptionMessages;
     _log.error(
       text: exceptionMessages.emptyResponse,
       error: data,
@@ -111,7 +93,7 @@ class ApiHandler {
     return NetworkResult.error(EmptyResponseException(
       errorMessage: exceptionMessages.emptyResponse,
       statusCode: -1,
-      shouldShowApiError: buildShouldShowApiErrors(settings),
+      shouldShowApiError: _cfg(settings).shouldShowApiErrors,
     ));
   }
 
@@ -181,8 +163,8 @@ class ApiHandler {
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
-    final exceptionMessages = buildExceptionMessages(settings);
-    final shouldShowApiErrors = buildShouldShowApiErrors(settings);
+    final exceptionMessages = _cfg(settings).exceptionMessages;
+    final shouldShowApiErrors = _cfg(settings).shouldShowApiErrors;
     try {
       final statusError = _errorForStatus(
         response: response,
@@ -224,11 +206,11 @@ class ApiHandler {
           dataKey != null ? getJsonValueOrNull(data, dataKey) : data;
 
       try {
-        final future = Future.value(useIsolateForMappingJson(settings)
+        final future = Future.value(_cfg(settings).useIsolateForMappingJson
             ? MapUtils.mapAsyncInIsolate(
                 data: actualData,
                 mapper: fromJson,
-                useWorkManager: useWorkManagerForMappingJsonInIsolate(settings),
+                useWorkManager: _cfg(settings).useWorkMangerForMappingJsonInIsolate,
                 printError: false,
               )
             : fromJson(actualData));
@@ -264,9 +246,9 @@ class ApiHandler {
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
-    final exceptionMessages = buildExceptionMessages(settings);
-    final shouldShowApiErrors = buildShouldShowApiErrors(settings);
-    final emptyIsSuccess = treatEmptyResponseAsSuccess(settings);
+    final exceptionMessages = _cfg(settings).exceptionMessages;
+    final shouldShowApiErrors = _cfg(settings).shouldShowApiErrors;
+    final emptyIsSuccess = _cfg(settings).treatEmptyResponseAsSuccess;
 
     try {
       final statusError = _errorForStatus(
@@ -309,10 +291,10 @@ class ApiHandler {
                     getJsonValueOrNull(item, itemDataKey) ?? item)
                 .toList();
 
-        final Future<List<T>> future = useIsolateForMappingJson(settings)
+        final Future<List<T>> future = _cfg(settings).useIsolateForMappingJson
             ? itemsToMap.asyncMapInIsolate(
                 mapper: fromJson,
-                useWorkManager: useWorkManagerForMappingJsonInIsolate(settings),
+                useWorkManager: _cfg(settings).useWorkMangerForMappingJsonInIsolate,
                 printError: false,
                 printEachItemError: false)
             : Future.wait(itemsToMap.map((item) async => await fromJson(item)));
@@ -350,7 +332,7 @@ class ApiHandler {
     ErrorExtraMapper? errorExtraMapper,
     PlayxNetworkClientSettings? settings,
   }) async {
-    final exceptionMessages = buildExceptionMessages(settings);
+    final exceptionMessages = _cfg(settings).exceptionMessages;
 
     try {
       final statusError = _errorForStatus(
