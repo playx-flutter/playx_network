@@ -443,6 +443,16 @@ class PlayxNetworkClient {
 
   /// sends a [DELETE] request to the given [url]
   /// and returns object of Type [T].
+  ///
+  /// [fromJson] is optional. When it is omitted, any successful response is
+  /// returned as `NetworkResult.success(null)`, so use `delete<void>(...)` (or
+  /// a nullable [T]) for endpoints that return no body.
+  /// When it is provided and the successful response has an empty body, it is
+  /// still a success and [fromJson] is called with `null` (no [dataKey]
+  /// extraction is attempted).
+  ///
+  /// Note that `204 No Content` is only a success if it is listed in
+  /// [PlayxNetworkClientSettings.successRequestCodes].
   /// You can pass your own queries, headers weather to attach custom headers or not.
   /// Or add custom options which overrides headers and custom headers.
   /// Or add cancel token to cancel the request.
@@ -462,7 +472,7 @@ class PlayxNetworkClient {
     CancelToken? cancelToken,
     String? cancelTag,
     bool cancelOld = true,
-    required JsonMapper<T> fromJson,
+    JsonMapper<T>? fromJson,
     String? dataKey,
     ErrorMapper? errorMapper,
     bool shouldHandleUnauthorizedRequest = true,
@@ -486,10 +496,11 @@ class PlayxNetworkClient {
         cancelToken: resolvedCancelToken,
         logSettings: settings?.logSettings,
       );
-      return _apiHandler.handleNetworkResult(
+      return _apiHandler.handleNetworkResult<T>(
         response: res,
         cancelToken: resolvedCancelToken,
         fromJson: fromJson,
+        allowEmptyResponse: true,
         dataKey: dataKey,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
