@@ -790,8 +790,8 @@ class ApiHandler {
                 : UnexpectedErrorException(
                     errorMessage: exceptionMessages.unexpectedError,
                   ),
-            DioExceptionType.receiveTimeout => SendTimeoutException(
-                errorMessage: exceptionMessages.sendTimeout,
+            DioExceptionType.receiveTimeout => ReceiveTimeoutException(
+                errorMessage: exceptionMessages.receiveTimeout,
               ),
             DioExceptionType.badResponse => _handleResponse(
                 response: error.response,
@@ -810,8 +810,12 @@ class ApiHandler {
                 messages: exceptionMessages,
                 isOnline: isOnline,
               ),
-            DioExceptionType.transformTimeout => UnexpectedErrorException(
-                errorMessage: exceptionMessages.unexpectedError,
+            // Parsing the response took too long: the data arrived but could
+            // not be processed in time.
+            DioExceptionType.transformTimeout => UnableToProcessException(
+                errorMessage: exceptionMessages.unableToProcess,
+                statusCode: -1,
+                shouldShowApiError: false,
               ),
           };
         } else if (error is SocketException) {

@@ -384,7 +384,9 @@ Connection problems are reported with different exceptions, so you don't have to
 | `NoInternetConnectionException` | The device has no usable network. |
 | `ServerUnreachableException` | The device has a network, but the server could not be reached: connection refused, reset, closed or timed out, or no route to the host. |
 | `CorsException` | **Web only.** The browser blocked the request or it failed without a response, most commonly because the server doesn't allow your website's origin (CORS). |
-| `RequestTimeoutException` / `SendTimeoutException` | The connection or the request timed out. |
+| `RequestTimeoutException` | Establishing the connection timed out. |
+| `SendTimeoutException` | Sending the request timed out. |
+| `ReceiveTimeoutException` | The server took too long to send the response. |
 
 Without any setup the exception is chosen from the operating system error (for example `ECONNREFUSED` becomes `ServerUnreachableException` and `ENETUNREACH` becomes `NoInternetConnectionException`). A failure that can't be identified, including a failed host lookup, is still reported as `NoInternetConnectionException`, as in earlier versions.
 

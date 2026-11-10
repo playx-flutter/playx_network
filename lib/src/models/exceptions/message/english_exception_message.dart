@@ -28,6 +28,10 @@ class DefaultEnglishExceptionMessage extends ExceptionMessage {
   String get internalServerError => "Sorry, There is an internal server error";
 
   @override
+  String get receiveTimeout =>
+      "Sorry, The server took too long to send the response.";
+
+  @override
   String get serverUnreachable =>
       "Sorry, We couldn't reach the server. Please try again later.";
 

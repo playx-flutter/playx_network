@@ -34,6 +34,11 @@ abstract class ExceptionMessage {
 
   String get emptyResponse;
 
+  /// Message for a response that took too long to receive. Defaults to
+  /// [sendTimeout], the message used for it in earlier versions, so existing
+  /// subclasses keep working.
+  String get receiveTimeout => sendTimeout;
+
   /// Message for a server that could not be reached while the device has a
   /// network. Defaults to [defaultError] so existing subclasses keep working.
   String get serverUnreachable => defaultError;

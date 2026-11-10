@@ -20,6 +20,9 @@ class DefaultArabicExceptionMessage extends ExceptionMessage {
   String get internalServerError => "عذرا ، هناك خطأ داخلي في الخادم";
 
   @override
+  String get receiveTimeout => "عذرا ، استغرق الخادم وقتا طويلا في إرسال الاستجابة.";
+
+  @override
   String get serverUnreachable => "عذرا ، تعذر الوصول إلى الخادم. يرجى المحاولة لاحقا.";
 
   @override

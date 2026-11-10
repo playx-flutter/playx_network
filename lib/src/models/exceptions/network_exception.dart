@@ -235,6 +235,11 @@ class SendTimeoutException extends NetworkException {
   const SendTimeoutException({required super.errorMessage});
 }
 
+/// Exception for a server that took too long to send the response.
+class ReceiveTimeoutException extends NetworkException {
+  const ReceiveTimeoutException({required super.errorMessage});
+}
+
 /// Exception for request cancellation.
 class RequestCanceledException extends NetworkException {
   const RequestCanceledException({required super.errorMessage});
