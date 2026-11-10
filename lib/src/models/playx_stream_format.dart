@@ -40,11 +40,11 @@ enum PlayxStreamFormat {
   /// Type produced by this format, used for documentation and generic
   /// inference at call sites.
   Type get elementType => switch (this) {
-        PlayxStreamFormat.bytes => List<int>,
-        PlayxStreamFormat.text => String,
-        PlayxStreamFormat.json => Object,
-        PlayxStreamFormat.sse => PlayxSseEvent,
-      };
+    PlayxStreamFormat.bytes => List<int>,
+    PlayxStreamFormat.text => String,
+    PlayxStreamFormat.json => Object,
+    PlayxStreamFormat.sse => PlayxSseEvent,
+  };
 
   /// Decodes a single, self-contained raw byte [chunk] into the format's
   /// element type.
@@ -87,9 +87,9 @@ enum PlayxStreamFormat {
       case PlayxStreamFormat.bytes:
         return stream;
       case PlayxStreamFormat.text:
-        return const Utf8Decoder(allowMalformed: true)
-            .bind(stream)
-            .where((text) => text.isNotEmpty);
+        return const Utf8Decoder(
+          allowMalformed: true,
+        ).bind(stream).where((text) => text.isNotEmpty);
       case PlayxStreamFormat.json:
         return const Utf8Decoder(allowMalformed: true)
             .bind(stream)

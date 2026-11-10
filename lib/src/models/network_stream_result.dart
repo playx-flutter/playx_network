@@ -109,10 +109,11 @@ sealed class NetworkStreamResult<T> {
   }) {
     return switch (this) {
       NetworkStreamSuccess<T>() => NetworkStreamResult.success(
-          mapper((this as NetworkStreamSuccess<T>).data),
-        ),
-      NetworkStreamError<T>() =>
-        NetworkStreamResult.error((this as NetworkStreamError<T>).error),
+        mapper((this as NetworkStreamSuccess<T>).data),
+      ),
+      NetworkStreamError<T>() => NetworkStreamResult.error(
+        (this as NetworkStreamError<T>).error,
+      ),
     };
   }
 
@@ -123,10 +124,11 @@ sealed class NetworkStreamResult<T> {
   }) async {
     return switch (this) {
       NetworkStreamSuccess<T>() => NetworkStreamResult.success(
-          await mapper((this as NetworkStreamSuccess<T>).data),
-        ),
-      NetworkStreamError<T>() =>
-        NetworkStreamResult.error((this as NetworkStreamError<T>).error),
+        await mapper((this as NetworkStreamSuccess<T>).data),
+      ),
+      NetworkStreamError<T>() => NetworkStreamResult.error(
+        (this as NetworkStreamError<T>).error,
+      ),
     };
   }
 
@@ -144,26 +146,33 @@ sealed class NetworkStreamResult<T> {
   Future<NetworkResult<List<T>>> toList() async {
     return switch (this) {
       NetworkStreamSuccess<T>() => await _collect(),
-      NetworkStreamError<T>() =>
-        NetworkResult.error((this as NetworkStreamError<T>).error),
+      NetworkStreamError<T>() => NetworkResult.error(
+        (this as NetworkStreamError<T>).error,
+      ),
     };
   }
 
   Future<NetworkResult<List<T>>> _collect() async {
     try {
       return NetworkResult.success(
-          await (this as NetworkStreamSuccess<T>).data.toList());
+        await (this as NetworkStreamSuccess<T>).data.toList(),
+      );
     } on NetworkException catch (e) {
       return NetworkResult.error(e);
     } catch (_) {
-      return NetworkResult.error(UnexpectedErrorException(
-        errorMessage: _exceptionMessages?.unexpectedError ?? 'unexpectedError',
-      ));
+      return NetworkResult.error(
+        UnexpectedErrorException(
+          errorMessage:
+              _exceptionMessages?.unexpectedError ?? 'unexpectedError',
+        ),
+      );
     }
   }
 
-  ExceptionMessage? get _exceptionMessages => GetIt.instance
-          .isRegistered<ExceptionMessage>(instanceName: 'exception_messages')
+  ExceptionMessage? get _exceptionMessages =>
+      GetIt.instance.isRegistered<ExceptionMessage>(
+        instanceName: 'exception_messages',
+      )
       ? GetIt.instance.get<ExceptionMessage>(instanceName: 'exception_messages')
       : null;
 }

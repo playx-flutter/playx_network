@@ -1,9 +1,7 @@
 class ApiMessage {
   List<Messages>? messages;
 
-  ApiMessage({
-    this.messages,
-  });
+  ApiMessage({this.messages});
 
   ApiMessage.fromJson(dynamic json) {
     final list = json is Map ? json['messages'] : null;
@@ -17,10 +15,7 @@ class Messages {
   String? id;
   String? message;
 
-  Messages({
-    this.id,
-    this.message,
-  });
+  Messages({this.id, this.message});
 
   Messages.fromJson(dynamic json) {
     if (json is! Map) return;

@@ -58,10 +58,7 @@ class _StreamAdapter implements HttpClientAdapter {
 
 /// Adapter that emits SSE events from a list of raw strings.
 class _SseAdapter implements HttpClientAdapter {
-  _SseAdapter({
-    this.statusCode = 200,
-    required this.eventStrings,
-  });
+  _SseAdapter({this.statusCode = 200, required this.eventStrings});
 
   final int statusCode;
   final List<String> eventStrings;
@@ -111,10 +108,7 @@ class _ErrorAdapter implements HttpClientAdapter {
     Stream<List<int>>? requestStream,
     Future<void>? cancelFuture,
   ) async {
-    throw DioException(
-      requestOptions: options,
-      type: type,
-    );
+    throw DioException(requestOptions: options, type: type);
   }
 }
 
@@ -123,10 +117,8 @@ const _defaultSettings = PlayxNetworkClientSettings(
   useIsolateForMappingJson: false,
 );
 
-PlayxNetworkClient _client(Dio dio) => PlayxNetworkClient(
-      dio: dio,
-      settings: _defaultSettings,
-    );
+PlayxNetworkClient _client(Dio dio) =>
+    PlayxNetworkClient(dio: dio, settings: _defaultSettings);
 
 // ---------------------------------------------------------------------------
 // PlayxStreamFormat tests
@@ -166,18 +158,17 @@ class _ControlledAdapter implements HttpClientAdapter {
   }
 }
 
-Dio _dioWith(HttpClientAdapter adapter) => Dio(BaseOptions(
-      baseUrl: 'https://example.com',
-      validateStatus: (_) => true,
-    ))
-      ..httpClientAdapter = adapter;
+Dio _dioWith(HttpClientAdapter adapter) => Dio(
+  BaseOptions(baseUrl: 'https://example.com', validateStatus: (_) => true),
+)..httpClientAdapter = adapter;
 
 void main() {
   group('stream lifecycle fixes', () {
     test('cancelling the listener closes the response body', () async {
       final adapter = _ControlledAdapter().init();
-      final result = await _client(_dioWith(adapter))
-          .getStream<String>('/s', format: PlayxStreamFormat.text);
+      final result = await _client(
+        _dioWith(adapter),
+      ).getStream<String>('/s', format: PlayxStreamFormat.text);
       final sub = result.data!.listen((_) {});
       adapter.controller.add(Uint8List.fromList(utf8.encode('a')));
       await Future<void>.delayed(Duration.zero);
@@ -187,8 +178,9 @@ void main() {
 
     test('pausing the listener pauses the upstream', () async {
       final adapter = _ControlledAdapter().init();
-      final result = await _client(_dioWith(adapter))
-          .getStream<String>('/s', format: PlayxStreamFormat.text);
+      final result = await _client(
+        _dioWith(adapter),
+      ).getStream<String>('/s', format: PlayxStreamFormat.text);
       final received = <String>[];
       final sub = result.data!.listen(received.add);
       await Future<void>.delayed(Duration.zero);
@@ -204,8 +196,9 @@ void main() {
 
     test('stream completes after a source error', () async {
       final adapter = _ControlledAdapter().init();
-      final result = await _client(_dioWith(adapter))
-          .getStream<String>('/s', format: PlayxStreamFormat.text);
+      final result = await _client(
+        _dioWith(adapter),
+      ).getStream<String>('/s', format: PlayxStreamFormat.text);
       final errors = <Object>[];
       final done = Completer<void>();
       result.data!.listen((_) {}, onError: errors.add, onDone: done.complete);
@@ -218,53 +211,72 @@ void main() {
     test('cancel token emits a single RequestCanceledException', () async {
       final adapter = _ControlledAdapter().init();
       final token = CancelToken();
-      final result = await _client(_dioWith(adapter)).getStream<String>('/s',
-          format: PlayxStreamFormat.text, cancelToken: token);
+      final result = await _client(_dioWith(adapter)).getStream<String>(
+        '/s',
+        format: PlayxStreamFormat.text,
+        cancelToken: token,
+      );
       final errors = <Object>[];
       final done = Completer<void>();
       result.data!.listen((_) {}, onError: errors.add, onDone: done.complete);
       token.cancel();
-      adapter.controller.addError(DioException.requestCancelled(
-          requestOptions: RequestOptions(path: '/s'), reason: 'x'));
+      adapter.controller.addError(
+        DioException.requestCancelled(
+          requestOptions: RequestOptions(path: '/s'),
+          reason: 'x',
+        ),
+      );
       await done.future.timeout(const Duration(seconds: 2));
       expect(errors, hasLength(1));
       expect(errors.single, isA<RequestCanceledException>());
     });
 
-    test('malformed NDJSON line is reported and the stream continues',
-        () async {
-      final adapter = _ControlledAdapter().init();
-      final result = await _client(_dioWith(adapter))
-          .getStream<Object>('/s', format: PlayxStreamFormat.json);
-      final values = <Object>[];
-      final errors = <Object>[];
-      final done = Completer<void>();
-      result.data!
-          .listen(values.add, onError: errors.add, onDone: done.complete);
-      adapter.controller
-          .add(Uint8List.fromList(utf8.encode('{"a":1}\nnot json\n{"b":2}\n')));
-      await adapter.controller.close();
-      await done.future.timeout(const Duration(seconds: 2));
-      expect(values, hasLength(2));
-      expect(errors.single, isA<UnableToProcessException>());
-    });
+    test(
+      'malformed NDJSON line is reported and the stream continues',
+      () async {
+        final adapter = _ControlledAdapter().init();
+        final result = await _client(
+          _dioWith(adapter),
+        ).getStream<Object>('/s', format: PlayxStreamFormat.json);
+        final values = <Object>[];
+        final errors = <Object>[];
+        final done = Completer<void>();
+        result.data!.listen(
+          values.add,
+          onError: errors.add,
+          onDone: done.complete,
+        );
+        adapter.controller.add(
+          Uint8List.fromList(utf8.encode('{"a":1}\nnot json\n{"b":2}\n')),
+        );
+        await adapter.controller.close();
+        await done.future.timeout(const Duration(seconds: 2));
+        expect(values, hasLength(2));
+        expect(errors.single, isA<UnableToProcessException>());
+      },
+    );
 
     test('error response body reaches the errorMapper', () async {
-      final dio = _dioWith(_StreamAdapter(
-        statusCode: 422,
-        chunks: [utf8.encode('{"message":"bad input"}')],
-      ));
-      final result = await _client(dio).getStream<String>('/s',
-          format: PlayxStreamFormat.text,
-          errorMapper: (e) => (e as Map)['message'] as String);
+      final dio = _dioWith(
+        _StreamAdapter(
+          statusCode: 422,
+          chunks: [utf8.encode('{"message":"bad input"}')],
+        ),
+      );
+      final result = await _client(dio).getStream<String>(
+        '/s',
+        format: PlayxStreamFormat.text,
+        errorMapper: (e) => (e as Map)['message'] as String,
+      );
       expect(result.isError, isTrue);
       expect(result.error!.message, 'bad input');
     });
 
     test('toList returns an error result when the stream errors', () async {
       final adapter = _ControlledAdapter().init();
-      final result = await _client(_dioWith(adapter))
-          .getStream<String>('/s', format: PlayxStreamFormat.text);
+      final result = await _client(
+        _dioWith(adapter),
+      ).getStream<String>('/s', format: PlayxStreamFormat.text);
       final future = result.toList();
       adapter.controller.add(Uint8List.fromList(utf8.encode('a')));
       adapter.controller.addError(const SocketException('dropped'));
@@ -280,8 +292,11 @@ void main() {
         settings: _defaultSettings,
         customHeaders: () async => {'authorization': 'Bearer t'},
       );
-      await client.getSse('/s',
-          options: Options(headers: {'X-A': '1'}), headers: {'X-B': '2'});
+      await client.getSse(
+        '/s',
+        options: Options(headers: {'X-A': '1'}),
+        headers: {'X-B': '2'},
+      );
       expect(captured['Accept'], 'text/event-stream');
       expect(captured['Cache-Control'], 'no-cache');
       expect(captured['X-A'], '1');
@@ -293,8 +308,9 @@ void main() {
     test('caller Accept header is not overridden by getSse', () async {
       final captured = <String, dynamic>{};
       final adapter = _ControlledAdapter(captured: captured).init();
-      await _client(_dioWith(adapter))
-          .getSse('/s', headers: {'accept': 'text/plain'});
+      await _client(
+        _dioWith(adapter),
+      ).getSse('/s', headers: {'accept': 'text/plain'});
       expect(captured['accept'], 'text/plain');
       expect(captured.containsKey('Accept'), isFalse);
     });
@@ -358,8 +374,10 @@ void main() {
 
       test('json throws on invalid JSON', () {
         final chunk = utf8.encode('{invalid');
-        expect(() => PlayxStreamFormat.json.decodeChunk(chunk),
-            throwsA(isA<FormatException>()));
+        expect(
+          () => PlayxStreamFormat.json.decodeChunk(chunk),
+          throwsA(isA<FormatException>()),
+        );
       });
 
       test('sse returns null (requires stream context)', () {
@@ -373,8 +391,9 @@ void main() {
           [1, 2],
           [3, 4],
         ]);
-        final result =
-            await PlayxStreamFormat.bytes.decodeStream(stream).toList();
+        final result = await PlayxStreamFormat.bytes
+            .decodeStream(stream)
+            .toList();
         expect(result, [
           [1, 2],
           [3, 4],
@@ -386,8 +405,9 @@ void main() {
           utf8.encode('hello '),
           utf8.encode('world'),
         ]);
-        final result =
-            await PlayxStreamFormat.text.decodeStream(stream).toList();
+        final result = await PlayxStreamFormat.text
+            .decodeStream(stream)
+            .toList();
         expect(result, ['hello ', 'world']);
       });
 
@@ -396,31 +416,35 @@ void main() {
           utf8.encode('{"a": 1}\n'),
           utf8.encode('{"b": 2}\n'),
         ]);
-        final result =
-            await PlayxStreamFormat.json.decodeStream(stream).toList();
+        final result = await PlayxStreamFormat.json
+            .decodeStream(stream)
+            .toList();
         expect(result, hasLength(2));
         expect((result[0] as Map)['a'], 1);
         expect((result[1] as Map)['b'], 2);
       });
 
-      test('text reassembles multibyte characters split across chunks',
-          () async {
-        final bytes = utf8.encode('😀');
-        final result = await PlayxStreamFormat.text
-            .decodeStream(Stream.fromIterable([
-              bytes.sublist(0, 2),
-              bytes.sublist(2),
-            ]))
-            .toList();
-        expect(result.join(), '😀');
-      });
+      test(
+        'text reassembles multibyte characters split across chunks',
+        () async {
+          final bytes = utf8.encode('😀');
+          final result = await PlayxStreamFormat.text
+              .decodeStream(
+                Stream.fromIterable([bytes.sublist(0, 2), bytes.sublist(2)]),
+              )
+              .toList();
+          expect(result.join(), '😀');
+        },
+      );
 
       test('json handles multiple and split documents per chunk', () async {
         final result = await PlayxStreamFormat.json
-            .decodeStream(Stream.fromIterable([
-              utf8.encode('{"a":1}\n{"b"'),
-              utf8.encode(':2}\n{"c":3}'),
-            ]))
+            .decodeStream(
+              Stream.fromIterable([
+                utf8.encode('{"a":1}\n{"b"'),
+                utf8.encode(':2}\n{"c":3}'),
+              ]),
+            )
             .toList();
         expect(result.map((e) => (e as Map).keys.single), ['a', 'b', 'c']);
       });
@@ -431,8 +455,9 @@ void main() {
           utf8.encode('{"a": 1}\n'),
           utf8.encode('   \n'),
         ]);
-        final result =
-            await PlayxStreamFormat.json.decodeStream(stream).toList();
+        final result = await PlayxStreamFormat.json
+            .decodeStream(stream)
+            .toList();
         expect(result, hasLength(1));
         expect((result[0] as Map)['a'], 1);
       });
@@ -505,9 +530,9 @@ void main() {
   group('SSE parser', () {
     test('parses a simple data event', () async {
       final sseText = 'data: hello\n\n';
-      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
-        utf8.encode(sseText),
-      ]));
+      final stream = PlayxStreamFormat.sse.decodeStream(
+        Stream.fromIterable([utf8.encode(sseText)]),
+      );
       final events = await stream.toList();
       expect(events, hasLength(1));
       final event = events[0] as PlayxSseEvent;
@@ -517,9 +542,9 @@ void main() {
 
     test('parses named event', () async {
       final sseText = 'event: update\ndata: {"value": 42}\n\n';
-      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
-        utf8.encode(sseText),
-      ]));
+      final stream = PlayxStreamFormat.sse.decodeStream(
+        Stream.fromIterable([utf8.encode(sseText)]),
+      );
       final events = await stream.toList();
       expect(events, hasLength(1));
       final event = events[0] as PlayxSseEvent;
@@ -529,9 +554,9 @@ void main() {
 
     test('concatenates multiple data lines with \\n', () async {
       final sseText = 'data: line1\ndata: line2\n\n';
-      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
-        utf8.encode(sseText),
-      ]));
+      final stream = PlayxStreamFormat.sse.decodeStream(
+        Stream.fromIterable([utf8.encode(sseText)]),
+      );
       final events = await stream.toList();
       expect(events, hasLength(1));
       final event = events[0] as PlayxSseEvent;
@@ -540,9 +565,9 @@ void main() {
 
     test('parses id field', () async {
       final sseText = 'id: 42\ndata: test\n\n';
-      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
-        utf8.encode(sseText),
-      ]));
+      final stream = PlayxStreamFormat.sse.decodeStream(
+        Stream.fromIterable([utf8.encode(sseText)]),
+      );
       final events = await stream.toList();
       expect(events, hasLength(1));
       final event = events[0] as PlayxSseEvent;
@@ -551,9 +576,9 @@ void main() {
 
     test('parses retry field', () async {
       final sseText = 'retry: 5000\ndata: test\n\n';
-      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
-        utf8.encode(sseText),
-      ]));
+      final stream = PlayxStreamFormat.sse.decodeStream(
+        Stream.fromIterable([utf8.encode(sseText)]),
+      );
       final events = await stream.toList();
       expect(events, hasLength(1));
       final event = events[0] as PlayxSseEvent;
@@ -562,9 +587,9 @@ void main() {
 
     test('ignores comment lines starting with colon', () async {
       final sseText = ': this is a comment\ndata: test\n\n';
-      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
-        utf8.encode(sseText),
-      ]));
+      final stream = PlayxStreamFormat.sse.decodeStream(
+        Stream.fromIterable([utf8.encode(sseText)]),
+      );
       final events = await stream.toList();
       expect(events, hasLength(1));
       expect((events[0] as PlayxSseEvent).data, 'test');
@@ -572,9 +597,9 @@ void main() {
 
     test('handles CRLF line endings', () async {
       final sseText = 'data: hello\r\n\r\n';
-      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
-        utf8.encode(sseText),
-      ]));
+      final stream = PlayxStreamFormat.sse.decodeStream(
+        Stream.fromIterable([utf8.encode(sseText)]),
+      );
       final events = await stream.toList();
       expect(events, hasLength(1));
       expect((events[0] as PlayxSseEvent).data, 'hello');
@@ -582,9 +607,9 @@ void main() {
 
     test('parses multiple events in one chunk', () async {
       final sseText = 'data: first\n\ndata: second\n\n';
-      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
-        utf8.encode(sseText),
-      ]));
+      final stream = PlayxStreamFormat.sse.decodeStream(
+        Stream.fromIterable([utf8.encode(sseText)]),
+      );
       final events = await stream.toList();
       expect(events, hasLength(2));
       expect((events[0] as PlayxSseEvent).data, 'first');
@@ -592,10 +617,9 @@ void main() {
     });
 
     test('parses events split across multiple chunks', () async {
-      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
-        utf8.encode('data: hel'),
-        utf8.encode('lo\n\n'),
-      ]));
+      final stream = PlayxStreamFormat.sse.decodeStream(
+        Stream.fromIterable([utf8.encode('data: hel'), utf8.encode('lo\n\n')]),
+      );
       final events = await stream.toList();
       expect(events, hasLength(1));
       expect((events[0] as PlayxSseEvent).data, 'hello');
@@ -604,86 +628,100 @@ void main() {
     test('strips single leading space from value', () async {
       // SSE spec: strip one leading space after the colon.
       final sseText = 'data:  two spaces\n\n';
-      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
-        utf8.encode(sseText),
-      ]));
+      final stream = PlayxStreamFormat.sse.decodeStream(
+        Stream.fromIterable([utf8.encode(sseText)]),
+      );
       final events = await stream.toList();
       expect(events, hasLength(1));
       expect((events[0] as PlayxSseEvent).data, ' two spaces');
     });
 
-    test('field without colon uses entire line as field with empty value',
-        () async {
-      final sseText = 'data\ndata: test\n\n';
-      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
-        utf8.encode(sseText),
-      ]));
-      final events = await stream.toList();
-      expect(events, hasLength(1));
-      expect((events[0] as PlayxSseEvent).data, '\ntest');
-    });
+    test(
+      'field without colon uses entire line as field with empty value',
+      () async {
+        final sseText = 'data\ndata: test\n\n';
+        final stream = PlayxStreamFormat.sse.decodeStream(
+          Stream.fromIterable([utf8.encode(sseText)]),
+        );
+        final events = await stream.toList();
+        expect(events, hasLength(1));
+        expect((events[0] as PlayxSseEvent).data, '\ntest');
+      },
+    );
 
-    test('flushes pending event when stream closes without trailing blank line',
-        () async {
-      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
-        utf8.encode('data: no-blank-line\n'),
-      ]));
-      final events = await stream.toList();
-      expect(events, hasLength(1));
-      expect((events[0] as PlayxSseEvent).data, 'no-blank-line');
-    });
+    test(
+      'flushes pending event when stream closes without trailing blank line',
+      () async {
+        final stream = PlayxStreamFormat.sse.decodeStream(
+          Stream.fromIterable([utf8.encode('data: no-blank-line\n')]),
+        );
+        final events = await stream.toList();
+        expect(events, hasLength(1));
+        expect((events[0] as PlayxSseEvent).data, 'no-blank-line');
+      },
+    );
 
     test('discards a trailing partial line when the stream closes', () async {
-      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
-        utf8.encode('data: {"par'),
-      ]));
+      final stream = PlayxStreamFormat.sse.decodeStream(
+        Stream.fromIterable([utf8.encode('data: {"par')]),
+      );
       expect(await stream.toList(), isEmpty);
     });
 
-    test('supports bare CR line endings and CRLF split across chunks',
-        () async {
-      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
-        utf8.encode('data: a\r\r'),
-        utf8.encode('data: b\r'),
-        utf8.encode('\n\r\n'),
-      ]));
-      final events = (await stream.toList()).cast<PlayxSseEvent>();
-      expect(events.map((e) => e.data), ['a', 'b']);
-    });
+    test(
+      'supports bare CR line endings and CRLF split across chunks',
+      () async {
+        final stream = PlayxStreamFormat.sse.decodeStream(
+          Stream.fromIterable([
+            utf8.encode('data: a\r\r'),
+            utf8.encode('data: b\r'),
+            utf8.encode('\n\r\n'),
+          ]),
+        );
+        final events = (await stream.toList()).cast<PlayxSseEvent>();
+        expect(events.map((e) => e.data), ['a', 'b']);
+      },
+    );
 
     test('strips a leading BOM', () async {
-      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
-        [0xEF, 0xBB, 0xBF, ...utf8.encode('data: hi\n\n')],
-      ]));
+      final stream = PlayxStreamFormat.sse.decodeStream(
+        Stream.fromIterable([
+          [0xEF, 0xBB, 0xBF, ...utf8.encode('data: hi\n\n')],
+        ]),
+      );
       final events = (await stream.toList()).cast<PlayxSseEvent>();
       expect(events.single.data, 'hi');
     });
 
-    test('id-only block is not dispatched but id persists to later events',
-        () async {
-      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
-        utf8.encode('id: 5\n\ndata: x\n\ndata: y\n\n'),
-      ]));
-      final events = (await stream.toList()).cast<PlayxSseEvent>();
-      expect(events.map((e) => e.data), ['x', 'y']);
-      expect(events.map((e) => e.id), ['5', '5']);
-    });
+    test(
+      'id-only block is not dispatched but id persists to later events',
+      () async {
+        final stream = PlayxStreamFormat.sse.decodeStream(
+          Stream.fromIterable([utf8.encode('id: 5\n\ndata: x\n\ndata: y\n\n')]),
+        );
+        final events = (await stream.toList()).cast<PlayxSseEvent>();
+        expect(events.map((e) => e.data), ['x', 'y']);
+        expect(events.map((e) => e.id), ['5', '5']);
+      },
+    );
 
     test('retry-only block is kept for the next event', () async {
-      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
-        utf8.encode('retry: 3000\n\ndata: x\n\n'),
-      ]));
+      final stream = PlayxStreamFormat.sse.decodeStream(
+        Stream.fromIterable([utf8.encode('retry: 3000\n\ndata: x\n\n')]),
+      );
       final events = (await stream.toList()).cast<PlayxSseEvent>();
       expect(events.single.retry, 3000);
     });
 
     test('reassembles multibyte characters split across chunks', () async {
       final bytes = utf8.encode('data: مرحبا😀\n\n');
-      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
-        bytes.sublist(0, 8),
-        bytes.sublist(8, bytes.length - 5),
-        bytes.sublist(bytes.length - 5),
-      ]));
+      final stream = PlayxStreamFormat.sse.decodeStream(
+        Stream.fromIterable([
+          bytes.sublist(0, 8),
+          bytes.sublist(8, bytes.length - 5),
+          bytes.sublist(bytes.length - 5),
+        ]),
+      );
       final events = (await stream.toList()).cast<PlayxSseEvent>();
       expect(events.single.data, 'مرحبا😀');
     });
@@ -698,9 +736,9 @@ void main() {
 
     test('does not emit event for heartbeat (comment only)', () async {
       final sseText = ': heartbeat\n\n';
-      final stream = PlayxStreamFormat.sse.decodeStream(Stream.fromIterable([
-        utf8.encode(sseText),
-      ]));
+      final stream = PlayxStreamFormat.sse.decodeStream(
+        Stream.fromIterable([utf8.encode(sseText)]),
+      );
       final events = await stream.toList();
       expect(events, isEmpty);
     });
@@ -778,8 +816,9 @@ void main() {
     });
 
     test('mapStream transforms success stream and preserves error', () async {
-      final result =
-          NetworkStreamResult<int>.success(Stream.fromIterable([1, 2, 3]));
+      final result = NetworkStreamResult<int>.success(
+        Stream.fromIterable([1, 2, 3]),
+      );
       final mapped = result.mapStream<String>(
         mapper: (stream) => stream.map((e) => 'item-$e'),
       );
@@ -800,8 +839,9 @@ void main() {
     });
 
     test('toList collects success stream into a list', () async {
-      final result =
-          NetworkStreamResult<int>.success(Stream.fromIterable([1, 2, 3]));
+      final result = NetworkStreamResult<int>.success(
+        Stream.fromIterable([1, 2, 3]),
+      );
       final listResult = await result.toList();
       expect(listResult.isSuccess, isTrue);
       expect(listResult.data, [1, 2, 3]);
@@ -836,16 +876,15 @@ void main() {
 
   group('PlayxNetworkClient.getStream', () {
     test('emits text chunks on success', () async {
-      final dio = Dio(BaseOptions(
-        baseUrl: 'https://example.com',
-        validateStatus: (_) => true,
-      ));
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://example.com',
+          validateStatus: (_) => true,
+        ),
+      );
       dio.httpClientAdapter = _StreamAdapter(
         statusCode: 200,
-        chunks: [
-          utf8.encode('chunk1 '),
-          utf8.encode('chunk2'),
-        ],
+        chunks: [utf8.encode('chunk1 '), utf8.encode('chunk2')],
       );
 
       final client = _client(dio);
@@ -860,10 +899,12 @@ void main() {
     });
 
     test('emits bytes chunks on success', () async {
-      final dio = Dio(BaseOptions(
-        baseUrl: 'https://example.com',
-        validateStatus: (_) => true,
-      ));
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://example.com',
+          validateStatus: (_) => true,
+        ),
+      );
       dio.httpClientAdapter = _StreamAdapter(
         statusCode: 200,
         chunks: [
@@ -887,16 +928,15 @@ void main() {
     });
 
     test('emits json chunks on success', () async {
-      final dio = Dio(BaseOptions(
-        baseUrl: 'https://example.com',
-        validateStatus: (_) => true,
-      ));
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://example.com',
+          validateStatus: (_) => true,
+        ),
+      );
       dio.httpClientAdapter = _StreamAdapter(
         statusCode: 200,
-        chunks: [
-          utf8.encode('{"i": 1}\n'),
-          utf8.encode('{"i": 2}\n'),
-        ],
+        chunks: [utf8.encode('{"i": 1}\n'), utf8.encode('{"i": 2}\n')],
       );
 
       final client = _client(dio);
@@ -913,16 +953,15 @@ void main() {
     });
 
     test('emits SSE events via getSse', () async {
-      final dio = Dio(BaseOptions(
-        baseUrl: 'https://example.com',
-        validateStatus: (_) => true,
-      ));
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://example.com',
+          validateStatus: (_) => true,
+        ),
+      );
       dio.httpClientAdapter = _SseAdapter(
         statusCode: 200,
-        eventStrings: [
-          'data: hello\n\n',
-          'event: update\ndata: world\n\n',
-        ],
+        eventStrings: ['data: hello\n\n', 'event: update\ndata: world\n\n'],
       );
 
       final client = _client(dio);
@@ -938,15 +977,15 @@ void main() {
     });
 
     test('emits SSE events via getStream with sse format', () async {
-      final dio = Dio(BaseOptions(
-        baseUrl: 'https://example.com',
-        validateStatus: (_) => true,
-      ));
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://example.com',
+          validateStatus: (_) => true,
+        ),
+      );
       dio.httpClientAdapter = _SseAdapter(
         statusCode: 200,
-        eventStrings: [
-          'data: hello\n\n',
-        ],
+        eventStrings: ['data: hello\n\n'],
       );
 
       final client = _client(dio);
@@ -962,10 +1001,12 @@ void main() {
     });
 
     test('returns error for non-success status code', () async {
-      final dio = Dio(BaseOptions(
-        baseUrl: 'https://example.com',
-        validateStatus: (_) => true,
-      ));
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://example.com',
+          validateStatus: (_) => true,
+        ),
+      );
       dio.httpClientAdapter = _StreamAdapter(
         statusCode: 404,
         chunks: [utf8.encode('not found')],
@@ -983,10 +1024,12 @@ void main() {
     });
 
     test('returns error for 500 status code', () async {
-      final dio = Dio(BaseOptions(
-        baseUrl: 'https://example.com',
-        validateStatus: (_) => true,
-      ));
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://example.com',
+          validateStatus: (_) => true,
+        ),
+      );
       dio.httpClientAdapter = _StreamAdapter(
         statusCode: 500,
         chunks: [utf8.encode('server error')],
@@ -1003,10 +1046,12 @@ void main() {
     });
 
     test('returns error for 401 unauthorized and invokes handler', () async {
-      final dio = Dio(BaseOptions(
-        baseUrl: 'https://example.com',
-        validateStatus: (_) => true,
-      ));
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://example.com',
+          validateStatus: (_) => true,
+        ),
+      );
       dio.httpClientAdapter = _StreamAdapter(
         statusCode: 401,
         chunks: [utf8.encode('unauthorized')],
@@ -1031,42 +1076,48 @@ void main() {
       expect(unauthorizedCalled, isTrue);
     });
 
-    test('can disable unauthorized handler via shouldHandleUnauthorizedRequest',
-        () async {
-      final dio = Dio(BaseOptions(
-        baseUrl: 'https://example.com',
-        validateStatus: (_) => true,
-      ));
-      dio.httpClientAdapter = _StreamAdapter(
-        statusCode: 401,
-        chunks: [utf8.encode('unauthorized')],
-      );
+    test(
+      'can disable unauthorized handler via shouldHandleUnauthorizedRequest',
+      () async {
+        final dio = Dio(
+          BaseOptions(
+            baseUrl: 'https://example.com',
+            validateStatus: (_) => true,
+          ),
+        );
+        dio.httpClientAdapter = _StreamAdapter(
+          statusCode: 401,
+          chunks: [utf8.encode('unauthorized')],
+        );
 
-      var unauthorizedCalled = false;
-      final client = PlayxNetworkClient(
-        dio: dio,
-        settings: _defaultSettings,
-        onUnauthorizedRequestReceived: (_) {
-          unauthorizedCalled = true;
-        },
-      );
+        var unauthorizedCalled = false;
+        final client = PlayxNetworkClient(
+          dio: dio,
+          settings: _defaultSettings,
+          onUnauthorizedRequestReceived: (_) {
+            unauthorizedCalled = true;
+          },
+        );
 
-      final result = await client.getStream<String>(
-        '/stream',
-        format: PlayxStreamFormat.text,
-        shouldHandleUnauthorizedRequest: false,
-      );
+        final result = await client.getStream<String>(
+          '/stream',
+          format: PlayxStreamFormat.text,
+          shouldHandleUnauthorizedRequest: false,
+        );
 
-      expect(result.isError, isTrue);
-      expect(result.error, isA<UnauthorizedRequestException>());
-      expect(unauthorizedCalled, isFalse);
-    });
+        expect(result.isError, isTrue);
+        expect(result.error, isA<UnauthorizedRequestException>());
+        expect(unauthorizedCalled, isFalse);
+      },
+    );
 
     test('handles DioException (connectionTimeout) as error', () async {
-      final dio = Dio(BaseOptions(
-        baseUrl: 'https://example.com',
-        validateStatus: (_) => true,
-      ));
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://example.com',
+          validateStatus: (_) => true,
+        ),
+      );
       dio.httpClientAdapter = _ErrorAdapter(
         type: DioExceptionType.connectionTimeout,
       );
@@ -1082,13 +1133,13 @@ void main() {
     });
 
     test('handles DioException (cancel) as error', () async {
-      final dio = Dio(BaseOptions(
-        baseUrl: 'https://example.com',
-        validateStatus: (_) => true,
-      ));
-      dio.httpClientAdapter = _ErrorAdapter(
-        type: DioExceptionType.cancel,
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://example.com',
+          validateStatus: (_) => true,
+        ),
       );
+      dio.httpClientAdapter = _ErrorAdapter(type: DioExceptionType.cancel);
 
       final client = _client(dio);
       final result = await client.getStream<String>(
@@ -1101,10 +1152,12 @@ void main() {
     });
 
     test('handles DioException (connectionError) as no internet', () async {
-      final dio = Dio(BaseOptions(
-        baseUrl: 'https://example.com',
-        validateStatus: (_) => true,
-      ));
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://example.com',
+          validateStatus: (_) => true,
+        ),
+      );
       dio.httpClientAdapter = _ErrorAdapter(
         type: DioExceptionType.connectionError,
       );
@@ -1120,10 +1173,12 @@ void main() {
     });
 
     test('attaches custom headers', () async {
-      final dio = Dio(BaseOptions(
-        baseUrl: 'https://example.com',
-        validateStatus: (_) => true,
-      ));
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://example.com',
+          validateStatus: (_) => true,
+        ),
+      );
       final capturedHeaders = <String, dynamic>{};
       dio.httpClientAdapter = _HeaderCapturingAdapter(
         statusCode: 200,
@@ -1147,10 +1202,12 @@ void main() {
     });
 
     test('attaches custom query', () async {
-      final dio = Dio(BaseOptions(
-        baseUrl: 'https://example.com',
-        validateStatus: (_) => true,
-      ));
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://example.com',
+          validateStatus: (_) => true,
+        ),
+      );
       final capturedQuery = <String, dynamic>{};
       dio.httpClientAdapter = _QueryCapturingAdapter(
         statusCode: 200,
@@ -1174,10 +1231,12 @@ void main() {
     });
 
     test('per-request settings override client settings', () async {
-      final dio = Dio(BaseOptions(
-        baseUrl: 'https://example.com',
-        validateStatus: (_) => true,
-      ));
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://example.com',
+          validateStatus: (_) => true,
+        ),
+      );
       dio.httpClientAdapter = _StreamAdapter(
         statusCode: 204,
         chunks: [utf8.encode('ok')],
@@ -1205,16 +1264,15 @@ void main() {
 
   group('PlayxNetworkClient.postStream', () {
     test('emits text chunks on success', () async {
-      final dio = Dio(BaseOptions(
-        baseUrl: 'https://example.com',
-        validateStatus: (_) => true,
-      ));
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://example.com',
+          validateStatus: (_) => true,
+        ),
+      );
       dio.httpClientAdapter = _StreamAdapter(
         statusCode: 200,
-        chunks: [
-          utf8.encode('post1 '),
-          utf8.encode('post2'),
-        ],
+        chunks: [utf8.encode('post1 '), utf8.encode('post2')],
       );
 
       final client = _client(dio);
@@ -1230,22 +1288,19 @@ void main() {
     });
 
     test('emits SSE events via postSse', () async {
-      final dio = Dio(BaseOptions(
-        baseUrl: 'https://example.com',
-        validateStatus: (_) => true,
-      ));
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://example.com',
+          validateStatus: (_) => true,
+        ),
+      );
       dio.httpClientAdapter = _SseAdapter(
         statusCode: 200,
-        eventStrings: [
-          'event: created\ndata: {"id": 1}\n\n',
-        ],
+        eventStrings: ['event: created\ndata: {"id": 1}\n\n'],
       );
 
       final client = _client(dio);
-      final result = await client.postSse(
-        '/events',
-        body: {'name': 'test'},
-      );
+      final result = await client.postSse('/events', body: {'name': 'test'});
 
       expect(result.isSuccess, isTrue);
       final events = await result.data!.toList();
@@ -1255,10 +1310,12 @@ void main() {
     });
 
     test('returns error for non-success status code', () async {
-      final dio = Dio(BaseOptions(
-        baseUrl: 'https://example.com',
-        validateStatus: (_) => true,
-      ));
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://example.com',
+          validateStatus: (_) => true,
+        ),
+      );
       dio.httpClientAdapter = _StreamAdapter(
         statusCode: 500,
         chunks: [utf8.encode('error')],
@@ -1275,13 +1332,13 @@ void main() {
     });
 
     test('handles DioException as error', () async {
-      final dio = Dio(BaseOptions(
-        baseUrl: 'https://example.com',
-        validateStatus: (_) => true,
-      ));
-      dio.httpClientAdapter = _ErrorAdapter(
-        type: DioExceptionType.sendTimeout,
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://example.com',
+          validateStatus: (_) => true,
+        ),
       );
+      dio.httpClientAdapter = _ErrorAdapter(type: DioExceptionType.sendTimeout);
 
       final client = _client(dio);
       final result = await client.postStream<String>(
@@ -1299,71 +1356,75 @@ void main() {
   // ---------------------------------------------------------------------------
 
   group('stream cancellation', () {
-    test('cancelTag cancels the stream with RequestCanceledException',
-        () async {
-      final dio = Dio(BaseOptions(
-        baseUrl: 'https://example.com',
-        validateStatus: (_) => true,
-      ));
-      dio.httpClientAdapter = _StreamAdapter(
-        statusCode: 200,
-        chunks: List.generate(100, (i) => utf8.encode('chunk$i ')),
-        delay: const Duration(milliseconds: 10),
-      );
+    test(
+      'cancelTag cancels the stream with RequestCanceledException',
+      () async {
+        final dio = Dio(
+          BaseOptions(
+            baseUrl: 'https://example.com',
+            validateStatus: (_) => true,
+          ),
+        );
+        dio.httpClientAdapter = _StreamAdapter(
+          statusCode: 200,
+          chunks: List.generate(100, (i) => utf8.encode('chunk$i ')),
+          delay: const Duration(milliseconds: 10),
+        );
 
-      final client = _client(dio);
-      final result = await client.getStream<String>(
-        '/stream',
-        format: PlayxStreamFormat.text,
-        cancelTag: 'cancel-test',
-      );
+        final client = _client(dio);
+        final result = await client.getStream<String>(
+          '/stream',
+          format: PlayxStreamFormat.text,
+          cancelTag: 'cancel-test',
+        );
 
-      expect(result.isSuccess, isTrue);
-      final completer = Completer<Object>();
-      final received = <String>[];
+        expect(result.isSuccess, isTrue);
+        final completer = Completer<Object>();
+        final received = <String>[];
 
-      final sub = result.data!.listen(
-        (data) {
-          received.add(data);
-          // Cancel after receiving a few chunks.
-          if (received.length == 3) {
-            client.cancelRequestsByTag('cancel-test');
-          }
-        },
-        onError: (e) {
-          if (!completer.isCompleted) {
-            completer.completeError(e);
-          }
-        },
-        onDone: () {
-          if (!completer.isCompleted) {
-            completer.complete(received);
-          }
-        },
-      );
-
-      Object outcome;
-      try {
-        outcome = await completer.future.timeout(
-          const Duration(seconds: 5),
-          onTimeout: () {
-            sub.cancel();
-            return received;
+        final sub = result.data!.listen(
+          (data) {
+            received.add(data);
+            // Cancel after receiving a few chunks.
+            if (received.length == 3) {
+              client.cancelRequestsByTag('cancel-test');
+            }
+          },
+          onError: (e) {
+            if (!completer.isCompleted) {
+              completer.completeError(e);
+            }
+          },
+          onDone: () {
+            if (!completer.isCompleted) {
+              completer.complete(received);
+            }
           },
         );
-      } catch (e) {
-        outcome = e;
-      }
 
-      // We should have received some chunks and then a cancellation error
-      // OR the stream should have been cut short.
-      if (outcome is List<String>) {
-        // Stream closed without error (may happen if cancel arrives late)
-        expect(outcome.length, lessThanOrEqualTo(100));
-      } else {
-        expect(outcome, isA<RequestCanceledException>());
-      }
-    });
+        Object outcome;
+        try {
+          outcome = await completer.future.timeout(
+            const Duration(seconds: 5),
+            onTimeout: () {
+              sub.cancel();
+              return received;
+            },
+          );
+        } catch (e) {
+          outcome = e;
+        }
+
+        // We should have received some chunks and then a cancellation error
+        // OR the stream should have been cut short.
+        if (outcome is List<String>) {
+          // Stream closed without error (may happen if cancel arrives late)
+          expect(outcome.length, lessThanOrEqualTo(100));
+        } else {
+          expect(outcome, isA<RequestCanceledException>());
+        }
+      },
+    );
   });
 
   // ---------------------------------------------------------------------------
@@ -1372,19 +1433,18 @@ void main() {
 
   group('DioClient.getStream / postStream', () {
     test('getStream returns a ResponseBody with the correct status', () async {
-      final dio = Dio(BaseOptions(
-        baseUrl: 'https://example.com',
-        validateStatus: (_) => true,
-      ));
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://example.com',
+          validateStatus: (_) => true,
+        ),
+      );
       dio.httpClientAdapter = _StreamAdapter(
         statusCode: 200,
         chunks: [utf8.encode('hello')],
       );
 
-      final dioClient = DioClient(
-        dio: dio,
-        settings: _defaultSettings,
-      );
+      final dioClient = DioClient(dio: dio, settings: _defaultSettings);
 
       // Verify DioClient.getStream works by using it directly
       final responseBody = await dioClient.getStream('/test');
@@ -1392,10 +1452,12 @@ void main() {
     });
 
     test('getStream sets responseType to stream', () async {
-      final dio = Dio(BaseOptions(
-        baseUrl: 'https://example.com',
-        validateStatus: (_) => true,
-      ));
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://example.com',
+          validateStatus: (_) => true,
+        ),
+      );
       final capturedOptions = <RequestOptions>[];
       dio.httpClientAdapter = _OptionsCapturingAdapter(
         statusCode: 200,
@@ -1403,10 +1465,7 @@ void main() {
         captured: capturedOptions,
       );
 
-      final dioClient = DioClient(
-        dio: dio,
-        settings: _defaultSettings,
-      );
+      final dioClient = DioClient(dio: dio, settings: _defaultSettings);
 
       await dioClient.getStream('/test');
 
@@ -1415,10 +1474,12 @@ void main() {
     });
 
     test('postStream sets responseType to stream', () async {
-      final dio = Dio(BaseOptions(
-        baseUrl: 'https://example.com',
-        validateStatus: (_) => true,
-      ));
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://example.com',
+          validateStatus: (_) => true,
+        ),
+      );
       final capturedOptions = <RequestOptions>[];
       dio.httpClientAdapter = _OptionsCapturingAdapter(
         statusCode: 200,
@@ -1426,10 +1487,7 @@ void main() {
         captured: capturedOptions,
       );
 
-      final dioClient = DioClient(
-        dio: dio,
-        settings: _defaultSettings,
-      );
+      final dioClient = DioClient(dio: dio, settings: _defaultSettings);
 
       await dioClient.postStream('/test', body: 'payload');
 
@@ -1444,17 +1502,15 @@ void main() {
 
   group('NetworkStreamResult.toList integration', () {
     test('collects stream chunks into a NetworkResult list', () async {
-      final dio = Dio(BaseOptions(
-        baseUrl: 'https://example.com',
-        validateStatus: (_) => true,
-      ));
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://example.com',
+          validateStatus: (_) => true,
+        ),
+      );
       dio.httpClientAdapter = _StreamAdapter(
         statusCode: 200,
-        chunks: [
-          utf8.encode('a'),
-          utf8.encode('b'),
-          utf8.encode('c'),
-        ],
+        chunks: [utf8.encode('a'), utf8.encode('b'), utf8.encode('c')],
       );
 
       final client = _client(dio);
@@ -1469,10 +1525,12 @@ void main() {
     });
 
     test('preserves error when collecting to list', () async {
-      final dio = Dio(BaseOptions(
-        baseUrl: 'https://example.com',
-        validateStatus: (_) => true,
-      ));
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://example.com',
+          validateStatus: (_) => true,
+        ),
+      );
       dio.httpClientAdapter = _StreamAdapter(
         statusCode: 404,
         chunks: [utf8.encode('not found')],

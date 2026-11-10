@@ -38,7 +38,7 @@ class _PathCapturingInterceptor extends Interceptor {
 /// [_PathCapturingInterceptor]. The interceptor is returned so the test can
 /// inspect the dispatched path.
 ({PlayxNetworkClient client, _PathCapturingInterceptor interceptor})
-    _createClient({
+_createClient({
   FutureOr<Map<String, dynamic>> Function()? customPathParameters,
   String baseUrl = 'https://example.com/api/',
 }) {
@@ -73,20 +73,20 @@ void main() {
 
     test('substitutes multiple placeholders', () {
       expect(
-        substitutePathParameters(
-          'users/{userId}/posts/{postId}',
-          const {'userId': 42, 'postId': 7},
-        ),
+        substitutePathParameters('users/{userId}/posts/{postId}', const {
+          'userId': 42,
+          'postId': 7,
+        }),
         'users/42/posts/7',
       );
     });
 
     test('stringifies numeric and boolean values', () {
       expect(
-        substitutePathParameters(
-          'items/{id}/active/{flag}',
-          const {'id': 3.14, 'flag': true},
-        ),
+        substitutePathParameters('items/{id}/active/{flag}', const {
+          'id': 3.14,
+          'flag': true,
+        }),
         'items/3.14/active/true',
       );
     });
@@ -122,29 +122,22 @@ void main() {
 
     test('URL-encodes special characters with %20 for spaces', () {
       expect(
-        substitutePathParameters(
-          'search/{query}',
-          const {'query': 'hello world'},
-        ),
+        substitutePathParameters('search/{query}', const {
+          'query': 'hello world',
+        }),
         'search/hello%20world',
       );
     });
 
     test('URL-encodes slashes within a segment', () {
       expect(
-        substitutePathParameters(
-          'files/{name}',
-          const {'name': 'a/b'},
-        ),
+        substitutePathParameters('files/{name}', const {'name': 'a/b'}),
         'files/a%2Fb',
       );
     });
 
     test('replaces repeated occurrences of the same placeholder', () {
-      expect(
-        substitutePathParameters('{x}/{x}', const {'x': 1}),
-        '1/1',
-      );
+      expect(substitutePathParameters('{x}/{x}', const {'x': 1}), '1/1');
     });
   });
 
@@ -213,51 +206,55 @@ void main() {
       expect(interceptor.lastPath, 'v2/users/9');
     });
 
-    test('attachCustomPathParameters=false skips custom path parameters',
-        () async {
-      final interceptor = _PathCapturingInterceptor();
-      final dio = Dio(BaseOptions(baseUrl: 'https://example.com/api/'))
-        ..interceptors.add(interceptor);
-      final dioClient = DioClient(
-        dio: dio,
-        customPathParameters: () async => {'version': 'v2'},
-        settings: const PlayxNetworkClientSettings(
-          useIsolateForMappingJson: false,
-          useWorkMangerForMappingJsonInIsolate: false,
-        ),
-      );
+    test(
+      'attachCustomPathParameters=false skips custom path parameters',
+      () async {
+        final interceptor = _PathCapturingInterceptor();
+        final dio = Dio(BaseOptions(baseUrl: 'https://example.com/api/'))
+          ..interceptors.add(interceptor);
+        final dioClient = DioClient(
+          dio: dio,
+          customPathParameters: () async => {'version': 'v2'},
+          settings: const PlayxNetworkClientSettings(
+            useIsolateForMappingJson: false,
+            useWorkMangerForMappingJsonInIsolate: false,
+          ),
+        );
 
-      await dioClient.get(
-        '{version}/users',
-        pathParameters: const {},
-        attachCustomPathParameters: false,
-      );
+        await dioClient.get(
+          '{version}/users',
+          pathParameters: const {},
+          attachCustomPathParameters: false,
+        );
 
-      // custom path parameters skipped -> token stays unresolved
-      expect(interceptor.lastPath, '{version}/users');
-    });
+        // custom path parameters skipped -> token stays unresolved
+        expect(interceptor.lastPath, '{version}/users');
+      },
+    );
 
-    test('per-request path parameters override custom path parameters',
-        () async {
-      final interceptor = _PathCapturingInterceptor();
-      final dio = Dio(BaseOptions(baseUrl: 'https://example.com/api/'))
-        ..interceptors.add(interceptor);
-      final dioClient = DioClient(
-        dio: dio,
-        customPathParameters: () async => {'userId': 'default'},
-        settings: const PlayxNetworkClientSettings(
-          useIsolateForMappingJson: false,
-          useWorkMangerForMappingJsonInIsolate: false,
-        ),
-      );
+    test(
+      'per-request path parameters override custom path parameters',
+      () async {
+        final interceptor = _PathCapturingInterceptor();
+        final dio = Dio(BaseOptions(baseUrl: 'https://example.com/api/'))
+          ..interceptors.add(interceptor);
+        final dioClient = DioClient(
+          dio: dio,
+          customPathParameters: () async => {'userId': 'default'},
+          settings: const PlayxNetworkClientSettings(
+            useIsolateForMappingJson: false,
+            useWorkMangerForMappingJsonInIsolate: false,
+          ),
+        );
 
-      await dioClient.get(
-        'users/{userId}',
-        pathParameters: const {'userId': 42},
-      );
+        await dioClient.get(
+          'users/{userId}',
+          pathParameters: const {'userId': 42},
+        );
 
-      expect(interceptor.lastPath, 'users/42');
-    });
+        expect(interceptor.lastPath, 'users/42');
+      },
+    );
   });
 
   group('PlayxNetworkClient pathParameters', () {
@@ -408,36 +405,33 @@ void main() {
       expect(interceptor.lastMethod, 'GET');
     });
 
-    test(
-        'backward-compat: path without placeholders is sent unchanged when '
+    test('backward-compat: path without placeholders is sent unchanged when '
         'pathParameters is omitted', () async {
       final (:client, :interceptor) = _createClient();
 
-      await client.get(
-        'users/42/posts',
-        fromJson: (json) => json,
-      );
+      await client.get('users/42/posts', fromJson: (json) => json);
 
       expect(interceptor.lastPath, 'users/42/posts');
     });
 
-    test('customPathParameters from client are applied to every request',
-        () async {
-      final (:client, :interceptor) = _createClient(
-        customPathParameters: () async => {'version': 'v2'},
-      );
-
-      await client.get(
-        '{version}/users/{userId}',
-        pathParameters: const {'userId': 1},
-        fromJson: (json) => json,
-      );
-
-      expect(interceptor.lastPath, 'v2/users/1');
-    });
-
     test(
-        'attachCustomPathParameters=false on the client skips custom path '
+      'customPathParameters from client are applied to every request',
+      () async {
+        final (:client, :interceptor) = _createClient(
+          customPathParameters: () async => {'version': 'v2'},
+        );
+
+        await client.get(
+          '{version}/users/{userId}',
+          pathParameters: const {'userId': 1},
+          fromJson: (json) => json,
+        );
+
+        expect(interceptor.lastPath, 'v2/users/1');
+      },
+    );
+
+    test('attachCustomPathParameters=false on the client skips custom path '
         'parameters', () async {
       final (:client, :interceptor) = _createClient(
         customPathParameters: () async => {'version': 'v2'},

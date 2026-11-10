@@ -21,8 +21,9 @@ class SseParser {
     var carry = '';
     var first = true;
 
-    await for (final text
-        in const Utf8Decoder(allowMalformed: true).bind(_stream)) {
+    await for (final text in const Utf8Decoder(
+      allowMalformed: true,
+    ).bind(_stream)) {
       var buffer = carry + text;
       if (first && buffer.isNotEmpty) {
         // Strip a leading byte order mark.

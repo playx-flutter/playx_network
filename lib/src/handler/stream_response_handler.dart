@@ -76,17 +76,19 @@ class StreamResponseHandler {
       return NetworkStreamResult.error(exception);
     }
 
-    return NetworkStreamResult.success(_bindStream<T>(
-      responseBody: responseBody,
-      format: format,
-      statusCode: statusCode,
-      cancelToken: cancelToken,
-      abort: abort,
-      errorMapper: errorMapper,
-      errorExtraMapper: errorExtraMapper,
-      shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
-      settings: settings,
-    ));
+    return NetworkStreamResult.success(
+      _bindStream<T>(
+        responseBody: responseBody,
+        format: format,
+        statusCode: statusCode,
+        cancelToken: cancelToken,
+        abort: abort,
+        errorMapper: errorMapper,
+        errorExtraMapper: errorExtraMapper,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
+      ),
+    );
   }
 
   /// Maximum number of bytes read from a non-success streaming response body
@@ -96,7 +98,9 @@ class StreamResponseHandler {
   /// Reads up to [_maxErrorBodyBytes] of [body], then closes it.
   /// Returns the decoded JSON, the plain text if it is not JSON, or `null`.
   Future<dynamic> _readErrorBody(
-      ResponseBody? body, void Function()? abort) async {
+    ResponseBody? body,
+    void Function()? abort,
+  ) async {
     if (body == null) return null;
     final bytes = <int>[];
     try {
@@ -161,78 +165,87 @@ class StreamResponseHandler {
 
     cancelToken?.whenCancel.then((_) {
       if (finished) return;
-      emitError(RequestCanceledException(
-          errorMessage: exceptionMessages.requestCancelled));
+      emitError(
+        RequestCanceledException(
+          errorMessage: exceptionMessages.requestCancelled,
+        ),
+      );
       finish();
     });
 
     controller = StreamController<T>(
       onListen: () {
         if (finished) return;
-        subscription = format.decodeStream(responseBody.stream).listen(
-          (event) {
-            if (finished) return;
-            try {
-              controller.add(event as T);
-            } catch (e, s) {
-              log.error(
-                text: exceptionMessages.unableToProcess,
-                error: e,
-                stackTrace: s,
-              );
-              emitError(UnableToProcessException(
-                errorMessage: exceptionMessages.unableToProcess,
-                statusCode: statusCode,
-                shouldShowApiError: (settings ?? this.settings).shouldShowApiErrors,
-              ));
-            }
-          },
-          onError: (Object e, StackTrace s) {
-            if (finished) return;
-            log.error(
-              text: 'Stream error',
-              error: e,
-              stackTrace: s,
-            );
-            if (e is FormatException) {
-              // A malformed element does not break the connection; report it
-              // and keep reading.
-              emitError(UnableToProcessException(
-                errorMessage: exceptionMessages.unableToProcess,
-                statusCode: statusCode,
-                shouldShowApiError: (settings ?? this.settings).shouldShowApiErrors,
-              ));
-              return;
-            }
-            void emitTerminalError(bool? isOnline) {
-              emitError(mapper.fromError(
-                error: e,
-                errorMapper: errorMapper,
-                errorExtraMapper: errorExtraMapper,
-                shouldHandleUnauthorizedRequest:
-                    shouldHandleUnauthorizedRequest,
-                settings: settings,
-                isOnline: isOnline,
-              ));
-              // Source errors are terminal: always complete the stream.
-              finish();
-            }
+        subscription = format
+            .decodeStream(responseBody.stream)
+            .listen(
+              (event) {
+                if (finished) return;
+                try {
+                  controller.add(event as T);
+                } catch (e, s) {
+                  log.error(
+                    text: exceptionMessages.unableToProcess,
+                    error: e,
+                    stackTrace: s,
+                  );
+                  emitError(
+                    UnableToProcessException(
+                      errorMessage: exceptionMessages.unableToProcess,
+                      statusCode: statusCode,
+                      shouldShowApiError:
+                          (settings ?? this.settings).shouldShowApiErrors,
+                    ),
+                  );
+                }
+              },
+              onError: (Object e, StackTrace s) {
+                if (finished) return;
+                log.error(text: 'Stream error', error: e, stackTrace: s);
+                if (e is FormatException) {
+                  // A malformed element does not break the connection; report it
+                  // and keep reading.
+                  emitError(
+                    UnableToProcessException(
+                      errorMessage: exceptionMessages.unableToProcess,
+                      statusCode: statusCode,
+                      shouldShowApiError:
+                          (settings ?? this.settings).shouldShowApiErrors,
+                    ),
+                  );
+                  return;
+                }
+                void emitTerminalError(bool? isOnline) {
+                  emitError(
+                    mapper.fromError(
+                      error: e,
+                      errorMapper: errorMapper,
+                      errorExtraMapper: errorExtraMapper,
+                      shouldHandleUnauthorizedRequest:
+                          shouldHandleUnauthorizedRequest,
+                      settings: settings,
+                      isOnline: isOnline,
+                    ),
+                  );
+                  // Source errors are terminal: always complete the stream.
+                  finish();
+                }
 
-            if (mapper.willCheckOnline(e)) {
-              // The error is terminal, so stop listening first: otherwise the
-              // source's `done` could close the stream while the connectivity
-              // check is still running and the error would be lost.
-              final sub = subscription;
-              subscription = null;
-              sub?.cancel().catchError((_) {});
-              mapper.checkOnline(e).then(emitTerminalError);
-            } else {
-              emitTerminalError(null);
-            }
-          },
-          onDone: () => finish(abortRequest: false),
-          cancelOnError: false,
-        );
+                if (mapper.willCheckOnline(e)) {
+                  // The error is terminal, so stop listening first: otherwise the
+                  // source's `done` could close the stream while the connectivity
+                  // check is still running and the error would be lost.
+                  final sub = subscription;
+                  subscription = null;
+                  sub?.cancel().catchError((_) {});
+                  mapper.checkOnline(e).then(emitTerminalError);
+                } else {
+                  emitTerminalError(null);
+                }
+              },
+              onDone: () => finish(abortRequest: false),
+              cancelOnError: false,
+            );
       },
       onPause: () => subscription?.pause(),
       onResume: () => subscription?.resume(),

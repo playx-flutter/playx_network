@@ -128,7 +128,8 @@ sealed class NetworkResult<T> {
       return ApiHandler.unableToProcessException(
         e: e,
         s: s,
-        exceptionMessage: exceptionMessage ??
+        exceptionMessage:
+            exceptionMessage ??
             _exceptionMessages?.unableToProcess ??
             'unableToProcess',
       );
@@ -157,8 +158,10 @@ sealed class NetworkResult<T> {
     );
   }
 
-  ExceptionMessage? get _exceptionMessages => GetIt.instance
-          .isRegistered<ExceptionMessage>(instanceName: 'exception_messages')
+  ExceptionMessage? get _exceptionMessages =>
+      GetIt.instance.isRegistered<ExceptionMessage>(
+        instanceName: 'exception_messages',
+      )
       ? GetIt.instance.get<ExceptionMessage>(instanceName: 'exception_messages')
       : null;
 }

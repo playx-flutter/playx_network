@@ -23,15 +23,15 @@ class ApiHandler {
     UnauthorizedRequestHandler? onUnauthorizedRequestReceived,
     FutureOr<bool> Function()? hasInternetConnection,
     required PlayxBaseLogger logger,
-  })  : _log = HandlerLogger(logger: logger, settings: settings),
-        _mapper = ExceptionMapper(
-          errorMapper: errorMapper,
-          errorExtraMapper: errorExtraMapper,
-          settings: settings,
-          onUnauthorizedRequestReceived: onUnauthorizedRequestReceived,
-          hasInternetConnection: hasInternetConnection,
-          log: HandlerLogger(logger: logger, settings: settings),
-        );
+  }) : _log = HandlerLogger(logger: logger, settings: settings),
+       _mapper = ExceptionMapper(
+         errorMapper: errorMapper,
+         errorExtraMapper: errorExtraMapper,
+         settings: settings,
+         onUnauthorizedRequestReceived: onUnauthorizedRequestReceived,
+         hasInternetConnection: hasInternetConnection,
+         log: HandlerLogger(logger: logger, settings: settings),
+       );
 
   final PlayxNetworkClientSettings settings;
   final HandlerLogger _log;
@@ -57,7 +57,8 @@ class ApiHandler {
     ErrorExtraMapper? errorExtraMapper,
     PlayxNetworkClientSettings? settings,
   }) {
-    final isSuccess = response.statusCode != HttpStatus.badRequest &&
+    final isSuccess =
+        response.statusCode != HttpStatus.badRequest &&
         _cfg(settings).successRequestCodes.contains(response.statusCode);
     if (isSuccess) return null;
 
@@ -86,15 +87,14 @@ class ApiHandler {
     PlayxNetworkClientSettings? settings,
   ) {
     final exceptionMessages = _cfg(settings).exceptionMessages;
-    _log.error(
-      text: exceptionMessages.emptyResponse,
-      error: data,
+    _log.error(text: exceptionMessages.emptyResponse, error: data);
+    return NetworkResult.error(
+      EmptyResponseException(
+        errorMessage: exceptionMessages.emptyResponse,
+        statusCode: -1,
+        shouldShowApiError: _cfg(settings).shouldShowApiErrors,
+      ),
     );
-    return NetworkResult.error(EmptyResponseException(
-      errorMessage: exceptionMessages.emptyResponse,
-      statusCode: -1,
-      shouldShowApiError: _cfg(settings).shouldShowApiErrors,
-    ));
   }
 
   /// Awaits [future] (the mapping of a response) and turns it into a success,
@@ -111,8 +111,11 @@ class ApiHandler {
     CancelToken? cancelToken,
     ExceptionMessage exceptionMessages,
   ) {
-    NetworkResult<R> cancelled() => NetworkResult.error(RequestCanceledException(
-        errorMessage: exceptionMessages.requestCancelled));
+    NetworkResult<R> cancelled() => NetworkResult.error(
+      RequestCanceledException(
+        errorMessage: exceptionMessages.requestCancelled,
+      ),
+    );
 
     if (cancelToken == null) {
       return future.then((value) => NetworkResult.success(value));
@@ -122,14 +125,17 @@ class ApiHandler {
     cancelToken.whenCancel.then((_) {
       if (!completer.isCompleted) completer.complete(cancelled());
     });
-    future.then((value) {
-      if (completer.isCompleted) return;
-      completer.complete(
-        cancelToken.isCancelled ? cancelled() : NetworkResult.success(value),
-      );
-    }, onError: (Object error, StackTrace stackTrace) {
-      if (!completer.isCompleted) completer.completeError(error, stackTrace);
-    });
+    future.then(
+      (value) {
+        if (completer.isCompleted) return;
+        completer.complete(
+          cancelToken.isCancelled ? cancelled() : NetworkResult.success(value),
+        );
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        if (!completer.isCompleted) completer.completeError(error, stackTrace);
+      },
+    );
     return completer.future;
   }
 
@@ -140,13 +146,10 @@ class ApiHandler {
     StackTrace stackTrace,
     ExceptionMessage exceptionMessages,
   ) {
-    _log.error(
-      error: error,
-      stackTrace: stackTrace,
+    _log.error(error: error, stackTrace: stackTrace);
+    return NetworkResult.error(
+      UnexpectedErrorException(errorMessage: exceptionMessages.unexpectedError),
     );
-    return NetworkResult.error(UnexpectedErrorException(
-      errorMessage: exceptionMessages.unexpectedError,
-    ));
   }
 
   /// Handles a response that maps to a single object of type [T].
@@ -209,18 +212,23 @@ class ApiHandler {
         }
       }
 
-      final actualData =
-          dataKey != null ? getJsonValueOrNull(data, dataKey) : data;
+      final actualData = dataKey != null
+          ? getJsonValueOrNull(data, dataKey)
+          : data;
 
       try {
-        final future = Future.value(_cfg(settings).useIsolateForMappingJson
-            ? MapUtils.mapAsyncInIsolate(
-                data: actualData,
-                mapper: fromJson,
-                useWorkManager: _cfg(settings).useWorkMangerForMappingJsonInIsolate,
-                printError: false,
-              )
-            : fromJson(actualData));
+        final future = Future.value(
+          _cfg(settings).useIsolateForMappingJson
+              ? MapUtils.mapAsyncInIsolate(
+                  data: actualData,
+                  mapper: fromJson,
+                  useWorkManager: _cfg(
+                    settings,
+                  ).useWorkMangerForMappingJsonInIsolate,
+                  printError: false,
+                )
+              : fromJson(actualData),
+        );
         return await _awaitCancelable(future, cancelToken, exceptionMessages);
         // ignore: avoid_catches_without_on_clauses
       } catch (e, s) {
@@ -275,14 +283,12 @@ class ApiHandler {
             : _emptyResponseError(data, settings);
       }
 
-      final actualData =
-          dataKey != null ? getJsonValueOrNull(data, dataKey) : data;
+      final actualData = dataKey != null
+          ? getJsonValueOrNull(data, dataKey)
+          : data;
 
       if (actualData is! List) {
-        _log.error(
-          text: 'Response is not a List',
-          error: response,
-        );
+        _log.error(text: 'Response is not a List', error: response);
         return ApiHandler.unableToProcessException(
           e: 'Response is not a List',
           exceptionMessage: exceptionMessages.unableToProcess,
@@ -294,20 +300,25 @@ class ApiHandler {
         final List<dynamic> itemsToMap = itemDataKey == null
             ? actualData
             : actualData
-                .map((item) =>
-                    getJsonValueOrNull(item, itemDataKey) ?? item)
-                .toList();
+                  .map((item) => getJsonValueOrNull(item, itemDataKey) ?? item)
+                  .toList();
 
         final Future<List<T>> future = _cfg(settings).useIsolateForMappingJson
             ? itemsToMap.asyncMapInIsolate(
                 mapper: fromJson,
-                useWorkManager: _cfg(settings).useWorkMangerForMappingJsonInIsolate,
+                useWorkManager: _cfg(
+                  settings,
+                ).useWorkMangerForMappingJsonInIsolate,
                 printError: false,
-                printEachItemError: false)
+                printEachItemError: false,
+              )
             : Future.wait(itemsToMap.map((item) async => await fromJson(item)));
 
-        final mapped =
-            await _awaitCancelable(future, cancelToken, exceptionMessages);
+        final mapped = await _awaitCancelable(
+          future,
+          cancelToken,
+          exceptionMessages,
+        );
         final result = mapped.data;
         // `data` is only null when the mapping was cancelled.
         if (result == null) return mapped;
@@ -352,8 +363,11 @@ class ApiHandler {
       if (statusError != null) return NetworkResult.error(statusError);
 
       if (cancelToken?.isCancelled ?? false) {
-        return NetworkResult.error(RequestCanceledException(
-            errorMessage: exceptionMessages.requestCancelled));
+        return NetworkResult.error(
+          RequestCanceledException(
+            errorMessage: exceptionMessages.requestCancelled,
+          ),
+        );
       }
       return NetworkResult.success(response);
       // ignore: avoid_catches_without_on_clauses
@@ -374,19 +388,18 @@ class ApiHandler {
     ErrorExtraMapper? errorExtraMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
-  }) =>
-      _streams.handle<T>(
-        responseBody: responseBody,
-        statusCode: statusCode,
-        statusMessage: statusMessage,
-        format: format,
-        cancelToken: cancelToken,
-        abort: abort,
-        errorMapper: errorMapper,
-        errorExtraMapper: errorExtraMapper,
-        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
-        settings: settings,
-      );
+  }) => _streams.handle<T>(
+    responseBody: responseBody,
+    statusCode: statusCode,
+    statusMessage: statusMessage,
+    format: format,
+    cancelToken: cancelToken,
+    abort: abort,
+    errorMapper: errorMapper,
+    errorExtraMapper: errorExtraMapper,
+    shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+    settings: settings,
+  );
 
   Future<NetworkResult<T>> handleDioException<T>({
     dynamic error,
@@ -402,13 +415,16 @@ class ApiHandler {
       stackTrace: stackTrace,
     );
     final isOnline = await _mapper.checkOnline(error);
-    return NetworkResult.error(_mapper.fromError(
+    return NetworkResult.error(
+      _mapper.fromError(
         error: error,
         errorMapper: errorMapper,
         errorExtraMapper: errorExtraMapper,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
-        isOnline: isOnline));
+        isOnline: isOnline,
+      ),
+    );
   }
 
   static NetworkResult<T> unableToProcessException<T>({
@@ -417,13 +433,15 @@ class ApiHandler {
     required String exceptionMessage,
     bool shouldShowApiErrors = false,
   }) {
-    PlayxLogger.getLogger('Playx Network')
-        ?.e(exceptionMessage, error: e, stackTrace: s);
+    PlayxLogger.getLogger(
+      'Playx Network',
+    )?.e(exceptionMessage, error: e, stackTrace: s);
     return NetworkResult<T>.error(
       UnableToProcessException(
-          errorMessage: exceptionMessage,
-          statusCode: -1,
-          shouldShowApiError: shouldShowApiErrors),
+        errorMessage: exceptionMessage,
+        statusCode: -1,
+        shouldShowApiError: shouldShowApiErrors,
+      ),
     );
   }
 }

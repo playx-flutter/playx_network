@@ -34,8 +34,9 @@ class ExceptionMapper {
 
   /// The default [ErrorMapper]: reads the `message` of a [DefaultApiError].
   static String? defaultErrorMessage(dynamic json) {
-    final DefaultApiError? error =
-        json != null ? DefaultApiError.fromJson(json) : null;
+    final DefaultApiError? error = json != null
+        ? DefaultApiError.fromJson(json)
+        : null;
     return error?.message;
   }
 
@@ -54,23 +55,20 @@ class ExceptionMapper {
       return await check();
       // ignore: avoid_catches_without_on_clauses
     } catch (e, s) {
-      log.error(
-        text: 'hasInternetConnection threw',
-        error: e,
-        stackTrace: s,
-      );
+      log.error(text: 'hasInternetConnection threw', error: e, stackTrace: s);
       return null;
     }
   }
 
   /// Maps a response with an error status code to an exception, extracting the
   /// API message and the optional extra data from its body.
-  NetworkException fromResponse(
-      {Response? response,
-      bool shouldHandleUnauthorizedRequest = true,
-      ErrorMapper? errorMapper,
-      ErrorExtraMapper? errorExtraMapper,
-      PlayxNetworkClientSettings? settings}) {
+  NetworkException fromResponse({
+    Response? response,
+    bool shouldHandleUnauthorizedRequest = true,
+    ErrorMapper? errorMapper,
+    ErrorExtraMapper? errorExtraMapper,
+    PlayxNetworkClientSettings? settings,
+  }) {
     final cfg = settings ?? this.settings;
     final exceptionMessages = cfg.exceptionMessages;
     final shouldShowApiErrors = cfg.shouldShowApiErrors;
@@ -110,31 +108,34 @@ class ExceptionMapper {
         onUnauthorizedRequestReceived?.call(response);
       }
       return UnauthorizedRequestException(
-          apiErrorMessage: errMsg,
-          statusCode: statusCode,
-          errorMessage: exceptionMessages.unauthorizedRequest,
-          shouldShowApiError: shouldShowApiErrors,
-          extra: extra);
+        apiErrorMessage: errMsg,
+        statusCode: statusCode,
+        errorMessage: exceptionMessages.unauthorizedRequest,
+        shouldShowApiError: shouldShowApiErrors,
+        extra: extra,
+      );
     }
 
     return ApiException.fromStatusCode(
-        statusCode: statusCode,
-        apiErrorMessage: errMsg,
-        exceptionMessages: exceptionMessages,
-        shouldShowApiErrors: shouldShowApiErrors,
-        extra: extra);
+      statusCode: statusCode,
+      apiErrorMessage: errMsg,
+      exceptionMessages: exceptionMessages,
+      shouldShowApiErrors: shouldShowApiErrors,
+      extra: extra,
+    );
   }
 
   /// Maps a thrown [error] (usually a [DioException]) to an exception.
   ///
   /// [isOnline] is the answer of [checkOnline], see [buildConnectionException].
-  NetworkException fromError(
-      {dynamic error,
-      ErrorMapper? errorMapper,
-      ErrorExtraMapper? errorExtraMapper,
-      bool shouldHandleUnauthorizedRequest = true,
-      PlayxNetworkClientSettings? settings,
-      bool? isOnline}) {
+  NetworkException fromError({
+    dynamic error,
+    ErrorMapper? errorMapper,
+    ErrorExtraMapper? errorExtraMapper,
+    bool shouldHandleUnauthorizedRequest = true,
+    PlayxNetworkClientSettings? settings,
+    bool? isOnline,
+  }) {
     final cfg = settings ?? this.settings;
     final exceptionMessages = cfg.exceptionMessages;
     final shouldShowApiErrors = cfg.shouldShowApiErrors;
@@ -148,59 +149,61 @@ class ExceptionMapper {
     if (error is Exception) {
       try {
         NetworkException networkExceptions = UnexpectedErrorException(
-            errorMessage: exceptionMessages.unexpectedError);
+          errorMessage: exceptionMessages.unexpectedError,
+        );
 
         if (error is DioException) {
           networkExceptions = switch (error.type) {
             DioExceptionType.cancel => RequestCanceledException(
-                errorMessage: exceptionMessages.requestCancelled,
-              ),
+              errorMessage: exceptionMessages.requestCancelled,
+            ),
             DioExceptionType.connectionTimeout => RequestTimeoutException(
-                errorMessage: exceptionMessages.requestTimeout,
-                statusCode: -1,
-                shouldShowApiError: shouldShowApiErrors),
+              errorMessage: exceptionMessages.requestTimeout,
+              statusCode: -1,
+              shouldShowApiError: shouldShowApiErrors,
+            ),
             DioExceptionType.unknown => switch (error.error) {
-                SocketException() => buildConnectionException(
-                    error: error,
-                    messages: exceptionMessages,
-                    isOnline: isOnline,
-                  ),
-                // For example a body that is not valid JSON.
-                FormatException() => InvalidFormatException(
-                    errorMessage: exceptionMessages.formatException,
-                  ),
-                _ => UnexpectedErrorException(
-                    errorMessage: exceptionMessages.unexpectedError,
-                  ),
-              },
-            DioExceptionType.receiveTimeout => ReceiveTimeoutException(
-                errorMessage: exceptionMessages.receiveTimeout,
-              ),
-            DioExceptionType.badResponse => fromResponse(
-                response: error.response,
-                errorMapper: errorMapper,
-                errorExtraMapper: errorExtraMapper,
-                shouldHandleUnauthorizedRequest:
-                    shouldHandleUnauthorizedRequest,
-                settings: settings),
-            DioExceptionType.sendTimeout => SendTimeoutException(
-                errorMessage: exceptionMessages.sendTimeout,
-              ),
-            DioExceptionType.badCertificate => SecureConnectionException(
-                errorMessage: exceptionMessages.secureConnectionError,
-              ),
-            DioExceptionType.connectionError => buildConnectionException(
+              SocketException() => buildConnectionException(
                 error: error,
                 messages: exceptionMessages,
                 isOnline: isOnline,
               ),
+              // For example a body that is not valid JSON.
+              FormatException() => InvalidFormatException(
+                errorMessage: exceptionMessages.formatException,
+              ),
+              _ => UnexpectedErrorException(
+                errorMessage: exceptionMessages.unexpectedError,
+              ),
+            },
+            DioExceptionType.receiveTimeout => ReceiveTimeoutException(
+              errorMessage: exceptionMessages.receiveTimeout,
+            ),
+            DioExceptionType.badResponse => fromResponse(
+              response: error.response,
+              errorMapper: errorMapper,
+              errorExtraMapper: errorExtraMapper,
+              shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+              settings: settings,
+            ),
+            DioExceptionType.sendTimeout => SendTimeoutException(
+              errorMessage: exceptionMessages.sendTimeout,
+            ),
+            DioExceptionType.badCertificate => SecureConnectionException(
+              errorMessage: exceptionMessages.secureConnectionError,
+            ),
+            DioExceptionType.connectionError => buildConnectionException(
+              error: error,
+              messages: exceptionMessages,
+              isOnline: isOnline,
+            ),
             // Parsing the response took too long: the data arrived but could
             // not be processed in time.
             DioExceptionType.transformTimeout => UnableToProcessException(
-                errorMessage: exceptionMessages.unableToProcess,
-                statusCode: -1,
-                shouldShowApiError: false,
-              ),
+              errorMessage: exceptionMessages.unableToProcess,
+              statusCode: -1,
+              shouldShowApiError: false,
+            ),
           };
         } else if (error is SocketException) {
           networkExceptions = buildConnectionException(
@@ -230,9 +233,10 @@ class ExceptionMapper {
     } else {
       if (error.toString().contains("is not a subtype of")) {
         return UnableToProcessException(
-            errorMessage: exceptionMessages.unableToProcess,
-            statusCode: -1,
-            shouldShowApiError: false);
+          errorMessage: exceptionMessages.unableToProcess,
+          statusCode: -1,
+          shouldShowApiError: false,
+        );
       } else {
         return UnexpectedErrorException(
           errorMessage: exceptionMessages.unexpectedError,

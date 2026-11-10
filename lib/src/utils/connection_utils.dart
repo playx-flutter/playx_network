@@ -117,8 +117,9 @@ NetworkException buildConnectionException({
   bool isWeb = kIsWeb,
   bool? Function() browserOnline = browserIsOnline,
 }) {
-  final noInternet =
-      NoInternetConnectionException(errorMessage: messages.noInternetConnection);
+  final noInternet = NoInternetConnectionException(
+    errorMessage: messages.noInternetConnection,
+  );
 
   if (isWeb) {
     final online = isOnline ?? browserOnline();
@@ -129,8 +130,9 @@ NetworkException buildConnectionException({
 
   if (isOnline == false) return noInternet;
 
-  final unreachable =
-      ServerUnreachableException(errorMessage: messages.serverUnreachable);
+  final unreachable = ServerUnreachableException(
+    errorMessage: messages.serverUnreachable,
+  );
   if (isOnline == true) return unreachable;
 
   final cause = error is DioException ? error.error : error;

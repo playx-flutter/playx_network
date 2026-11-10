@@ -73,60 +73,68 @@ class ApiException extends NetworkException {
     switch (statusCode) {
       case 400:
         return DefaultApiException(
-            apiErrorMessage: apiErrorMessage,
-            statusCode: statusCode,
-            errorMessage: exceptionMessages.defaultError,
-            shouldShowApiError: shouldShowApiErrors,
-            extra: extra);
+          apiErrorMessage: apiErrorMessage,
+          statusCode: statusCode,
+          errorMessage: exceptionMessages.defaultError,
+          shouldShowApiError: shouldShowApiErrors,
+          extra: extra,
+        );
       case 404:
         return NotFoundException(
-            apiErrorMessage: apiErrorMessage,
-            statusCode: statusCode,
-            errorMessage: exceptionMessages.notFound,
-            shouldShowApiError: shouldShowApiErrors,
-            extra: extra);
+          apiErrorMessage: apiErrorMessage,
+          statusCode: statusCode,
+          errorMessage: exceptionMessages.notFound,
+          shouldShowApiError: shouldShowApiErrors,
+          extra: extra,
+        );
       case 409:
         return ConflictException(
-            apiErrorMessage: apiErrorMessage,
-            statusCode: statusCode,
-            errorMessage: exceptionMessages.conflict,
-            shouldShowApiError: shouldShowApiErrors,
-            extra: extra);
+          apiErrorMessage: apiErrorMessage,
+          statusCode: statusCode,
+          errorMessage: exceptionMessages.conflict,
+          shouldShowApiError: shouldShowApiErrors,
+          extra: extra,
+        );
       case 408:
         return RequestTimeoutException(
-            apiErrorMessage: apiErrorMessage,
-            statusCode: statusCode,
-            errorMessage: exceptionMessages.requestTimeout,
-            shouldShowApiError: shouldShowApiErrors,
-            extra: extra);
+          apiErrorMessage: apiErrorMessage,
+          statusCode: statusCode,
+          errorMessage: exceptionMessages.requestTimeout,
+          shouldShowApiError: shouldShowApiErrors,
+          extra: extra,
+        );
       case 422:
         return UnableToProcessException(
-            apiErrorMessage: apiErrorMessage,
-            statusCode: statusCode,
-            errorMessage: exceptionMessages.unableToProcess,
-            shouldShowApiError: shouldShowApiErrors,
-            extra: extra);
+          apiErrorMessage: apiErrorMessage,
+          statusCode: statusCode,
+          errorMessage: exceptionMessages.unableToProcess,
+          shouldShowApiError: shouldShowApiErrors,
+          extra: extra,
+        );
       case 500:
         return InternalServerErrorException(
-            apiErrorMessage: apiErrorMessage,
-            statusCode: statusCode,
-            errorMessage: exceptionMessages.internalServerError,
-            shouldShowApiError: shouldShowApiErrors,
-            extra: extra);
+          apiErrorMessage: apiErrorMessage,
+          statusCode: statusCode,
+          errorMessage: exceptionMessages.internalServerError,
+          shouldShowApiError: shouldShowApiErrors,
+          extra: extra,
+        );
       case 503:
         return ServiceUnavailableException(
-            apiErrorMessage: apiErrorMessage,
-            statusCode: statusCode,
-            errorMessage: exceptionMessages.serviceUnavailable,
-            shouldShowApiError: shouldShowApiErrors,
-            extra: extra);
+          apiErrorMessage: apiErrorMessage,
+          statusCode: statusCode,
+          errorMessage: exceptionMessages.serviceUnavailable,
+          shouldShowApiError: shouldShowApiErrors,
+          extra: extra,
+        );
       default:
         return DefaultApiException(
-            apiErrorMessage: apiErrorMessage,
-            statusCode: statusCode,
-            errorMessage: exceptionMessages.defaultError,
-            shouldShowApiError: shouldShowApiErrors,
-            extra: extra);
+          apiErrorMessage: apiErrorMessage,
+          statusCode: statusCode,
+          errorMessage: exceptionMessages.defaultError,
+          shouldShowApiError: shouldShowApiErrors,
+          extra: extra,
+        );
     }
   }
 }

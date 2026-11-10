@@ -18,11 +18,7 @@ class DefaultApiError {
   String? name;
   String? message;
 
-  DefaultApiError({
-    this.statusCode,
-    this.name,
-    this.message,
-  });
+  DefaultApiError({this.statusCode, this.name, this.message});
 
   DefaultApiError.fromJson(dynamic json) {
     if (json is! Map) return;

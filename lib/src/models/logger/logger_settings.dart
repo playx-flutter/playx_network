@@ -90,13 +90,12 @@ class PlayxNetworkLoggerSettings extends Equatable {
 
   TalkerDioLogger buildTalkerDioLogger() {
     return TalkerDioLogger(
-      talker: talker ??
+      talker:
+          talker ??
           Talker(
             settings: TalkerSettings(),
             logger: TalkerLogger(
-              settings: TalkerLoggerSettings(
-                enableColors: enableColors,
-              ),
+              settings: TalkerLoggerSettings(enableColors: enableColors),
               output: (message) => developer.log(message),
             ),
           ),
@@ -121,68 +120,70 @@ class PlayxNetworkLoggerSettings extends Equatable {
     );
   }
 
-  PlayxNetworkLoggerSettings copyWith(
-      {bool? enabled,
-      bool? printResponseData,
-      bool? printResponseHeaders,
-      bool? printResponseMessage,
-      bool? printResponseRedirects,
-      bool? printResponseTime,
-      bool? printErrorData,
-      bool? printErrorHeaders,
-      bool? printErrorMessage,
-      bool? printRequestData,
-      bool? printRequestHeaders,
-      bool? printRequestExtra,
-      bool Function(RequestOptions requestOptions)? requestFilter,
-      bool Function(Response response)? responseFilter,
-      bool Function(DioException response)? errorFilter,
-      Set<String>? hiddenHeaders,
-      bool? enableColors,
-      Talker? talker}) {
+  PlayxNetworkLoggerSettings copyWith({
+    bool? enabled,
+    bool? printResponseData,
+    bool? printResponseHeaders,
+    bool? printResponseMessage,
+    bool? printResponseRedirects,
+    bool? printResponseTime,
+    bool? printErrorData,
+    bool? printErrorHeaders,
+    bool? printErrorMessage,
+    bool? printRequestData,
+    bool? printRequestHeaders,
+    bool? printRequestExtra,
+    bool Function(RequestOptions requestOptions)? requestFilter,
+    bool Function(Response response)? responseFilter,
+    bool Function(DioException response)? errorFilter,
+    Set<String>? hiddenHeaders,
+    bool? enableColors,
+    Talker? talker,
+  }) {
     return PlayxNetworkLoggerSettings(
-        enabled: enabled ?? this.enabled,
-        printResponseData: printResponseData ?? this.printResponseData,
-        printResponseHeaders: printResponseHeaders ?? this.printResponseHeaders,
-        printResponseMessage: printResponseMessage ?? this.printResponseMessage,
-        printResponseRedirects:
-            printResponseRedirects ?? this.printResponseRedirects,
-        printResponseTime: printResponseTime ?? this.printResponseTime,
-        printErrorData: printErrorData ?? this.printErrorData,
-        printErrorHeaders: printErrorHeaders ?? this.printErrorHeaders,
-        printErrorMessage: printErrorMessage ?? this.printErrorMessage,
-        printRequestData: printRequestData ?? this.printRequestData,
-        printRequestHeaders: printRequestHeaders ?? this.printRequestHeaders,
-        printRequestExtra: printRequestExtra ?? this.printRequestExtra,
-        enableColors: enableColors ?? this.enableColors,
-        requestFilter: requestFilter ?? this.requestFilter,
-        responseFilter: responseFilter ?? this.responseFilter,
-        errorFilter: errorFilter ?? this.errorFilter,
-        hiddenHeaders: hiddenHeaders ?? this.hiddenHeaders,
-        talker: talker ?? this.talker);
+      enabled: enabled ?? this.enabled,
+      printResponseData: printResponseData ?? this.printResponseData,
+      printResponseHeaders: printResponseHeaders ?? this.printResponseHeaders,
+      printResponseMessage: printResponseMessage ?? this.printResponseMessage,
+      printResponseRedirects:
+          printResponseRedirects ?? this.printResponseRedirects,
+      printResponseTime: printResponseTime ?? this.printResponseTime,
+      printErrorData: printErrorData ?? this.printErrorData,
+      printErrorHeaders: printErrorHeaders ?? this.printErrorHeaders,
+      printErrorMessage: printErrorMessage ?? this.printErrorMessage,
+      printRequestData: printRequestData ?? this.printRequestData,
+      printRequestHeaders: printRequestHeaders ?? this.printRequestHeaders,
+      printRequestExtra: printRequestExtra ?? this.printRequestExtra,
+      enableColors: enableColors ?? this.enableColors,
+      requestFilter: requestFilter ?? this.requestFilter,
+      responseFilter: responseFilter ?? this.responseFilter,
+      errorFilter: errorFilter ?? this.errorFilter,
+      hiddenHeaders: hiddenHeaders ?? this.hiddenHeaders,
+      talker: talker ?? this.talker,
+    );
   }
 
   @override
   List<Object?> get props => [
-        enabled,
-        printResponseData,
-        printResponseHeaders,
-        printResponseMessage,
-        printResponseRedirects,
-        printResponseTime,
-        printErrorData,
-        printErrorHeaders,
-        printErrorMessage,
-        printRequestData,
-        printRequestHeaders,
-        printRequestExtra,
-        requestFilter,
-        responseFilter,
-        errorFilter,
-        hiddenHeaders,
-        talker,
-        enableColors,
-      ];
+    enabled,
+    printResponseData,
+    printResponseHeaders,
+    printResponseMessage,
+    printResponseRedirects,
+    printResponseTime,
+    printErrorData,
+    printErrorHeaders,
+    printErrorMessage,
+    printRequestData,
+    printRequestHeaders,
+    printRequestExtra,
+    requestFilter,
+    responseFilter,
+    errorFilter,
+    hiddenHeaders,
+    talker,
+    enableColors,
+  ];
 
   @override
   bool get stringify => true;

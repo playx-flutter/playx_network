@@ -21,9 +21,7 @@ class DioClient {
     required this.settings,
   }) {
     if (settings.logSettings.enabled) {
-      dio.interceptors.add(
-        settings.logSettings.buildTalkerDioLogger(),
-      );
+      dio.interceptors.add(settings.logSettings.buildTalkerDioLogger());
     }
   }
 
@@ -49,19 +47,17 @@ class DioClient {
   /// attached.
   Future<Map<String, dynamic>> _customHeadersFor(bool attach) async =>
       attach && customHeaders != null
-          ? await customHeaders!()
-          : const <String, dynamic>{};
+      ? await customHeaders!()
+      : const <String, dynamic>{};
 
   /// The client-level custom query parameters, or nothing when they should not
   /// be attached.
   Future<Map<String, dynamic>> _customQueryFor(bool attach) async =>
       attach && customQuery != null
-          ? await customQuery!()
-          : const <String, dynamic>{};
+      ? await customQuery!()
+      : const <String, dynamic>{};
 
-  Dio _getDioInstance({
-    PlayxNetworkLoggerSettings? logSettings,
-  }) {
+  Dio _getDioInstance({PlayxNetworkLoggerSettings? logSettings}) {
     if (logSettings == null || logSettings == settings.logSettings) {
       return dio;
     }
@@ -94,22 +90,25 @@ class DioClient {
     ProgressCallback? onReceiveProgress,
     PlayxNetworkLoggerSettings? logSettings,
   }) async {
-    final resolvedPath =
-        await _resolvePath(path, pathParameters, attachCustomPathParameters);
-    return _getDioInstance(logSettings: logSettings).get(resolvedPath,
-        queryParameters: {
-          ...await _customQueryFor(attachCustomQuery),
-          ...query,
-        },
-        options: options ??
-            Options(
-              headers: {
-                ...await _customHeadersFor(attachCustomHeaders),
-                ...headers,
-              },
-            ),
-        cancelToken: cancelToken,
-        onReceiveProgress: onReceiveProgress);
+    final resolvedPath = await _resolvePath(
+      path,
+      pathParameters,
+      attachCustomPathParameters,
+    );
+    return _getDioInstance(logSettings: logSettings).get(
+      resolvedPath,
+      queryParameters: {...await _customQueryFor(attachCustomQuery), ...query},
+      options:
+          options ??
+          Options(
+            headers: {
+              ...await _customHeadersFor(attachCustomHeaders),
+              ...headers,
+            },
+          ),
+      cancelToken: cancelToken,
+      onReceiveProgress: onReceiveProgress,
+    );
   }
 
   /// Download file from the given [url]
@@ -117,32 +116,35 @@ class DioClient {
   /// [pathParameters] replaces `{placeholder}` segments in [path] before the
   /// request is sent. Set [attachCustomPathParameters] to `false` to skip any
   /// client-level `customPathParameters`.
-  Future<Response> download<T>(String path,
-      {required dynamic savePath,
-      Map<String, dynamic> pathParameters = const {},
-      Map<String, dynamic> headers = const {},
-      Map<String, dynamic> query = const {},
-      Options? options,
-      bool attachCustomHeaders = true,
-      bool attachCustomQuery = true,
-      bool attachCustomPathParameters = true,
-      CancelToken? cancelToken,
-      ProgressCallback? onReceiveProgress,
-      bool deleteOnError = true,
-      String lengthHeader = Headers.contentLengthHeader,
-      Object? data,
-      PlayxNetworkLoggerSettings? logSettings,
-      FileAccessMode fileAccessMode = FileAccessMode.write}) async {
-    final resolvedPath =
-        await _resolvePath(path, pathParameters, attachCustomPathParameters);
+  Future<Response> download<T>(
+    String path, {
+    required dynamic savePath,
+    Map<String, dynamic> pathParameters = const {},
+    Map<String, dynamic> headers = const {},
+    Map<String, dynamic> query = const {},
+    Options? options,
+    bool attachCustomHeaders = true,
+    bool attachCustomQuery = true,
+    bool attachCustomPathParameters = true,
+    CancelToken? cancelToken,
+    ProgressCallback? onReceiveProgress,
+    bool deleteOnError = true,
+    String lengthHeader = Headers.contentLengthHeader,
+    Object? data,
+    PlayxNetworkLoggerSettings? logSettings,
+    FileAccessMode fileAccessMode = FileAccessMode.write,
+  }) async {
+    final resolvedPath = await _resolvePath(
+      path,
+      pathParameters,
+      attachCustomPathParameters,
+    );
     return _getDioInstance(logSettings: logSettings).download(
       resolvedPath,
       savePath,
-      queryParameters: {
-        ...await _customQueryFor(attachCustomQuery),
-        ...query,
-      },
-      options: options ??
+      queryParameters: {...await _customQueryFor(attachCustomQuery), ...query},
+      options:
+          options ??
           Options(
             headers: {
               ...await _customHeadersFor(attachCustomHeaders),
@@ -179,16 +181,17 @@ class DioClient {
     ProgressCallback? onReceiveProgress,
     PlayxNetworkLoggerSettings? logSettings,
   }) async {
-    final resolvedPath =
-        await _resolvePath(path, pathParameters, attachCustomPathParameters);
+    final resolvedPath = await _resolvePath(
+      path,
+      pathParameters,
+      attachCustomPathParameters,
+    );
     return _getDioInstance(logSettings: logSettings).post(
       resolvedPath,
       data: body,
-      queryParameters: {
-        ...await _customQueryFor(attachCustomQuery),
-        ...query,
-      },
-      options: options ??
+      queryParameters: {...await _customQueryFor(attachCustomQuery), ...query},
+      options:
+          options ??
           Options(
             headers: {
               ...await _customHeadersFor(attachCustomHeaders),
@@ -221,16 +224,17 @@ class DioClient {
     CancelToken? cancelToken,
     PlayxNetworkLoggerSettings? logSettings,
   }) async {
-    final resolvedPath =
-        await _resolvePath(path, pathParameters, attachCustomPathParameters);
+    final resolvedPath = await _resolvePath(
+      path,
+      pathParameters,
+      attachCustomPathParameters,
+    );
     return _getDioInstance(logSettings: logSettings).delete(
       resolvedPath,
       data: body,
-      queryParameters: {
-        ...await _customQueryFor(attachCustomQuery),
-        ...query,
-      },
-      options: options ??
+      queryParameters: {...await _customQueryFor(attachCustomQuery), ...query},
+      options:
+          options ??
           Options(
             headers: {
               ...await _customHeadersFor(attachCustomHeaders),
@@ -263,16 +267,17 @@ class DioClient {
     ProgressCallback? onReceiveProgress,
     PlayxNetworkLoggerSettings? logSettings,
   }) async {
-    final resolvedPath =
-        await _resolvePath(path, pathParameters, attachCustomPathParameters);
+    final resolvedPath = await _resolvePath(
+      path,
+      pathParameters,
+      attachCustomPathParameters,
+    );
     return _getDioInstance(logSettings: logSettings).put(
       resolvedPath,
       data: body,
-      queryParameters: {
-        ...await _customQueryFor(attachCustomQuery),
-        ...query,
-      },
-      options: options ??
+      queryParameters: {...await _customQueryFor(attachCustomQuery), ...query},
+      options:
+          options ??
           Options(
             headers: {
               ...await _customHeadersFor(attachCustomHeaders),
@@ -307,16 +312,17 @@ class DioClient {
     ProgressCallback? onReceiveProgress,
     PlayxNetworkLoggerSettings? logSettings,
   }) async {
-    final resolvedPath =
-        await _resolvePath(path, pathParameters, attachCustomPathParameters);
+    final resolvedPath = await _resolvePath(
+      path,
+      pathParameters,
+      attachCustomPathParameters,
+    );
     return _getDioInstance(logSettings: logSettings).patch(
       resolvedPath,
       data: body,
-      queryParameters: {
-        ...await _customQueryFor(attachCustomQuery),
-        ...query,
-      },
-      options: options ??
+      queryParameters: {...await _customQueryFor(attachCustomQuery), ...query},
+      options:
+          options ??
           Options(
             headers: {
               ...await _customHeadersFor(attachCustomHeaders),
@@ -380,15 +386,15 @@ class DioClient {
     CancelToken? cancelToken,
     PlayxNetworkLoggerSettings? logSettings,
   }) async {
-    final resolvedPath =
-        await _resolvePath(path, pathParameters, attachCustomPathParameters);
+    final resolvedPath = await _resolvePath(
+      path,
+      pathParameters,
+      attachCustomPathParameters,
+    );
     final dio = _getDioInstance(logSettings: logSettings);
     final response = await dio.get<ResponseBody>(
       resolvedPath,
-      queryParameters: {
-        ...await _customQueryFor(attachCustomQuery),
-        ...query,
-      },
+      queryParameters: {...await _customQueryFor(attachCustomQuery), ...query},
       options: await _resolveStreamOptions(
         options: options,
         headers: headers,
@@ -415,16 +421,16 @@ class DioClient {
     CancelToken? cancelToken,
     PlayxNetworkLoggerSettings? logSettings,
   }) async {
-    final resolvedPath =
-        await _resolvePath(path, pathParameters, attachCustomPathParameters);
+    final resolvedPath = await _resolvePath(
+      path,
+      pathParameters,
+      attachCustomPathParameters,
+    );
     final dio = _getDioInstance(logSettings: logSettings);
     final response = await dio.post<ResponseBody>(
       resolvedPath,
       data: body,
-      queryParameters: {
-        ...await _customQueryFor(attachCustomQuery),
-        ...query,
-      },
+      queryParameters: {...await _customQueryFor(attachCustomQuery), ...query},
       options: await _resolveStreamOptions(
         options: options,
         headers: headers,
@@ -444,9 +450,7 @@ extension DioClientExtensions on Dio {
     List<Interceptor>? interceptors,
     Transformer? transformer,
   }) {
-    final dio = Dio(
-      options ?? this.options,
-    );
+    final dio = Dio(options ?? this.options);
     dio.httpClientAdapter = httpClientAdapter ?? this.httpClientAdapter;
     // A new Dio already has Dio's default interceptor; drop it so it is not
     // duplicated by the copied ones (which include the original's).

@@ -85,7 +85,7 @@ class PlayxNetworkClientSettings {
           useIsolateForMappingJson ?? this.useIsolateForMappingJson,
       useWorkMangerForMappingJsonInIsolate:
           useWorkMangerForMappingJsonInIsolate ??
-              this.useWorkMangerForMappingJsonInIsolate,
+          this.useWorkMangerForMappingJsonInIsolate,
       treatEmptyResponseAsSuccess:
           treatEmptyResponseAsSuccess ?? this.treatEmptyResponseAsSuccess,
     );
