@@ -3,6 +3,7 @@ description: playx_network is a Wrapper around Dio that can perform api request 
 version: 1.1.0
 homepage: https://sourcya.io
 repository: https://github.com/playx-flutter/playx_network
+documentation: https://playx-flutter.github.io/playx_network/
 issue_tracker: https://github.com/playx-flutter/playx_network/issues
 
 environment:
