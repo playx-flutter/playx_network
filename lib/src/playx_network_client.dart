@@ -145,11 +145,10 @@ class PlayxNetworkClient {
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
-    final resolvedCancelToken = cancelTag != null
-        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
-        : cancelToken;
-    try {
-      final res = await _dioClient.get(
+    final resolvedCancelToken =
+        _resolveCancelToken(cancelToken, cancelTag, cancelOld);
+    return _request(
+      send: () => _dioClient.get(
         path,
         pathParameters: pathParameters,
         headers: headers,
@@ -161,8 +160,8 @@ class PlayxNetworkClient {
         cancelToken: resolvedCancelToken,
         onReceiveProgress: onReceiveProgress,
         logSettings: settings?.logSettings,
-      );
-      return _apiHandler.handleNetworkResult(
+      ),
+      handle: (res) => _apiHandler.handleNetworkResult(
         response: res,
         cancelToken: resolvedCancelToken,
         fromJson: fromJson,
@@ -171,18 +170,12 @@ class PlayxNetworkClient {
         settings: settings,
         errorMapper: errorMapper,
         errorExtraMapper: errorExtraMapper,
-      );
-      // ignore: avoid_catches_without_on_clauses
-    } catch (error, stackTrace) {
-      return _apiHandler.handleDioException(
-        error: error,
-        stackTrace: stackTrace,
-        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
-        settings: settings,
-        errorMapper: errorMapper,
-        errorExtraMapper: errorExtraMapper,
-      );
-    }
+      ),
+      shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+      settings: settings,
+      errorMapper: errorMapper,
+      errorExtraMapper: errorExtraMapper,
+    );
   }
 
   /// sends a [GET] request to the given [url]
@@ -213,11 +206,10 @@ class PlayxNetworkClient {
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
-    final resolvedCancelToken = cancelTag != null
-        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
-        : cancelToken;
-    try {
-      final res = await _dioClient.get(
+    final resolvedCancelToken =
+        _resolveCancelToken(cancelToken, cancelTag, cancelOld);
+    return _request(
+      send: () => _dioClient.get(
         path,
         pathParameters: pathParameters,
         headers: headers,
@@ -229,8 +221,8 @@ class PlayxNetworkClient {
         cancelToken: resolvedCancelToken,
         onReceiveProgress: onReceiveProgress,
         logSettings: settings?.logSettings,
-      );
-      return _apiHandler.handleNetworkResultForList(
+      ),
+      handle: (res) => _apiHandler.handleNetworkResultForList(
         response: res,
         cancelToken: resolvedCancelToken,
         fromJson: fromJson,
@@ -240,17 +232,12 @@ class PlayxNetworkClient {
         settings: settings,
         errorMapper: errorMapper,
         errorExtraMapper: errorExtraMapper,
-      );
-      // ignore: avoid_catches_without_on_clauses
-    } catch (error) {
-      return _apiHandler.handleDioException(
-        error: error,
-        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
-        settings: settings,
-        errorMapper: errorMapper,
-        errorExtraMapper: errorExtraMapper,
-      );
-    }
+      ),
+      shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+      settings: settings,
+      errorMapper: errorMapper,
+      errorExtraMapper: errorExtraMapper,
+    );
   }
 
   /// Download file from the given [url]
@@ -280,11 +267,10 @@ class PlayxNetworkClient {
     ErrorMapper? errorMapper,
     ErrorExtraMapper? errorExtraMapper,
   }) async {
-    final resolvedCancelToken = cancelTag != null
-        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
-        : cancelToken;
-    try {
-      final res = await _dioClient.download(
+    final resolvedCancelToken =
+        _resolveCancelToken(cancelToken, cancelTag, cancelOld);
+    return _request(
+      send: () => _dioClient.download(
         path,
         savePath: savePath,
         pathParameters: pathParameters,
@@ -300,25 +286,20 @@ class PlayxNetworkClient {
         deleteOnError: deleteOnError,
         lengthHeader: lengthHeader,
         logSettings: settings?.logSettings,
-      );
-      return _apiHandler.handleNetworkResultForDownload(
+      ),
+      handle: (res) => _apiHandler.handleNetworkResultForDownload(
         response: res,
         cancelToken: resolvedCancelToken,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         errorMapper: errorMapper,
         errorExtraMapper: errorExtraMapper,
         settings: settings,
-      );
-      // ignore: avoid_catches_without_on_clauses
-    } catch (error) {
-      return _apiHandler.handleDioException(
-        error: error,
-        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
-        errorMapper: errorMapper,
-        errorExtraMapper: errorExtraMapper,
-        settings: settings,
-      );
-    }
+      ),
+      shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+      settings: settings,
+      errorMapper: errorMapper,
+      errorExtraMapper: errorExtraMapper,
+    );
   }
 
   /// sends a [POST] request to the given [url]
@@ -351,11 +332,10 @@ class PlayxNetworkClient {
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
-    final resolvedCancelToken = cancelTag != null
-        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
-        : cancelToken;
-    try {
-      final res = await _dioClient.post(
+    final resolvedCancelToken =
+        _resolveCancelToken(cancelToken, cancelTag, cancelOld);
+    return _request(
+      send: () => _dioClient.post(
         path,
         body: body,
         pathParameters: pathParameters,
@@ -370,8 +350,8 @@ class PlayxNetworkClient {
         onSendProgress: onSendProgress,
         onReceiveProgress: onReceiveProgress,
         logSettings: settings?.logSettings,
-      );
-      return _apiHandler.handleNetworkResult(
+      ),
+      handle: (res) => _apiHandler.handleNetworkResult(
         response: res,
         cancelToken: resolvedCancelToken,
         fromJson: fromJson,
@@ -380,17 +360,12 @@ class PlayxNetworkClient {
         settings: settings,
         errorMapper: errorMapper,
         errorExtraMapper: errorExtraMapper,
-      );
-      // ignore: avoid_catches_without_on_clauses
-    } catch (error) {
-      return _apiHandler.handleDioException(
-        error: error,
-        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
-        settings: settings,
-        errorMapper: errorMapper,
-        errorExtraMapper: errorExtraMapper,
-      );
-    }
+      ),
+      shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+      settings: settings,
+      errorMapper: errorMapper,
+      errorExtraMapper: errorExtraMapper,
+    );
   }
 
   /// sends a [POST] request to the given [url]
@@ -424,11 +399,10 @@ class PlayxNetworkClient {
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
-    final resolvedCancelToken = cancelTag != null
-        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
-        : cancelToken;
-    try {
-      final res = await _dioClient.post(
+    final resolvedCancelToken =
+        _resolveCancelToken(cancelToken, cancelTag, cancelOld);
+    return _request(
+      send: () => _dioClient.post(
         path,
         body: body,
         pathParameters: pathParameters,
@@ -443,8 +417,8 @@ class PlayxNetworkClient {
         onSendProgress: onSendProgress,
         onReceiveProgress: onReceiveProgress,
         logSettings: settings?.logSettings,
-      );
-      return _apiHandler.handleNetworkResultForList(
+      ),
+      handle: (res) => _apiHandler.handleNetworkResultForList(
         response: res,
         cancelToken: resolvedCancelToken,
         fromJson: fromJson,
@@ -454,17 +428,12 @@ class PlayxNetworkClient {
         settings: settings,
         errorMapper: errorMapper,
         errorExtraMapper: errorExtraMapper,
-      );
-      // ignore: avoid_catches_without_on_clauses
-    } catch (error) {
-      return _apiHandler.handleDioException(
-        error: error,
-        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
-        settings: settings,
-        errorMapper: errorMapper,
-        errorExtraMapper: errorExtraMapper,
-      );
-    }
+      ),
+      shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+      settings: settings,
+      errorMapper: errorMapper,
+      errorExtraMapper: errorExtraMapper,
+    );
   }
 
   /// sends a [DELETE] request to the given [url]
@@ -505,11 +474,10 @@ class PlayxNetworkClient {
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
-    final resolvedCancelToken = cancelTag != null
-        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
-        : cancelToken;
-    try {
-      final res = await _dioClient.delete(
+    final resolvedCancelToken =
+        _resolveCancelToken(cancelToken, cancelTag, cancelOld);
+    return _request(
+      send: () => _dioClient.delete(
         path,
         body: body,
         pathParameters: pathParameters,
@@ -522,8 +490,8 @@ class PlayxNetworkClient {
         attachCustomPathParameters: attachCustomPathParameters,
         cancelToken: resolvedCancelToken,
         logSettings: settings?.logSettings,
-      );
-      return _apiHandler.handleNetworkResult<T>(
+      ),
+      handle: (res) => _apiHandler.handleNetworkResult<T>(
         response: res,
         cancelToken: resolvedCancelToken,
         fromJson: fromJson,
@@ -533,17 +501,12 @@ class PlayxNetworkClient {
         settings: settings,
         errorMapper: errorMapper,
         errorExtraMapper: errorExtraMapper,
-      );
-      // ignore: avoid_catches_without_on_clauses
-    } catch (error) {
-      return _apiHandler.handleDioException(
-        error: error,
-        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
-        settings: settings,
-        errorMapper: errorMapper,
-        errorExtraMapper: errorExtraMapper,
-      );
-    }
+      ),
+      shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+      settings: settings,
+      errorMapper: errorMapper,
+      errorExtraMapper: errorExtraMapper,
+    );
   }
 
   /// sends a [DELETE] request to the given [url]
@@ -575,11 +538,10 @@ class PlayxNetworkClient {
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
-    final resolvedCancelToken = cancelTag != null
-        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
-        : cancelToken;
-    try {
-      final res = await _dioClient.delete(
+    final resolvedCancelToken =
+        _resolveCancelToken(cancelToken, cancelTag, cancelOld);
+    return _request(
+      send: () => _dioClient.delete(
         path,
         body: body,
         pathParameters: pathParameters,
@@ -592,8 +554,8 @@ class PlayxNetworkClient {
         attachCustomPathParameters: attachCustomPathParameters,
         cancelToken: resolvedCancelToken,
         logSettings: settings?.logSettings,
-      );
-      return _apiHandler.handleNetworkResultForList(
+      ),
+      handle: (res) => _apiHandler.handleNetworkResultForList(
         response: res,
         cancelToken: resolvedCancelToken,
         fromJson: fromJson,
@@ -603,17 +565,12 @@ class PlayxNetworkClient {
         settings: settings,
         errorMapper: errorMapper,
         errorExtraMapper: errorExtraMapper,
-      );
-      // ignore: avoid_catches_without_on_clauses
-    } catch (error) {
-      return _apiHandler.handleDioException(
-        error: error,
-        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
-        settings: settings,
-        errorMapper: errorMapper,
-        errorExtraMapper: errorExtraMapper,
-      );
-    }
+      ),
+      shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+      settings: settings,
+      errorMapper: errorMapper,
+      errorExtraMapper: errorExtraMapper,
+    );
   }
 
   /// sends a [PUT] request to the given [url]
@@ -646,11 +603,10 @@ class PlayxNetworkClient {
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
-    final resolvedCancelToken = cancelTag != null
-        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
-        : cancelToken;
-    try {
-      final res = await _dioClient.put(
+    final resolvedCancelToken =
+        _resolveCancelToken(cancelToken, cancelTag, cancelOld);
+    return _request(
+      send: () => _dioClient.put(
         path,
         body: body,
         pathParameters: pathParameters,
@@ -665,8 +621,8 @@ class PlayxNetworkClient {
         onSendProgress: onSendProgress,
         onReceiveProgress: onReceiveProgress,
         logSettings: settings?.logSettings,
-      );
-      return _apiHandler.handleNetworkResult(
+      ),
+      handle: (res) => _apiHandler.handleNetworkResult(
         response: res,
         cancelToken: resolvedCancelToken,
         fromJson: fromJson,
@@ -675,17 +631,12 @@ class PlayxNetworkClient {
         settings: settings,
         errorMapper: errorMapper,
         errorExtraMapper: errorExtraMapper,
-      );
-      // ignore: avoid_catches_without_on_clauses
-    } catch (error) {
-      return _apiHandler.handleDioException(
-        error: error,
-        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
-        settings: settings,
-        errorMapper: errorMapper,
-        errorExtraMapper: errorExtraMapper,
-      );
-    }
+      ),
+      shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+      settings: settings,
+      errorMapper: errorMapper,
+      errorExtraMapper: errorExtraMapper,
+    );
   }
 
   /// sends a [PUT] request to the given [url]
@@ -719,11 +670,10 @@ class PlayxNetworkClient {
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
-    final resolvedCancelToken = cancelTag != null
-        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
-        : cancelToken;
-    try {
-      final res = await _dioClient.put(
+    final resolvedCancelToken =
+        _resolveCancelToken(cancelToken, cancelTag, cancelOld);
+    return _request(
+      send: () => _dioClient.put(
         path,
         body: body,
         pathParameters: pathParameters,
@@ -738,8 +688,8 @@ class PlayxNetworkClient {
         onSendProgress: onSendProgress,
         onReceiveProgress: onReceiveProgress,
         logSettings: settings?.logSettings,
-      );
-      return _apiHandler.handleNetworkResultForList(
+      ),
+      handle: (res) => _apiHandler.handleNetworkResultForList(
         response: res,
         cancelToken: resolvedCancelToken,
         fromJson: fromJson,
@@ -749,17 +699,12 @@ class PlayxNetworkClient {
         settings: settings,
         errorMapper: errorMapper,
         errorExtraMapper: errorExtraMapper,
-      );
-      // ignore: avoid_catches_without_on_clauses
-    } catch (error) {
-      return _apiHandler.handleDioException(
-        error: error,
-        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
-        settings: settings,
-        errorMapper: errorMapper,
-        errorExtraMapper: errorExtraMapper,
-      );
-    }
+      ),
+      shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+      settings: settings,
+      errorMapper: errorMapper,
+      errorExtraMapper: errorExtraMapper,
+    );
   }
 
   /// sends a [PATCH] request to the given [url]
@@ -793,11 +738,10 @@ class PlayxNetworkClient {
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
-    final resolvedCancelToken = cancelTag != null
-        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
-        : cancelToken;
-    try {
-      final res = await _dioClient.patch(
+    final resolvedCancelToken =
+        _resolveCancelToken(cancelToken, cancelTag, cancelOld);
+    return _request(
+      send: () => _dioClient.patch(
         path,
         body: body,
         pathParameters: pathParameters,
@@ -812,8 +756,8 @@ class PlayxNetworkClient {
         onSendProgress: onSendProgress,
         onReceiveProgress: onReceiveProgress,
         logSettings: settings?.logSettings,
-      );
-      return _apiHandler.handleNetworkResult(
+      ),
+      handle: (res) => _apiHandler.handleNetworkResult(
         response: res,
         cancelToken: resolvedCancelToken,
         fromJson: fromJson,
@@ -822,17 +766,12 @@ class PlayxNetworkClient {
         settings: settings,
         errorMapper: errorMapper,
         errorExtraMapper: errorExtraMapper,
-      );
-      // ignore: avoid_catches_without_on_clauses
-    } catch (error) {
-      return _apiHandler.handleDioException(
-        error: error,
-        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
-        settings: settings,
-        errorMapper: errorMapper,
-        errorExtraMapper: errorExtraMapper,
-      );
-    }
+      ),
+      shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+      settings: settings,
+      errorMapper: errorMapper,
+      errorExtraMapper: errorExtraMapper,
+    );
   }
 
   /// sends a [PATCH] request to the given [url]
@@ -866,11 +805,10 @@ class PlayxNetworkClient {
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
-    final resolvedCancelToken = cancelTag != null
-        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
-        : cancelToken;
-    try {
-      final res = await _dioClient.patch(
+    final resolvedCancelToken =
+        _resolveCancelToken(cancelToken, cancelTag, cancelOld);
+    return _request(
+      send: () => _dioClient.patch(
         path,
         body: body,
         pathParameters: pathParameters,
@@ -885,8 +823,8 @@ class PlayxNetworkClient {
         onSendProgress: onSendProgress,
         onReceiveProgress: onReceiveProgress,
         logSettings: settings?.logSettings,
-      );
-      return _apiHandler.handleNetworkResultForList(
+      ),
+      handle: (res) => _apiHandler.handleNetworkResultForList(
         response: res,
         cancelToken: resolvedCancelToken,
         fromJson: fromJson,
@@ -896,17 +834,12 @@ class PlayxNetworkClient {
         settings: settings,
         errorMapper: errorMapper,
         errorExtraMapper: errorExtraMapper,
-      );
-      // ignore: avoid_catches_without_on_clauses
-    } catch (error) {
-      return _apiHandler.handleDioException(
-        error: error,
-        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
-        settings: settings,
-        errorMapper: errorMapper,
-        errorExtraMapper: errorExtraMapper,
-      );
-    }
+      ),
+      shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+      settings: settings,
+      errorMapper: errorMapper,
+      errorExtraMapper: errorExtraMapper,
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -964,12 +897,10 @@ class PlayxNetworkClient {
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
-    final resolvedCancelToken = cancelTag != null
-        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
-        : cancelToken;
-    final streamToken = _streamToken(resolvedCancelToken);
-    try {
-      final res = await _dioClient.getStream(
+    final resolvedCancelToken =
+        _resolveCancelToken(cancelToken, cancelTag, cancelOld);
+    return _streamRequest<T>(
+      send: (streamToken) => _dioClient.getStream(
         path,
         pathParameters: pathParameters,
         headers: headers,
@@ -980,30 +911,14 @@ class PlayxNetworkClient {
         attachCustomPathParameters: attachCustomPathParameters,
         cancelToken: streamToken,
         logSettings: settings?.logSettings,
-      );
-      return await _apiHandler.handleStreamResult<T>(
-        responseBody: res,
-        statusCode: res.statusCode,
-        statusMessage: res.statusMessage,
-        format: format,
-        cancelToken: resolvedCancelToken,
-        abort: () => streamToken.cancel(),
-        errorMapper: errorMapper,
-        errorExtraMapper: errorExtraMapper,
-        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
-        settings: settings,
-      );
-      // ignore: avoid_catches_without_on_clauses
-    } catch (error) {
-      final failed = await _apiHandler.handleDioException(
-        error: error,
-        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
-        settings: settings,
-        errorMapper: errorMapper,
-        errorExtraMapper: errorExtraMapper,
-      );
-      return NetworkStreamResult.error(failed.error!);
-    }
+      ),
+      format: format,
+      cancelToken: resolvedCancelToken,
+      shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+      settings: settings,
+      errorMapper: errorMapper,
+      errorExtraMapper: errorExtraMapper,
+    );
   }
 
   /// Sends a [POST] request to the given [path] and returns a
@@ -1032,12 +947,10 @@ class PlayxNetworkClient {
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
-    final resolvedCancelToken = cancelTag != null
-        ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
-        : cancelToken;
-    final streamToken = _streamToken(resolvedCancelToken);
-    try {
-      final res = await _dioClient.postStream(
+    final resolvedCancelToken =
+        _resolveCancelToken(cancelToken, cancelTag, cancelOld);
+    return _streamRequest<T>(
+      send: (streamToken) => _dioClient.postStream(
         path,
         pathParameters: pathParameters,
         body: body,
@@ -1050,30 +963,14 @@ class PlayxNetworkClient {
         attachCustomPathParameters: attachCustomPathParameters,
         cancelToken: streamToken,
         logSettings: settings?.logSettings,
-      );
-      return await _apiHandler.handleStreamResult<T>(
-        responseBody: res,
-        statusCode: res.statusCode,
-        statusMessage: res.statusMessage,
-        format: format,
-        cancelToken: resolvedCancelToken,
-        abort: () => streamToken.cancel(),
-        errorMapper: errorMapper,
-        errorExtraMapper: errorExtraMapper,
-        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
-        settings: settings,
-      );
-      // ignore: avoid_catches_without_on_clauses
-    } catch (error) {
-      final failed = await _apiHandler.handleDioException(
-        error: error,
-        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
-        settings: settings,
-        errorMapper: errorMapper,
-        errorExtraMapper: errorExtraMapper,
-      );
-      return NetworkStreamResult.error(failed.error!);
-    }
+      ),
+      format: format,
+      cancelToken: resolvedCancelToken,
+      shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+      settings: settings,
+      errorMapper: errorMapper,
+      errorExtraMapper: errorExtraMapper,
+    );
   }
 
   /// Convenience method for consuming Server-Sent Events (SSE) via a [GET]
@@ -1166,6 +1063,86 @@ class PlayxNetworkClient {
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
       );
+
+  /// Returns the token of [cancelTag] from the cancel token manager, or
+  /// [cancelToken] when no tag is given.
+  CancelToken? _resolveCancelToken(
+    CancelToken? cancelToken,
+    String? cancelTag,
+    bool cancelOld,
+  ) =>
+      cancelTag != null
+          ? _cancelTokenManager.getToken(cancelTag, cancelOld: cancelOld)
+          : cancelToken;
+
+  /// Sends a request with [send], turns the response into a result with
+  /// [handle], and maps anything thrown by either into a
+  /// [NetworkResult.error].
+  Future<NetworkResult<R>> _request<R>({
+    required Future<Response<dynamic>> Function() send,
+    required Future<NetworkResult<R>> Function(Response<dynamic> response)
+        handle,
+    required bool shouldHandleUnauthorizedRequest,
+    PlayxNetworkClientSettings? settings,
+    ErrorMapper? errorMapper,
+    ErrorExtraMapper? errorExtraMapper,
+  }) async {
+    try {
+      return await handle(await send());
+      // ignore: avoid_catches_without_on_clauses
+    } catch (error, stackTrace) {
+      return _apiHandler.handleDioException<R>(
+        error: error,
+        stackTrace: stackTrace,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
+        errorMapper: errorMapper,
+        errorExtraMapper: errorExtraMapper,
+      );
+    }
+  }
+
+  /// Sends a streaming request with [send] and wraps the response body in a
+  /// [NetworkStreamResult]. [send] receives a request-scoped cancel token that
+  /// is linked to [cancelToken], see [_streamToken]. Anything thrown while
+  /// connecting becomes a [NetworkStreamResult.error].
+  Future<NetworkStreamResult<R>> _streamRequest<R>({
+    required Future<ResponseBody> Function(CancelToken streamToken) send,
+    required PlayxStreamFormat format,
+    required CancelToken? cancelToken,
+    required bool shouldHandleUnauthorizedRequest,
+    PlayxNetworkClientSettings? settings,
+    ErrorMapper? errorMapper,
+    ErrorExtraMapper? errorExtraMapper,
+  }) async {
+    final streamToken = _streamToken(cancelToken);
+    try {
+      final res = await send(streamToken);
+      return await _apiHandler.handleStreamResult<R>(
+        responseBody: res,
+        statusCode: res.statusCode,
+        statusMessage: res.statusMessage,
+        format: format,
+        cancelToken: cancelToken,
+        abort: () => streamToken.cancel(),
+        errorMapper: errorMapper,
+        errorExtraMapper: errorExtraMapper,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
+      );
+      // ignore: avoid_catches_without_on_clauses
+    } catch (error, stackTrace) {
+      final failed = await _apiHandler.handleDioException<R>(
+        error: error,
+        stackTrace: stackTrace,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
+        errorMapper: errorMapper,
+        errorExtraMapper: errorExtraMapper,
+      );
+      return NetworkStreamResult.error(failed.error!);
+    }
+  }
 
   /// Creates a [CancelToken] owned by a single stream request and linked to
   /// the caller's [parent] token. Cancelling [parent] cancels the request;
