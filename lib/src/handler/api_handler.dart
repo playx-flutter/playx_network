@@ -99,31 +99,38 @@ class ApiHandler {
 
   /// Awaits [future] (the mapping of a response) and turns it into a success,
   /// or into a [RequestCanceledException] when [cancelToken] is cancelled
-  /// while it runs. Other errors are rethrown for the caller to handle.
+  /// before the mapping finishes. Other errors are rethrown for the caller to
+  /// handle.
+  ///
+  /// Whichever of the two happens first decides the result; the other one is
+  /// ignored, so cancelling exactly while the mapping completes is safe. A
+  /// mapping that is cancelled keeps running in the background, its result is
+  /// simply dropped.
   Future<NetworkResult<R>> _awaitCancelable<R>(
     Future<R> future,
     CancelToken? cancelToken,
     ExceptionMessage exceptionMessages,
-  ) async {
-    var isFinished = false;
-    final cancelable = Cancelable.fromFuture(future);
-    cancelToken?.whenCancel.then((_) {
-      if (!isFinished) cancelable.cancel();
-    });
+  ) {
+    NetworkResult<R> cancelled() => NetworkResult.error(RequestCanceledException(
+        errorMessage: exceptionMessages.requestCancelled));
 
-    try {
-      final result = await cancelable;
-      if (cancelToken?.isCancelled ?? false) {
-        return NetworkResult.error(RequestCanceledException(
-            errorMessage: exceptionMessages.requestCancelled));
-      }
-      return NetworkResult.success(result);
-    } on CanceledError {
-      return NetworkResult.error(RequestCanceledException(
-          errorMessage: exceptionMessages.requestCancelled));
-    } finally {
-      isFinished = true;
+    if (cancelToken == null) {
+      return future.then((value) => NetworkResult.success(value));
     }
+
+    final completer = Completer<NetworkResult<R>>();
+    cancelToken.whenCancel.then((_) {
+      if (!completer.isCompleted) completer.complete(cancelled());
+    });
+    future.then((value) {
+      if (completer.isCompleted) return;
+      completer.complete(
+        cancelToken.isCancelled ? cancelled() : NetworkResult.success(value),
+      );
+    }, onError: (Object error, StackTrace stackTrace) {
+      if (!completer.isCompleted) completer.completeError(error, stackTrace);
+    });
+    return completer.future;
   }
 
   /// Logs an unexpected [error] and returns an [UnexpectedErrorException]
@@ -350,15 +357,8 @@ class ApiHandler {
       }
       return NetworkResult.success(response);
       // ignore: avoid_catches_without_on_clauses
-    } on Exception catch (e, s) {
-      _log.error(
-        text: exceptionMessages.unexpectedError,
-        error: e,
-        stackTrace: s,
-      );
-      return NetworkResult.error(UnexpectedErrorException(
-        errorMessage: exceptionMessages.unexpectedError,
-      ));
+    } catch (e, s) {
+      return _unexpectedError(e, s, exceptionMessages);
     }
   }
 
