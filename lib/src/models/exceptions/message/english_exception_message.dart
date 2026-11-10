@@ -28,6 +28,14 @@ class DefaultEnglishExceptionMessage extends ExceptionMessage {
   String get internalServerError => "Sorry, There is an internal server error";
 
   @override
+  String get serverUnreachable =>
+      "Sorry, We couldn't reach the server. Please try again later.";
+
+  @override
+  String get corsError =>
+      "Sorry, The request was blocked by the browser. The server may not allow requests from this website (CORS).";
+
+  @override
   String get noInternetConnection => "Sorry, There is no internet connection.";
 
   @override

@@ -240,6 +240,22 @@ class RequestCanceledException extends NetworkException {
   const RequestCanceledException({required super.errorMessage});
 }
 
+/// Exception for a server that could not be reached although the device has a
+/// network: the connection was refused, reset, closed or timed out, or there is
+/// no route to the host.
+class ServerUnreachableException extends NetworkException {
+  const ServerUnreachableException({required super.errorMessage});
+}
+
+/// Exception for a request that failed in the browser without a response,
+/// which is most commonly caused by a CORS misconfiguration on the server.
+///
+/// Browsers hide the real reason for such failures, so this can also mean the
+/// server is down. It is only created on the web.
+class CorsException extends NetworkException {
+  const CorsException({required super.errorMessage});
+}
+
 /// Exception for no internet connection.
 class NoInternetConnectionException extends NetworkException {
   const NoInternetConnectionException({required super.errorMessage});

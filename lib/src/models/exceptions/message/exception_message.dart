@@ -33,4 +33,12 @@ abstract class ExceptionMessage {
   String get unexpectedError;
 
   String get emptyResponse;
+
+  /// Message for a server that could not be reached while the device has a
+  /// network. Defaults to [defaultError] so existing subclasses keep working.
+  String get serverUnreachable => defaultError;
+
+  /// Message for a request blocked in the browser (usually CORS). Defaults to
+  /// [defaultError] so existing subclasses keep working.
+  String get corsError => defaultError;
 }
