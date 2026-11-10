@@ -4,7 +4,6 @@ import 'package:playx_network/playx_network.dart';
 import 'package:playx_network/src/utils/path_utils.dart';
 import 'package:talker_dio_logger/talker_dio_logger.dart';
 
-// ignore: avoid_classes_with_only_static_members
 /// A client for making network requests using Dio.
 class DioClient {
   final Dio dio;
@@ -13,9 +12,6 @@ class DioClient {
   final FutureOr<Map<String, dynamic>> Function()? customPathParameters;
 
   final PlayxNetworkClientSettings settings;
-
-  bool attachLogSettings(PlayxNetworkLoggerSettings logSettings) =>
-      logSettings.enabled;
 
   DioClient({
     required this.dio,
@@ -70,17 +66,14 @@ class DioClient {
       return dio;
     }
 
-    final shouldAttachLogSettings = attachLogSettings(logSettings);
-
-    final interceptors = dio.interceptors.toList();
-    if (shouldAttachLogSettings) {
-      interceptors.removeWhere((element) => element is TalkerDioLogger);
+    // Swap the logger for one built from the per-request log settings, or
+    // drop it when logging is disabled for this request.
+    final interceptors = dio.interceptors.toList()
+      ..removeWhere((element) => element is TalkerDioLogger);
+    if (logSettings.enabled) {
       interceptors.add(logSettings.buildTalkerDioLogger());
-    } else {
-      interceptors.removeWhere((element) => element is TalkerDioLogger);
     }
-    final updatedDio = dio.copyWith(interceptors: interceptors);
-    return updatedDio;
+    return dio.copyWith(interceptors: interceptors);
   }
 
   /// sends a [GET] request to the given [url]
