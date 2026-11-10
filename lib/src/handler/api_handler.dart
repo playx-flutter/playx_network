@@ -5,7 +5,6 @@ import 'dart:io';
 import 'package:playx_core/playx_core.dart';
 import 'package:playx_network/playx_network.dart';
 import 'package:playx_network/src/utils/connection_utils.dart';
-import 'package:playx_network/src/utils/utils.dart';
 
 // ignore: avoid_classes_with_only_static_members
 /// This class is responsible for handling the network response and extract error from it.
@@ -78,6 +77,104 @@ class ApiHandler {
   bool treatEmptyResponseAsSuccess(PlayxNetworkClientSettings? settings) =>
       (settings ?? this.settings).treatEmptyResponseAsSuccess;
 
+  /// Returns the exception for [response] when its status code is not one of
+  /// the success codes (a `400` is always an error), or `null` for a success.
+  /// The error is logged.
+  NetworkException? _errorForStatus({
+    required Response response,
+    required bool shouldHandleUnauthorizedRequest,
+    ErrorMapper? errorMapper,
+    ErrorExtraMapper? errorExtraMapper,
+    PlayxNetworkClientSettings? settings,
+  }) {
+    final isSuccess = response.statusCode != HttpStatus.badRequest &&
+        buildSuccessCodes(settings).contains(response.statusCode);
+    if (isSuccess) return null;
+
+    final exception = _handleResponse(
+      response: response,
+      errorMapper: errorMapper,
+      errorExtraMapper: errorExtraMapper,
+      shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+      settings: settings,
+    );
+    _printError(
+      header: 'Playx Network Error :',
+      text: 'ERROR ${response.statusCode} ${response.statusMessage}',
+      error: exception,
+    );
+    return exception;
+  }
+
+  /// Whether a response body carries no data at all.
+  bool _isEmptyBody(dynamic data) =>
+      data == null || (data is String && data.isEmpty);
+
+  /// Logs and returns an [EmptyResponseException] result. [data] is only used
+  /// for the log.
+  NetworkResult<R> _emptyResponseError<R>(
+    dynamic data,
+    PlayxNetworkClientSettings? settings,
+  ) {
+    final exceptionMessages = buildExceptionMessages(settings);
+    _printError(
+      header: 'Playx Network Error :',
+      text: exceptionMessages.emptyResponse,
+      error: data,
+    );
+    return NetworkResult.error(EmptyResponseException(
+      errorMessage: exceptionMessages.emptyResponse,
+      statusCode: -1,
+      shouldShowApiError: buildShouldShowApiErrors(settings),
+    ));
+  }
+
+  /// Awaits [future] (the mapping of a response) and turns it into a success,
+  /// or into a [RequestCanceledException] when [cancelToken] is cancelled
+  /// while it runs. Other errors are rethrown for the caller to handle.
+  Future<NetworkResult<R>> _awaitCancelable<R>(
+    Future<R> future,
+    CancelToken? cancelToken,
+    ExceptionMessage exceptionMessages,
+  ) async {
+    var isFinished = false;
+    final cancelable = Cancelable.fromFuture(future);
+    cancelToken?.whenCancel.then((_) {
+      if (!isFinished) cancelable.cancel();
+    });
+
+    try {
+      final result = await cancelable;
+      if (cancelToken?.isCancelled ?? false) {
+        return NetworkResult.error(RequestCanceledException(
+            errorMessage: exceptionMessages.requestCancelled));
+      }
+      return NetworkResult.success(result);
+    } on CanceledError {
+      return NetworkResult.error(RequestCanceledException(
+          errorMessage: exceptionMessages.requestCancelled));
+    } finally {
+      isFinished = true;
+    }
+  }
+
+  /// Logs an unexpected [error] and returns an [UnexpectedErrorException]
+  /// result.
+  NetworkResult<R> _unexpectedError<R>(
+    Object error,
+    StackTrace stackTrace,
+    ExceptionMessage exceptionMessages,
+  ) {
+    _printError(
+      header: 'Playx Network Error :',
+      error: error,
+      stackTrace: stackTrace,
+    );
+    return NetworkResult.error(UnexpectedErrorException(
+      errorMessage: exceptionMessages.unexpectedError,
+    ));
+  }
+
   /// Handles a response that maps to a single object of type [T].
   ///
   /// When [fromJson] is `null` any successful response is a success with a
@@ -101,136 +198,76 @@ class ApiHandler {
   }) async {
     final exceptionMessages = buildExceptionMessages(settings);
     final shouldShowApiErrors = buildShouldShowApiErrors(settings);
-    final successCodes = buildSuccessCodes(settings);
     try {
-      if (response.statusCode == HttpStatus.badRequest ||
-          !successCodes.contains(response.statusCode)) {
-        final NetworkException exception = _handleResponse(
-            response: response,
-            errorMapper: errorMapper,
-            errorExtraMapper: errorExtraMapper,
-            shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
-        _printError(
-          header: 'Playx Network Error :',
-          text: 'ERROR ${response.statusCode} ${response.statusMessage}',
-          error: exception,
+      final statusError = _errorForStatus(
+        response: response,
+        errorMapper: errorMapper,
+        errorExtraMapper: errorExtraMapper,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
+      );
+      if (statusError != null) return NetworkResult.error(statusError);
+
+      final data = response.data;
+
+      if (fromJson == null) {
+        if (null is T) return NetworkResult.success(null as T);
+        return ApiHandler.unableToProcessException(
+          e: ArgumentError('fromJson is required when T is non-nullable'),
+          exceptionMessage: exceptionMessages.unableToProcess,
+          shouldShowApiErrors: shouldShowApiErrors,
         );
-        return NetworkResult.error(exception);
-      } else {
-        if (isResponseBlank(response) ?? true) {
-          _printError(
-            header: 'Playx Network Error :',
-            text: 'Response is blank or null',
-            error: response,
+      }
+
+      if (_isEmptyBody(data)) {
+        if (!allowEmptyResponse) return _emptyResponseError(data, settings);
+        // Nothing to extract a `dataKey` from: the mapper gets `null`.
+        try {
+          return NetworkResult.success(await fromJson(null));
+          // ignore: avoid_catches_without_on_clauses
+        } catch (e, s) {
+          return ApiHandler.unableToProcessException(
+            e: e,
+            s: s,
+            exceptionMessage: exceptionMessages.unableToProcess,
+            shouldShowApiErrors: shouldShowApiErrors,
           );
-          return NetworkResult.error(UnexpectedErrorException(
-            errorMessage: exceptionMessages.unexpectedError,
-          ));
-        } else {
-          final data = response.data;
-
-          if (fromJson == null) {
-            if (null is T) return NetworkResult.success(null as T);
-            return ApiHandler.unableToProcessException(
-              e: ArgumentError('fromJson is required when T is non-nullable'),
-              exceptionMessage: exceptionMessages.unableToProcess,
-              shouldShowApiErrors: shouldShowApiErrors,
-            );
-          }
-
-          if (allowEmptyResponse &&
-              (data == null || (data is String && data.isEmpty))) {
-            // Nothing to extract a `dataKey` from: the mapper gets `null`.
-            try {
-              return NetworkResult.success(await fromJson(null));
-              // ignore: avoid_catches_without_on_clauses
-            } catch (e, s) {
-              return ApiHandler.unableToProcessException(
-                e: e,
-                s: s,
-                exceptionMessage: exceptionMessages.unableToProcess,
-                shouldShowApiErrors: shouldShowApiErrors,
-              );
-            }
-          }
-
-          if (data == null || (data is String && data.isEmpty)) {
-            _printError(
-              header: 'Playx Network Error :',
-              text: exceptionMessages.emptyResponse,
-              error: data,
-            );
-            return NetworkResult.error(EmptyResponseException(
-                errorMessage: exceptionMessages.emptyResponse,
-                statusCode: -1,
-                shouldShowApiError: shouldShowApiErrors));
-          }
-
-          final actualData =
-              dataKey != null ? _getJsonValueOrNull(data, dataKey) : data;
-
-          try {
-            bool useIsolate = useIsolateForMappingJson(settings);
-            bool useWorkManager =
-                useWorkManagerForMappingJsonInIsolate(settings);
-
-            final future = Future.value(useIsolate
-                ? MapUtils.mapAsyncInIsolate(
-                    data: actualData,
-                    mapper: fromJson,
-                    useWorkManager: useWorkManager,
-                    printError: false,
-                  )
-                : fromJson(actualData));
-
-            bool isFinished = false;
-            final cancelable = Cancelable.fromFuture(future);
-            cancelToken?.whenCancel.then((_) {
-              if (!isFinished) {
-                cancelable.cancel();
-              }
-            });
-
-            try {
-              final result = await cancelable;
-              isFinished = true;
-              if (cancelToken?.isCancelled ?? false) {
-                return NetworkResult.error(RequestCanceledException(
-                    errorMessage: exceptionMessages.requestCancelled));
-              }
-              return NetworkResult.success(result);
-            } on CanceledError {
-              isFinished = true;
-              return NetworkResult.error(RequestCanceledException(
-                  errorMessage: exceptionMessages.requestCancelled));
-            } catch (e) {
-              isFinished = true;
-              rethrow;
-            }
-            // ignore: avoid_catches_without_on_clauses
-          } catch (e, s) {
-            return ApiHandler.unableToProcessException(
-              e: e,
-              s: s,
-              exceptionMessage: exceptionMessages.unableToProcess,
-              shouldShowApiErrors: shouldShowApiErrors,
-            );
-          }
         }
+      }
+
+      final actualData =
+          dataKey != null ? _getJsonValueOrNull(data, dataKey) : data;
+
+      try {
+        final future = Future.value(useIsolateForMappingJson(settings)
+            ? MapUtils.mapAsyncInIsolate(
+                data: actualData,
+                mapper: fromJson,
+                useWorkManager: useWorkManagerForMappingJsonInIsolate(settings),
+                printError: false,
+              )
+            : fromJson(actualData));
+        return await _awaitCancelable(future, cancelToken, exceptionMessages);
+        // ignore: avoid_catches_without_on_clauses
+      } catch (e, s) {
+        return ApiHandler.unableToProcessException(
+          e: e,
+          s: s,
+          exceptionMessage: exceptionMessages.unableToProcess,
+          shouldShowApiErrors: shouldShowApiErrors,
+        );
       }
       // ignore: avoid_catches_without_on_clauses
     } catch (e, s) {
-      _printError(
-        header: 'Playx Network Error :',
-        error: e,
-        stackTrace: s,
-      );
-      return NetworkResult.error(UnexpectedErrorException(
-        errorMessage: exceptionMessages.unexpectedError,
-      ));
+      return _unexpectedError(e, s, exceptionMessages);
     }
   }
 
+  /// Handles a response that maps to a list of [T].
+  ///
+  /// An empty body or an empty list is an [EmptyResponseException] unless the
+  /// settings enable `treatEmptyResponseAsSuccess`, which returns an empty
+  /// list instead.
   Future<NetworkResult<List<T>>> handleNetworkResultForList<T>({
     required Response response,
     required JsonMapper<T> fromJson,
@@ -244,148 +281,80 @@ class ApiHandler {
   }) async {
     final exceptionMessages = buildExceptionMessages(settings);
     final shouldShowApiErrors = buildShouldShowApiErrors(settings);
-    final successCodes = buildSuccessCodes(settings);
+    final emptyIsSuccess = treatEmptyResponseAsSuccess(settings);
 
     try {
-      if (response.statusCode == HttpStatus.badRequest ||
-          !successCodes.contains(response.statusCode)) {
-        final NetworkException exception = _handleResponse(
-            response: response,
-            errorMapper: errorMapper,
-            errorExtraMapper: errorExtraMapper,
-            shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
+      final statusError = _errorForStatus(
+        response: response,
+        errorMapper: errorMapper,
+        errorExtraMapper: errorExtraMapper,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
+      );
+      if (statusError != null) return NetworkResult.error(statusError);
+
+      final data = response.data;
+
+      if (_isEmptyBody(data)) {
+        return emptyIsSuccess
+            ? NetworkResult.success(<T>[])
+            : _emptyResponseError(data, settings);
+      }
+
+      final actualData =
+          dataKey != null ? _getJsonValueOrNull(data, dataKey) : data;
+
+      if (actualData is! List) {
         _printError(
-            header: 'Playx Network Error :',
-            text: 'ERROR ${response.statusCode} ${response.statusMessage}',
-            error: exception);
-        return NetworkResult.error(exception);
-      } else {
-        if (isResponseBlank(response) ?? true) {
-          _printError(
-            header: 'Playx Network Error :',
-            text: 'Response is blank or null',
-            error: response,
-          );
-          return NetworkResult.error(UnexpectedErrorException(
-            errorMessage: exceptionMessages.unexpectedError,
-          ));
-        } else {
-          final data = response.data;
+          header: 'Playx Network Error :',
+          text: 'Response is not a List',
+          error: response,
+        );
+        return ApiHandler.unableToProcessException(
+          e: 'Response is not a List',
+          exceptionMessage: exceptionMessages.unableToProcess,
+          shouldShowApiErrors: shouldShowApiErrors,
+        );
+      }
 
-          if (data == null || (data is String && data.isEmpty)) {
-            if (treatEmptyResponseAsSuccess(settings)) {
-              return NetworkResult.success(<T>[]);
-            }
-            _printError(
-              header: 'Playx Network Error :',
-              text: exceptionMessages.emptyResponse,
-              error: data,
-            );
-            return NetworkResult.error(EmptyResponseException(
-                errorMessage: exceptionMessages.emptyResponse,
-                statusCode: -1,
-                shouldShowApiError: shouldShowApiErrors));
-          }
+      try {
+        final List<dynamic> itemsToMap = itemDataKey == null
+            ? actualData
+            : actualData
+                .map((item) =>
+                    ApiHandler._getJsonValueOrNull(item, itemDataKey) ?? item)
+                .toList();
 
-          final actualData =
-              dataKey != null ? _getJsonValueOrNull(data, dataKey) : data;
+        final Future<List<T>> future = useIsolateForMappingJson(settings)
+            ? itemsToMap.asyncMapInIsolate(
+                mapper: fromJson,
+                useWorkManager: useWorkManagerForMappingJsonInIsolate(settings),
+                printError: false,
+                printEachItemError: false)
+            : Future.wait(itemsToMap.map((item) async => await fromJson(item)));
 
-          try {
-            if (actualData is List) {
-              bool useIsolate = useIsolateForMappingJson(settings);
-              bool useWorkManager =
-                  useWorkManagerForMappingJsonInIsolate(settings);
+        final mapped =
+            await _awaitCancelable(future, cancelToken, exceptionMessages);
+        final result = mapped.data;
+        // `data` is only null when the mapping was cancelled.
+        if (result == null) return mapped;
 
-              final List<dynamic> itemsToMap;
-              if (itemDataKey != null) {
-                itemsToMap = actualData
-                    .map((item) =>
-                        ApiHandler._getJsonValueOrNull(item, itemDataKey) ??
-                        item)
-                    .toList();
-              } else {
-                itemsToMap = actualData;
-              }
-
-              final future = useIsolate
-                  ? itemsToMap.asyncMapInIsolate(
-                      mapper: fromJson,
-                      useWorkManager: useWorkManager,
-                      printError: false,
-                      printEachItemError: false)
-                  : Future.wait(
-                      itemsToMap.map((item) async => await fromJson(item)));
-
-              bool isFinished = false;
-              final cancelable = Cancelable.fromFuture(future);
-              cancelToken?.whenCancel.then((_) {
-                if (!isFinished) {
-                  cancelable.cancel();
-                }
-              });
-
-              late final List<T> result;
-              try {
-                result = await cancelable;
-                isFinished = true;
-                if (cancelToken?.isCancelled ?? false) {
-                  return NetworkResult.error(RequestCanceledException(
-                      errorMessage: exceptionMessages.requestCancelled));
-                }
-              } on CanceledError {
-                isFinished = true;
-                return NetworkResult.error(RequestCanceledException(
-                    errorMessage: exceptionMessages.requestCancelled));
-              } catch (e) {
-                isFinished = true;
-                rethrow;
-              }
-
-              if (result.isEmpty && !treatEmptyResponseAsSuccess(settings)) {
-                _printError(
-                  header: 'Playx Network Error :',
-                  text: exceptionMessages.emptyResponse,
-                  error: result,
-                );
-                return NetworkResult.error(EmptyResponseException(
-                    errorMessage: exceptionMessages.emptyResponse,
-                    shouldShowApiError: shouldShowApiErrors,
-                    statusCode: -1));
-              }
-              return NetworkResult.success(result);
-            } else {
-              _printError(
-                header: 'Playx Network Error :',
-                text: 'Response is not a List',
-                error: response,
-              );
-              return ApiHandler.unableToProcessException(
-                e: ApiHandler.unableToProcessException,
-                exceptionMessage: exceptionMessages.unableToProcess,
-                shouldShowApiErrors: shouldShowApiErrors,
-              );
-            }
-            // ignore: avoid_catches_without_on_clauses
-          } catch (e, s) {
-            return ApiHandler.unableToProcessException(
-              e: e,
-              s: s,
-              exceptionMessage: exceptionMessages.unableToProcess,
-              shouldShowApiErrors: shouldShowApiErrors,
-            );
-          }
+        if (result.isEmpty && !emptyIsSuccess) {
+          return _emptyResponseError(result, settings);
         }
+        return NetworkResult.success(result);
+        // ignore: avoid_catches_without_on_clauses
+      } catch (e, s) {
+        return ApiHandler.unableToProcessException(
+          e: e,
+          s: s,
+          exceptionMessage: exceptionMessages.unableToProcess,
+          shouldShowApiErrors: shouldShowApiErrors,
+        );
       }
       // ignore: avoid_catches_without_on_clauses
     } catch (e, s) {
-      _printError(
-        header: 'Playx Network Error :',
-        error: e,
-        stackTrace: s,
-      );
-      return NetworkResult.error(UnexpectedErrorException(
-        errorMessage: exceptionMessages.unexpectedError,
-      ));
+      return _unexpectedError(e, s, exceptionMessages);
     }
   }
 
@@ -398,40 +367,22 @@ class ApiHandler {
     PlayxNetworkClientSettings? settings,
   }) async {
     final exceptionMessages = buildExceptionMessages(settings);
-    final successCodes = buildSuccessCodes(settings);
 
     try {
-      if (response.statusCode == HttpStatus.badRequest ||
-          !successCodes.contains(response.statusCode)) {
-        final NetworkException exception = _handleResponse(
-            response: response,
-            errorMapper: errorMapper,
-            errorExtraMapper: errorExtraMapper,
-            shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest);
-        _printError(
-          header: 'Playx Network Error:',
-          text: 'ERROR ${response.statusCode} ${response.statusMessage}',
-          error: exception,
-        );
-        return NetworkResult.error(exception);
-      } else {
-        if (isResponseBlank(response) ?? true) {
-          _printError(
-            header: 'Playx Network Error :',
-            text: 'Response is blank or null',
-            error: response,
-          );
-          return NetworkResult.error(UnexpectedErrorException(
-            errorMessage: exceptionMessages.unexpectedError,
-          ));
-        } else {
-          if (cancelToken?.isCancelled ?? false) {
-            return NetworkResult.error(RequestCanceledException(
-                errorMessage: exceptionMessages.requestCancelled));
-          }
-          return NetworkResult.success(response);
-        }
+      final statusError = _errorForStatus(
+        response: response,
+        errorMapper: errorMapper,
+        errorExtraMapper: errorExtraMapper,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
+      );
+      if (statusError != null) return NetworkResult.error(statusError);
+
+      if (cancelToken?.isCancelled ?? false) {
+        return NetworkResult.error(RequestCanceledException(
+            errorMessage: exceptionMessages.requestCancelled));
       }
+      return NetworkResult.success(response);
       // ignore: avoid_catches_without_on_clauses
     } on Exception catch (e, s) {
       _printError(
