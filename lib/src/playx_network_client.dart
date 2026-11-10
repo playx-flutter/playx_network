@@ -10,6 +10,7 @@ import 'manager/playx_cancel_token_manager.dart';
 import 'models/exceptions/message/exception_message.dart';
 import 'models/network_result.dart';
 import 'models/network_stream_result.dart';
+import 'models/playx_sse_event.dart';
 import 'models/playx_stream_format.dart';
 import 'models/settings/playx_network_client_settings.dart';
 import 'models/typedefs.dart';
