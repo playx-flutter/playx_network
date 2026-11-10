@@ -64,12 +64,6 @@ A major release: it raises the minimum Dart and Flutter versions and adds new ex
 - Widened ranges so apps can pick their versions: `sentry_dio >=9.16.0 <11.0.0`, `talker` and `talker_dio_logger` `>=5.1.16 <6.0.0`, `dio_web_adapter >=2.1.2 <3.0.0`. `sentry_dio` is only re-exported; apps that move to `sentry_dio` 10 should read its migration notes (Android `minSdk` 26, Swift Package Manager on Apple platforms, span streaming on by default).
 - `package:web` is now a direct dependency.
 
-### Documentation and tooling
-
-- A documentation site with guides and the API reference, published to GitHub Pages.
-- A rewritten README.
-- CI runs format, analysis and tests with a 90% coverage gate on every pull request, validates the package with a publish dry run, and publishing skips versions that are already on pub.dev.
-
 ## 1.0.0
 - **Nested JSON Key Extraction**: Added `dataKey` parameter to all network requests to extract nested JSON values before parsing.
 - **Item-Level Nested Key Extraction**: Added `itemDataKey` to all list-returning requests (`getList`, `postList`, etc.) to unwrap each list item (e.g., `itemDataKey: 'attributes'`) before passing it to the mapper.
