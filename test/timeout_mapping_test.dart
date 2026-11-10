@@ -69,6 +69,13 @@ void main() {
       },
     );
 
+    test('the other new messages default to defaultError', () {
+      const legacy = _Legacy();
+      expect(legacy.secureConnectionError, legacy.defaultError);
+      expect(legacy.serverUnreachable, legacy.defaultError);
+      expect(legacy.corsError, legacy.defaultError);
+    });
+
     test('English and Arabic have a specific message', () {
       const english = DefaultEnglishExceptionMessage();
       expect(english.receiveTimeout, isNot(english.sendTimeout));

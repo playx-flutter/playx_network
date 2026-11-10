@@ -1,6 +1,7 @@
 # Changelog
 
 ## 1.1.0
+- **Bugfix (invalid responses)**: A response body that cannot be parsed (for example invalid JSON) is now reported as `InvalidFormatException`. It was reported as `UnexpectedErrorException`, and the `InvalidFormatException` branch could never be reached.
 - **Bugfix (cancellation)**: Cancelling a request exactly while its response was being mapped could throw an uncaught `Bad state: Future already completed` from the cancellation helper. The race is now handled and the request returns a `RequestCanceledException`. Downloads also no longer let non-`Exception` errors (such as a `StateError`) escape the handler.
 - **Bugfix (default error parsing)**: `DefaultApiError` now reads Strapi's `message: [{messages: [...]}]` (that branch could never run), joins list messages such as `message: ["a", "b"]`, supports `{"error": "..."}`, and reads each field on its own so a wrongly typed `statusCode` no longer discards the message. Blank messages are treated as missing.
 - **Dio `validateStatus`**: Requests made with a `Dio` that keeps the default `validateStatus` are handled consistently. Error responses of stream requests (`getStream`, `postStream`, `getSse`, `postSse`) now keep the API message and `extra` data (they were lost because the body was never read), and a status listed in `successRequestCodes` that Dio rejects (for example `304`) is treated as a success for every request type instead of an error.

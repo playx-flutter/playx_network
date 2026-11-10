@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:playx_network/playx_network.dart';
-import 'package:playx_network/src/manager/playx_cancel_token_manager.dart';
 import 'package:playx_network/src/models/exceptions/message/arabic_exception_message.dart';
 import 'package:talker/talker.dart';
 import 'package:talker_dio_logger/talker_dio_logger.dart';

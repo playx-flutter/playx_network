@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get_it/get_it.dart';
+import 'package:playx_core/playx_core.dart' show GetIt;
 import 'package:playx_network/playx_network.dart';
 
 // Isolates can only run top-level or static functions.

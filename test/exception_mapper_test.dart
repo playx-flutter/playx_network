@@ -172,10 +172,23 @@ void main() {
       expect(error.errorMessage, arabic.notFound);
     });
 
+    test('an invalid body wrapped by Dio is an InvalidFormatException', () {
+      final error = DioException(
+        requestOptions: RequestOptions(path: '/x'),
+        type: DioExceptionType.unknown,
+        error: const FormatException('Unexpected character'),
+      );
+      expect(mapper.fromError(error: error), isA<InvalidFormatException>());
+      expect(
+        mapper.fromError(error: error).message,
+        const DefaultEnglishExceptionMessage().formatException,
+      );
+    });
+
     test('non-Dio errors', () {
       expect(
         mapper.fromError(error: const FormatException('x')),
-        isA<UnexpectedErrorException>(),
+        isA<InvalidFormatException>(),
       );
       expect(
         mapper.fromError(error: "type 'X' is not a subtype of type 'Y'"),

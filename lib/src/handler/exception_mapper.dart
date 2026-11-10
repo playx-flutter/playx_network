@@ -159,15 +159,20 @@ class ExceptionMapper {
                 errorMessage: exceptionMessages.requestTimeout,
                 statusCode: -1,
                 shouldShowApiError: shouldShowApiErrors),
-            DioExceptionType.unknown => error.error is SocketException
-                ? buildConnectionException(
+            DioExceptionType.unknown => switch (error.error) {
+                SocketException() => buildConnectionException(
                     error: error,
                     messages: exceptionMessages,
                     isOnline: isOnline,
-                  )
-                : UnexpectedErrorException(
+                  ),
+                // For example a body that is not valid JSON.
+                FormatException() => InvalidFormatException(
+                    errorMessage: exceptionMessages.formatException,
+                  ),
+                _ => UnexpectedErrorException(
                     errorMessage: exceptionMessages.unexpectedError,
                   ),
+              },
             DioExceptionType.receiveTimeout => ReceiveTimeoutException(
                 errorMessage: exceptionMessages.receiveTimeout,
               ),
@@ -202,6 +207,10 @@ class ExceptionMapper {
             error: error,
             messages: exceptionMessages,
             isOnline: isOnline,
+          );
+        } else if (error is FormatException) {
+          networkExceptions = InvalidFormatException(
+            errorMessage: exceptionMessages.formatException,
           );
         } else {
           networkExceptions = UnexpectedErrorException(
