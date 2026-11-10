@@ -6,11 +6,9 @@ class ApiMessage {
   });
 
   ApiMessage.fromJson(dynamic json) {
-    if (json['messages'] != null) {
-      messages = [];
-      json['messages'].forEach((v) {
-        messages?.add(Messages.fromJson(v));
-      });
+    final list = json is Map ? json['messages'] : null;
+    if (list is List) {
+      messages = [for (final item in list) Messages.fromJson(item)];
     }
   }
 }
@@ -25,8 +23,11 @@ class Messages {
   });
 
   Messages.fromJson(dynamic json) {
-    id = json['id'] as String?;
-    message = json['message'] as String?;
+    if (json is! Map) return;
+    final rawId = json['id'];
+    final rawMessage = json['message'];
+    id = rawId is String ? rawId : null;
+    message = rawMessage is String ? rawMessage : null;
   }
 
   Map<String, dynamic> toJson() {
