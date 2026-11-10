@@ -376,6 +376,46 @@ You can customize error message for the client and use your own messages.
     );
    ```
 
+## Connection Failures
+Connection problems are reported with different exceptions, so you don't have to show "no internet" for every failed request:
+
+| Exception | Meaning |
+|-----------|---------|
+| `NoInternetConnectionException` | The device has no usable network. |
+| `ServerUnreachableException` | The device has a network, but the server could not be reached: connection refused, reset, closed or timed out, or no route to the host. |
+| `CorsException` | **Web only.** The browser blocked the request or it failed without a response, most commonly because the server doesn't allow your website's origin (CORS). |
+| `RequestTimeoutException` / `SendTimeoutException` | The connection or the request timed out. |
+
+Without any setup the exception is chosen from the operating system error (for example `ECONNREFUSED` becomes `ServerUnreachableException` and `ENETUNREACH` becomes `NoInternetConnectionException`). A failure that can't be identified, including a failed host lookup, is still reported as `NoInternetConnectionException`, as in earlier versions.
+
+For a reliable answer, give the client a `hasInternetConnection` callback, for example backed by [connectivity_plus](https://pub.dev/packages/connectivity_plus). It is only called after a connection failure:
+
+```dart
+final client = PlayxNetworkClient(
+  dio: Dio(BaseOptions(baseUrl: _baseUrl)),
+  hasInternetConnection: () async {
+    final results = await Connectivity().checkConnectivity();
+    return !results.contains(ConnectivityResult.none);
+  },
+);
+
+result.when(
+  success: (data) {},
+  error: (error) => switch (error) {
+    NoInternetConnectionException() => showOfflineBanner(),
+    ServerUnreachableException() => showServerDownMessage(),
+    CorsException() => showCorsHint(),
+    _ => showError(error.message),
+  },
+);
+```
+
+When the callback returns `false` the error is always `NoInternetConnectionException`; when it returns `true` it is never one (`ServerUnreachableException`, or `CorsException` on the web). If it throws, the error is inspected as above.
+
+On the web a browser reveals nothing about why a request failed, so CORS, a down server and a bad certificate all look the same. `CorsException` is used unless `navigator.onLine` (or your callback) says the browser is offline. Treat it as "blocked or unreachable, most likely CORS".
+
+Add `serverUnreachable` and `corsError` to your own `ExceptionMessage` to customize the messages; they default to `defaultError`.
+
 ## Custom Error Objects
 `errorMapper` converts an error response into the message string. If your API returns a structured error (a code, field errors, ...) you can also map it to your own object with `errorExtraMapper`. The object is exposed as `extra` on the `ApiException`, with typed accessors `result.errorExtraAs<E>()` and `exception.extraAs<E>()`:
 

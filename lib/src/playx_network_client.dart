@@ -44,6 +44,7 @@ class PlayxNetworkClient {
   /// segments of each request path, included in each request.
   /// [onUnauthorizedRequestReceived] which is a function that is called when unauthorized request is received.
   /// [errorMapper] which is a function that converts json error response from api to error message.
+  /// [hasInternetConnection] which is an optional callback (for example backed by `connectivity_plus`) used only after a connection failure to tell "no internet" ([NoInternetConnectionException]) from "server unreachable" ([ServerUnreachableException]).
   /// [errorExtraMapper] which is an optional function that converts the json error response to a custom object, exposed as `ApiException.extra`.
   /// [settings] which is a settings object that can be used to customize the client.
   PlayxNetworkClient({
@@ -54,6 +55,7 @@ class PlayxNetworkClient {
     UnauthorizedRequestHandler? onUnauthorizedRequestReceived,
     ErrorMapper? errorMapper,
     ErrorExtraMapper? errorExtraMapper,
+    FutureOr<bool> Function()? hasInternetConnection,
     this.settings = const PlayxNetworkClientSettings(),
   }) {
     _cancelTokenManager = PlayxCancelTokenManager();
@@ -74,6 +76,7 @@ class PlayxNetworkClient {
     _apiHandler = ApiHandler(
       errorMapper: errorMapper ?? ApiHandler.getErrorMessageFromResponse,
       errorExtraMapper: errorExtraMapper,
+      hasInternetConnection: hasInternetConnection,
       settings: settings,
       onUnauthorizedRequestReceived: onUnauthorizedRequestReceived,
       logger: logger,
@@ -986,15 +989,14 @@ class PlayxNetworkClient {
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
-      return NetworkStreamResult.error(_apiHandler
-          .handleDioException(
-            error: error,
-            shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
-            settings: settings,
-            errorMapper: errorMapper,
-            errorExtraMapper: errorExtraMapper,
-          )
-          .error!);
+      final failed = await _apiHandler.handleDioException(
+        error: error,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
+        errorMapper: errorMapper,
+        errorExtraMapper: errorExtraMapper,
+      );
+      return NetworkStreamResult.error(failed.error!);
     }
   }
 
@@ -1051,15 +1053,14 @@ class PlayxNetworkClient {
       );
       // ignore: avoid_catches_without_on_clauses
     } catch (error) {
-      return NetworkStreamResult.error(_apiHandler
-          .handleDioException(
-            error: error,
-            shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
-            settings: settings,
-            errorMapper: errorMapper,
-            errorExtraMapper: errorExtraMapper,
-          )
-          .error!);
+      final failed = await _apiHandler.handleDioException(
+        error: error,
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
+        errorMapper: errorMapper,
+        errorExtraMapper: errorExtraMapper,
+      );
+      return NetworkStreamResult.error(failed.error!);
     }
   }
 

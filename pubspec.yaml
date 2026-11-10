@@ -25,6 +25,7 @@ dependencies:
   playx_core: ^2.0.0
   dio_smart_retry: ^7.0.1
   dio_web_adapter: '>=2.1.2 <3.0.0'
+  web: '>=1.0.0 <2.0.0'
 
 dev_dependencies:
   flutter_test:

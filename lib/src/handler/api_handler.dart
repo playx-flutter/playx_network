@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:playx_core/playx_core.dart';
 import 'package:playx_network/playx_network.dart';
+import 'package:playx_network/src/utils/connection_utils.dart';
 import 'package:playx_network/src/utils/utils.dart';
 
 // ignore: avoid_classes_with_only_static_members
@@ -15,6 +16,10 @@ class ApiHandler {
   final PlayxNetworkClientSettings settings;
   final UnauthorizedRequestHandler? onUnauthorizedRequestReceived;
 
+  /// Optional app-provided check used to tell "no internet" from "server
+  /// unreachable" once a connection failure happened.
+  final FutureOr<bool> Function()? hasInternetConnection;
+
   final PlayxBaseLogger logger;
 
   ApiHandler({
@@ -22,8 +27,29 @@ class ApiHandler {
     this.errorExtraMapper,
     required this.settings,
     this.onUnauthorizedRequestReceived,
+    this.hasInternetConnection,
     required this.logger,
   });
+
+  /// Asks [hasInternetConnection] whether the device is online, but only when
+  /// [error] is a connection failure. Returns `null` when there is no
+  /// callback, the error is something else, or the callback throws.
+  Future<bool?> _checkOnline(Object? error) async {
+    final check = hasInternetConnection;
+    if (check == null || !isConnectionFailure(error)) return null;
+    try {
+      return await check();
+      // ignore: avoid_catches_without_on_clauses
+    } catch (e, s) {
+      _printError(
+        header: 'Playx Network Error :',
+        text: 'hasInternetConnection threw',
+        error: e,
+        stackTrace: s,
+      );
+      return null;
+    }
+  }
 
   ExceptionMessage buildExceptionMessages(
           PlayxNetworkClientSettings? settings) =>
@@ -604,15 +630,31 @@ class ApiHandler {
               ));
               return;
             }
-            emitError(_getDioException(
-              error: e,
-              errorMapper: errorMapper,
-              errorExtraMapper: errorExtraMapper,
-              shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
-              settings: settings,
-            ));
-            // Source errors are terminal: always complete the stream.
-            finish();
+            void emitTerminalError(bool? isOnline) {
+              emitError(_getDioException(
+                error: e,
+                errorMapper: errorMapper,
+                errorExtraMapper: errorExtraMapper,
+                shouldHandleUnauthorizedRequest:
+                    shouldHandleUnauthorizedRequest,
+                settings: settings,
+                isOnline: isOnline,
+              ));
+              // Source errors are terminal: always complete the stream.
+              finish();
+            }
+
+            if (hasInternetConnection != null && isConnectionFailure(e)) {
+              // The error is terminal, so stop listening first: otherwise the
+              // source's `done` could close the stream while the connectivity
+              // check is still running and the error would be lost.
+              final sub = subscription;
+              subscription = null;
+              sub?.cancel().catchError((_) {});
+              _checkOnline(e).then(emitTerminalError);
+            } else {
+              emitTerminalError(null);
+            }
           },
           onDone: () => finish(abortRequest: false),
           cancelOnError: false,
@@ -630,25 +672,28 @@ class ApiHandler {
     return controller.stream;
   }
 
-  NetworkResult<T> handleDioException<T>({
+  Future<NetworkResult<T>> handleDioException<T>({
     dynamic error,
     dynamic stackTrace,
     ErrorMapper? errorMapper,
     ErrorExtraMapper? errorExtraMapper,
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
-  }) {
+  }) async {
     _printError(
       header: 'Playx Network (Dio) Error :',
       text: 'DioException occurred:',
       error: error,
       stackTrace: stackTrace,
     );
+    final isOnline = await _checkOnline(error);
     return NetworkResult.error(_getDioException(
         error: error,
         errorMapper: errorMapper,
         errorExtraMapper: errorExtraMapper,
-        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest));
+        shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
+        settings: settings,
+        isOnline: isOnline));
   }
 
   NetworkException _handleResponse(
@@ -717,7 +762,8 @@ class ApiHandler {
       ErrorMapper? errorMapper,
       ErrorExtraMapper? errorExtraMapper,
       bool shouldHandleUnauthorizedRequest = true,
-      PlayxNetworkClientSettings? settings}) {
+      PlayxNetworkClientSettings? settings,
+      bool? isOnline}) {
     final exceptionMessages = buildExceptionMessages(settings);
     final shouldShowApiErrors = buildShouldShowApiErrors(settings);
 
@@ -736,8 +782,10 @@ class ApiHandler {
                 statusCode: -1,
                 shouldShowApiError: shouldShowApiErrors),
             DioExceptionType.unknown => error.error is SocketException
-                ? NoInternetConnectionException(
-                    errorMessage: exceptionMessages.noInternetConnection,
+                ? buildConnectionException(
+                    error: error,
+                    messages: exceptionMessages,
+                    isOnline: isOnline,
                   )
                 : UnexpectedErrorException(
                     errorMessage: exceptionMessages.unexpectedError,
@@ -757,16 +805,20 @@ class ApiHandler {
             DioExceptionType.badCertificate => UnexpectedErrorException(
                 errorMessage: exceptionMessages.unexpectedError,
               ),
-            DioExceptionType.connectionError => NoInternetConnectionException(
-                errorMessage: exceptionMessages.noInternetConnection,
+            DioExceptionType.connectionError => buildConnectionException(
+                error: error,
+                messages: exceptionMessages,
+                isOnline: isOnline,
               ),
             DioExceptionType.transformTimeout => UnexpectedErrorException(
                 errorMessage: exceptionMessages.unexpectedError,
               ),
           };
         } else if (error is SocketException) {
-          networkExceptions = NoInternetConnectionException(
-            errorMessage: exceptionMessages.noInternetConnection,
+          networkExceptions = buildConnectionException(
+            error: error,
+            messages: exceptionMessages,
+            isOnline: isOnline,
           );
         } else {
           networkExceptions = UnexpectedErrorException(
