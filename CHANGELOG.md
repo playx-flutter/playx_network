@@ -1,6 +1,7 @@
 # Changelog
 
 ## 1.1.0
+- **Custom error objects**: Added an optional `errorExtraMapper` (client-level and per request) that maps the error response to your own object, exposed as `ApiException.extra`, with typed accessors `result.errorExtraAs<E>()` and `exception.extraAs<E>()` (extensions, no cast needed). `ErrorMapper` is unchanged (still returns the message `String?`), so this is not a breaking change.
 - **Empty list responses as success**: Added `treatEmptyResponseAsSuccess` to `PlayxNetworkClientSettings` (default `false`). When enabled, list requests (`getList`, `postList`, ...) that succeed with an empty body (`null` or `""`) or an empty list (`[]`, including after `dataKey`/`itemDataKey`) return `NetworkResult.success([])` instead of an `EmptyResponseException`. It can be set on the client or per request through `settings`. Single-object requests are unchanged.
 - **Delete without a body**: `fromJson` is now optional on `delete`. Without it any successful response returns `NetworkResult.success(null)` (use `delete<void>`), and with it an empty body is a success and the mapper receives `null` (no `dataKey` extraction). Documented that `204 No Content` needs `successRequestCodes: [200, 201, 204]`; the default is unchanged.
 - **BREAKING (minimum versions)**: Updated to `playx_core ^2.0.0`, which requires Dart `>=3.12.0` and Flutter `>=3.44.0`. These are now the minimum versions of `playx_network` as well.
