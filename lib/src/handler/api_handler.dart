@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:playx_core/playx_core.dart';
 import 'package:playx_network/playx_network.dart';
 import 'package:playx_network/src/utils/connection_utils.dart';
+import 'package:playx_network/src/utils/json_utils.dart';
 
 // ignore: avoid_classes_with_only_static_members
 /// This class is responsible for handling the network response and extract error from it.
@@ -236,7 +237,7 @@ class ApiHandler {
       }
 
       final actualData =
-          dataKey != null ? _getJsonValueOrNull(data, dataKey) : data;
+          dataKey != null ? getJsonValueOrNull(data, dataKey) : data;
 
       try {
         final future = Future.value(useIsolateForMappingJson(settings)
@@ -302,7 +303,7 @@ class ApiHandler {
       }
 
       final actualData =
-          dataKey != null ? _getJsonValueOrNull(data, dataKey) : data;
+          dataKey != null ? getJsonValueOrNull(data, dataKey) : data;
 
       if (actualData is! List) {
         _printError(
@@ -322,7 +323,7 @@ class ApiHandler {
             ? actualData
             : actualData
                 .map((item) =>
-                    ApiHandler._getJsonValueOrNull(item, itemDataKey) ?? item)
+                    getJsonValueOrNull(item, itemDataKey) ?? item)
                 .toList();
 
         final Future<List<T>> future = useIsolateForMappingJson(settings)
@@ -842,44 +843,6 @@ class ApiHandler {
           statusCode: -1,
           shouldShowApiError: shouldShowApiErrors),
     );
-  }
-
-  /// Internal helper to safely get a value from a JSON map by key.
-  /// Returns null if the JSON is null, not a map, or if the key is missing.
-  /// Supports dot-notation for nested keys (e.g., 'data.user.name' or 'data.users.0.name').
-  static dynamic _getJsonValueOrNull(dynamic json, String key) {
-    if (json == null) {
-      return null;
-    }
-
-    if (json is Map && json.containsKey(key)) {
-      return json[key];
-    }
-
-    if (key.contains('.')) {
-      final keys = key.split('.');
-      dynamic current = json;
-
-      for (final k in keys) {
-        if (current is Map) {
-          if (!current.containsKey(k)) {
-            return null;
-          }
-          current = current[k];
-        } else if (current is List) {
-          final index = int.tryParse(k);
-          if (index == null || index < 0 || index >= current.length) {
-            return null;
-          }
-          current = current[index];
-        } else {
-          return null;
-        }
-      }
-      return current;
-    }
-
-    return null;
   }
 }
 
