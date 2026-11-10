@@ -5,6 +5,7 @@ import 'package:playx_core/playx_core.dart';
 
 import 'dio/dio_client.dart';
 import 'handler/api_handler.dart';
+import 'handler/exception_mapper.dart';
 import 'manager/playx_cancel_token_manager.dart';
 import 'models/exceptions/message/exception_message.dart';
 import 'models/network_result.dart';
@@ -74,7 +75,7 @@ class PlayxNetworkClient {
           );
 
     _apiHandler = ApiHandler(
-      errorMapper: errorMapper ?? ApiHandler.getErrorMessageFromResponse,
+      errorMapper: errorMapper ?? ExceptionMapper.defaultErrorMessage,
       errorExtraMapper: errorExtraMapper,
       hasInternetConnection: hasInternetConnection,
       settings: settings,

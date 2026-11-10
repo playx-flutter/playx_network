@@ -4,52 +4,34 @@ import 'dart:io';
 
 import 'package:playx_core/playx_core.dart';
 import 'package:playx_network/playx_network.dart';
-import 'package:playx_network/src/utils/connection_utils.dart';
+import 'package:playx_network/src/handler/exception_mapper.dart';
+import 'package:playx_network/src/handler/handler_logger.dart';
 import 'package:playx_network/src/utils/json_utils.dart';
 
 // ignore: avoid_classes_with_only_static_members
 /// This class is responsible for handling the network response and extract error from it.
 /// and return the result whether it was successful or not.
 class ApiHandler {
-  final ErrorMapper errorMapper;
-  final ErrorExtraMapper? errorExtraMapper;
-  final PlayxNetworkClientSettings settings;
-  final UnauthorizedRequestHandler? onUnauthorizedRequestReceived;
-
-  /// Optional app-provided check used to tell "no internet" from "server
-  /// unreachable" once a connection failure happened.
-  final FutureOr<bool> Function()? hasInternetConnection;
-
-  final PlayxBaseLogger logger;
-
   ApiHandler({
-    required this.errorMapper,
-    this.errorExtraMapper,
+    required ErrorMapper errorMapper,
+    ErrorExtraMapper? errorExtraMapper,
     required this.settings,
-    this.onUnauthorizedRequestReceived,
-    this.hasInternetConnection,
-    required this.logger,
-  });
+    UnauthorizedRequestHandler? onUnauthorizedRequestReceived,
+    FutureOr<bool> Function()? hasInternetConnection,
+    required PlayxBaseLogger logger,
+  })  : _log = HandlerLogger(logger: logger, settings: settings),
+        _mapper = ExceptionMapper(
+          errorMapper: errorMapper,
+          errorExtraMapper: errorExtraMapper,
+          settings: settings,
+          onUnauthorizedRequestReceived: onUnauthorizedRequestReceived,
+          hasInternetConnection: hasInternetConnection,
+          log: HandlerLogger(logger: logger, settings: settings),
+        );
 
-  /// Asks [hasInternetConnection] whether the device is online, but only when
-  /// [error] is a connection failure. Returns `null` when there is no
-  /// callback, the error is something else, or the callback throws.
-  Future<bool?> _checkOnline(Object? error) async {
-    final check = hasInternetConnection;
-    if (check == null || !isConnectionFailure(error)) return null;
-    try {
-      return await check();
-      // ignore: avoid_catches_without_on_clauses
-    } catch (e, s) {
-      _printError(
-        header: 'Playx Network Error :',
-        text: 'hasInternetConnection threw',
-        error: e,
-        stackTrace: s,
-      );
-      return null;
-    }
-  }
+  final PlayxNetworkClientSettings settings;
+  final HandlerLogger _log;
+  final ExceptionMapper _mapper;
 
   ExceptionMessage buildExceptionMessages(
           PlayxNetworkClientSettings? settings) =>
@@ -92,15 +74,14 @@ class ApiHandler {
         buildSuccessCodes(settings).contains(response.statusCode);
     if (isSuccess) return null;
 
-    final exception = _handleResponse(
+    final exception = _mapper.fromResponse(
       response: response,
       errorMapper: errorMapper,
       errorExtraMapper: errorExtraMapper,
       shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
       settings: settings,
     );
-    _printError(
-      header: 'Playx Network Error :',
+    _log.error(
       text: 'ERROR ${response.statusCode} ${response.statusMessage}',
       error: exception,
     );
@@ -118,8 +99,7 @@ class ApiHandler {
     PlayxNetworkClientSettings? settings,
   ) {
     final exceptionMessages = buildExceptionMessages(settings);
-    _printError(
-      header: 'Playx Network Error :',
+    _log.error(
       text: exceptionMessages.emptyResponse,
       error: data,
     );
@@ -166,8 +146,7 @@ class ApiHandler {
     StackTrace stackTrace,
     ExceptionMessage exceptionMessages,
   ) {
-    _printError(
-      header: 'Playx Network Error :',
+    _log.error(
       error: error,
       stackTrace: stackTrace,
     );
@@ -306,8 +285,7 @@ class ApiHandler {
           dataKey != null ? getJsonValueOrNull(data, dataKey) : data;
 
       if (actualData is! List) {
-        _printError(
-          header: 'Playx Network Error :',
+        _log.error(
           text: 'Response is not a List',
           error: response,
         );
@@ -386,7 +364,7 @@ class ApiHandler {
       return NetworkResult.success(response);
       // ignore: avoid_catches_without_on_clauses
     } on Exception catch (e, s) {
-      _printError(
+      _log.error(
         text: exceptionMessages.unexpectedError,
         error: e,
         stackTrace: s,
@@ -438,15 +416,14 @@ class ApiHandler {
 
     if (!successCodes.contains(statusCode) || responseBody == null) {
       final errorBody = await _readErrorBody(responseBody, abort);
-      final exception = _handleResponse(
+      final exception = _mapper.fromResponse(
         response: _StreamStatusResponse(statusCode, statusMessage, errorBody),
         errorMapper: errorMapper,
         errorExtraMapper: errorExtraMapper,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
       );
-      _printError(
-        header: 'Playx Network Error :',
+      _log.error(
         text: 'STREAM ERROR $statusCode $statusMessage',
         error: exception,
       );
@@ -551,8 +528,7 @@ class ApiHandler {
             try {
               controller.add(event as T);
             } catch (e, s) {
-              _printError(
-                header: 'Playx Network Error :',
+              _log.error(
                 text: exceptionMessages.unableToProcess,
                 error: e,
                 stackTrace: s,
@@ -566,8 +542,7 @@ class ApiHandler {
           },
           onError: (Object e, StackTrace s) {
             if (finished) return;
-            _printError(
-              header: 'Playx Network (Stream) Error :',
+            _log.error(
               text: 'Stream error',
               error: e,
               stackTrace: s,
@@ -583,7 +558,7 @@ class ApiHandler {
               return;
             }
             void emitTerminalError(bool? isOnline) {
-              emitError(_getDioException(
+              emitError(_mapper.fromError(
                 error: e,
                 errorMapper: errorMapper,
                 errorExtraMapper: errorExtraMapper,
@@ -596,14 +571,14 @@ class ApiHandler {
               finish();
             }
 
-            if (hasInternetConnection != null && isConnectionFailure(e)) {
+            if (_mapper.willCheckOnline(e)) {
               // The error is terminal, so stop listening first: otherwise the
               // source's `done` could close the stream while the connectivity
               // check is still running and the error would be lost.
               final sub = subscription;
               subscription = null;
               sub?.cancel().catchError((_) {});
-              _checkOnline(e).then(emitTerminalError);
+              _mapper.checkOnline(e).then(emitTerminalError);
             } else {
               emitTerminalError(null);
             }
@@ -632,201 +607,19 @@ class ApiHandler {
     bool shouldHandleUnauthorizedRequest = true,
     PlayxNetworkClientSettings? settings,
   }) async {
-    _printError(
-      header: 'Playx Network (Dio) Error :',
+    _log.error(
       text: 'DioException occurred:',
       error: error,
       stackTrace: stackTrace,
     );
-    final isOnline = await _checkOnline(error);
-    return NetworkResult.error(_getDioException(
+    final isOnline = await _mapper.checkOnline(error);
+    return NetworkResult.error(_mapper.fromError(
         error: error,
         errorMapper: errorMapper,
         errorExtraMapper: errorExtraMapper,
         shouldHandleUnauthorizedRequest: shouldHandleUnauthorizedRequest,
         settings: settings,
         isOnline: isOnline));
-  }
-
-  NetworkException _handleResponse(
-      {Response? response,
-      bool shouldHandleUnauthorizedRequest = true,
-      ErrorMapper? errorMapper,
-      ErrorExtraMapper? errorExtraMapper,
-      PlayxNetworkClientSettings? settings}) {
-    final exceptionMessages = buildExceptionMessages(settings);
-    final shouldShowApiErrors = buildShouldShowApiErrors(settings);
-    final unauthorizedRequestCodes = buildUnauthorizedRequestCodes(settings);
-
-    final dynamic errorJson = response?.data;
-
-    String? errMsg;
-    try {
-      errMsg = (errorMapper ?? this.errorMapper)(errorJson);
-    } catch (e, s) {
-      _printError(
-        header: 'Playx Network Error :',
-        text: 'Error while parsing error message $e',
-        error: e,
-        stackTrace: s,
-      );
-    }
-
-    Object? extra;
-    final extraMapper = errorExtraMapper ?? this.errorExtraMapper;
-    if (extraMapper != null) {
-      try {
-        extra = extraMapper(errorJson);
-      } catch (e, s) {
-        _printError(
-          header: 'Playx Network Error :',
-          text: 'Error while parsing error extra data $e',
-          error: e,
-          stackTrace: s,
-        );
-      }
-    }
-
-    final int statusCode = response?.statusCode ?? -1;
-
-    if (unauthorizedRequestCodes.contains(statusCode)) {
-      if (shouldHandleUnauthorizedRequest) {
-        onUnauthorizedRequestReceived?.call(response);
-      }
-      return UnauthorizedRequestException(
-          apiErrorMessage: errMsg,
-          statusCode: statusCode,
-          errorMessage: exceptionMessages.unauthorizedRequest,
-          shouldShowApiError: shouldShowApiErrors,
-          extra: extra);
-    }
-
-    return ApiException.fromStatusCode(
-        statusCode: statusCode,
-        apiErrorMessage: errMsg,
-        exceptionMessages: exceptionMessages,
-        shouldShowApiErrors: shouldShowApiErrors,
-        extra: extra);
-  }
-
-  NetworkException _getDioException(
-      {dynamic error,
-      ErrorMapper? errorMapper,
-      ErrorExtraMapper? errorExtraMapper,
-      bool shouldHandleUnauthorizedRequest = true,
-      PlayxNetworkClientSettings? settings,
-      bool? isOnline}) {
-    final exceptionMessages = buildExceptionMessages(settings);
-    final shouldShowApiErrors = buildShouldShowApiErrors(settings);
-
-    if (isTlsFailure(error)) {
-      return SecureConnectionException(
-        errorMessage: exceptionMessages.secureConnectionError,
-      );
-    }
-
-    if (error is Exception) {
-      try {
-        NetworkException networkExceptions = UnexpectedErrorException(
-            errorMessage: exceptionMessages.unexpectedError);
-
-        if (error is DioException) {
-          networkExceptions = switch (error.type) {
-            DioExceptionType.cancel => RequestCanceledException(
-                errorMessage: exceptionMessages.requestCancelled,
-              ),
-            DioExceptionType.connectionTimeout => RequestTimeoutException(
-                errorMessage: exceptionMessages.requestTimeout,
-                statusCode: -1,
-                shouldShowApiError: shouldShowApiErrors),
-            DioExceptionType.unknown => error.error is SocketException
-                ? buildConnectionException(
-                    error: error,
-                    messages: exceptionMessages,
-                    isOnline: isOnline,
-                  )
-                : UnexpectedErrorException(
-                    errorMessage: exceptionMessages.unexpectedError,
-                  ),
-            DioExceptionType.receiveTimeout => ReceiveTimeoutException(
-                errorMessage: exceptionMessages.receiveTimeout,
-              ),
-            DioExceptionType.badResponse => _handleResponse(
-                response: error.response,
-                errorMapper: errorMapper,
-                errorExtraMapper: errorExtraMapper,
-                shouldHandleUnauthorizedRequest:
-                    shouldHandleUnauthorizedRequest),
-            DioExceptionType.sendTimeout => SendTimeoutException(
-                errorMessage: exceptionMessages.sendTimeout,
-              ),
-            DioExceptionType.badCertificate => SecureConnectionException(
-                errorMessage: exceptionMessages.secureConnectionError,
-              ),
-            DioExceptionType.connectionError => buildConnectionException(
-                error: error,
-                messages: exceptionMessages,
-                isOnline: isOnline,
-              ),
-            // Parsing the response took too long: the data arrived but could
-            // not be processed in time.
-            DioExceptionType.transformTimeout => UnableToProcessException(
-                errorMessage: exceptionMessages.unableToProcess,
-                statusCode: -1,
-                shouldShowApiError: false,
-              ),
-          };
-        } else if (error is SocketException) {
-          networkExceptions = buildConnectionException(
-            error: error,
-            messages: exceptionMessages,
-            isOnline: isOnline,
-          );
-        } else {
-          networkExceptions = UnexpectedErrorException(
-            errorMessage: exceptionMessages.unexpectedError,
-          );
-        }
-        return networkExceptions;
-      } on FormatException catch (_) {
-        return InvalidFormatException(
-          errorMessage: exceptionMessages.formatException,
-        );
-      } catch (_) {
-        return UnexpectedErrorException(
-          errorMessage: exceptionMessages.unexpectedError,
-        );
-      }
-    } else {
-      if (error.toString().contains("is not a subtype of")) {
-        return UnableToProcessException(
-            errorMessage: exceptionMessages.unableToProcess,
-            statusCode: -1,
-            shouldShowApiError: false);
-      } else {
-        return UnexpectedErrorException(
-          errorMessage: exceptionMessages.unexpectedError,
-        );
-      }
-    }
-  }
-
-  static String? getErrorMessageFromResponse(dynamic json) {
-    final DefaultApiError? error =
-        json != null ? DefaultApiError.fromJson(json) : null;
-    return error?.message;
-  }
-
-  void _printError(
-      {String? header,
-      String? text,
-      Object? error,
-      dynamic stackTrace,
-      PlayxNetworkClientSettings? settings}) {
-    final bool attachLogs = attachLogSettings(settings);
-    if (attachLogs) {
-      logger.e(text, error: error, stackTrace: stackTrace);
-    }
   }
 
   static NetworkResult<T> unableToProcessException<T>({
