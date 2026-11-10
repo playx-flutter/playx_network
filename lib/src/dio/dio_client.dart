@@ -49,6 +49,20 @@ class DioClient {
     return substitutePathParameters(path, merged);
   }
 
+  /// The client-level custom headers, or nothing when they should not be
+  /// attached.
+  Future<Map<String, dynamic>> _customHeadersFor(bool attach) async =>
+      attach && customHeaders != null
+          ? await customHeaders!()
+          : const <String, dynamic>{};
+
+  /// The client-level custom query parameters, or nothing when they should not
+  /// be attached.
+  Future<Map<String, dynamic>> _customQueryFor(bool attach) async =>
+      attach && customQuery != null
+          ? await customQuery!()
+          : const <String, dynamic>{};
+
   Dio _getDioInstance({
     PlayxNetworkLoggerSettings? logSettings,
   }) {
@@ -91,15 +105,13 @@ class DioClient {
         await _resolvePath(path, pathParameters, attachCustomPathParameters);
     return _getDioInstance(logSettings: logSettings).get(resolvedPath,
         queryParameters: {
-          if (attachCustomQuery && customQuery != null)
-            ...?await customQuery?.call(),
+          ...await _customQueryFor(attachCustomQuery),
           ...query,
         },
         options: options ??
             Options(
               headers: {
-                if (attachCustomHeaders && customHeaders != null)
-                  ...?await customHeaders?.call(),
+                ...await _customHeadersFor(attachCustomHeaders),
                 ...headers,
               },
             ),
@@ -134,15 +146,13 @@ class DioClient {
       resolvedPath,
       savePath,
       queryParameters: {
-        if (attachCustomQuery && customQuery != null)
-          ...?await customQuery?.call(),
+        ...await _customQueryFor(attachCustomQuery),
         ...query,
       },
       options: options ??
           Options(
             headers: {
-              if (attachCustomHeaders && customHeaders != null)
-                ...?await customHeaders?.call(),
+              ...await _customHeadersFor(attachCustomHeaders),
               ...headers,
             },
           ),
@@ -182,15 +192,13 @@ class DioClient {
       resolvedPath,
       data: body,
       queryParameters: {
-        if (attachCustomQuery && customQuery != null)
-          ...?await customQuery?.call(),
+        ...await _customQueryFor(attachCustomQuery),
         ...query,
       },
       options: options ??
           Options(
             headers: {
-              if (attachCustomHeaders && customHeaders != null)
-                ...?await customHeaders?.call(),
+              ...await _customHeadersFor(attachCustomHeaders),
               ...headers,
             },
             contentType: contentType,
@@ -226,15 +234,13 @@ class DioClient {
       resolvedPath,
       data: body,
       queryParameters: {
-        if (attachCustomQuery && customQuery != null)
-          ...?await customQuery?.call(),
+        ...await _customQueryFor(attachCustomQuery),
         ...query,
       },
       options: options ??
           Options(
             headers: {
-              if (attachCustomHeaders && customHeaders != null)
-                ...?await customHeaders?.call(),
+              ...await _customHeadersFor(attachCustomHeaders),
               ...headers,
             },
             contentType: contentType,
@@ -270,15 +276,13 @@ class DioClient {
       resolvedPath,
       data: body,
       queryParameters: {
-        if (attachCustomQuery && customQuery != null)
-          ...?await customQuery?.call(),
+        ...await _customQueryFor(attachCustomQuery),
         ...query,
       },
       options: options ??
           Options(
             headers: {
-              if (attachCustomHeaders && customHeaders != null)
-                ...?await customHeaders?.call(),
+              ...await _customHeadersFor(attachCustomHeaders),
               ...headers,
             },
             contentType: contentType,
@@ -316,15 +320,13 @@ class DioClient {
       resolvedPath,
       data: body,
       queryParameters: {
-        if (attachCustomQuery && customQuery != null)
-          ...?await customQuery?.call(),
+        ...await _customQueryFor(attachCustomQuery),
         ...query,
       },
       options: options ??
           Options(
             headers: {
-              if (attachCustomHeaders && customHeaders != null)
-                ...?await customHeaders?.call(),
+              ...await _customHeadersFor(attachCustomHeaders),
               ...headers,
             },
             contentType: contentType,
@@ -353,8 +355,7 @@ class DioClient {
   }) async {
     return (options ?? Options()).copyWith(
       headers: {
-        if (attachCustomHeaders && customHeaders != null)
-          ...?await customHeaders?.call(),
+        ...await _customHeadersFor(attachCustomHeaders),
         ...?options?.headers,
         ...headers,
       },
@@ -392,8 +393,7 @@ class DioClient {
     final response = await dio.get<ResponseBody>(
       resolvedPath,
       queryParameters: {
-        if (attachCustomQuery && customQuery != null)
-          ...?await customQuery?.call(),
+        ...await _customQueryFor(attachCustomQuery),
         ...query,
       },
       options: await _resolveStreamOptions(
@@ -429,8 +429,7 @@ class DioClient {
       resolvedPath,
       data: body,
       queryParameters: {
-        if (attachCustomQuery && customQuery != null)
-          ...?await customQuery?.call(),
+        ...await _customQueryFor(attachCustomQuery),
         ...query,
       },
       options: await _resolveStreamOptions(
