@@ -24,7 +24,7 @@ class StreamResponseHandler {
   /// Handles a streaming [ResponseBody] and returns a
   /// [NetworkStreamResult] of the decoded events.
   ///
-  /// The generic type [T] is inferred from [format]:
+  /// The generic type `T` is inferred from [format]:
   /// - [PlayxStreamFormat.bytes] → `List<int>`
   /// - [PlayxStreamFormat.text]  → `String`
   /// - [PlayxStreamFormat.json]  → `Object` (the decoded JSON value)

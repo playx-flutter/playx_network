@@ -105,7 +105,7 @@ class PlayxNetworkClient {
     return dio;
   }
 
-  /// sends a [GET] request to the given [url]
+  /// sends a `GET` request to the given [path]
   /// and returns object of Type [T] model.
   /// You can pass your own queries, headers weather to attach custom headers or not.
   /// Or add custom options which overrides headers and custom headers.
@@ -168,7 +168,7 @@ class PlayxNetworkClient {
     );
   }
 
-  /// sends a [GET] request to the given [url]
+  /// sends a `GET` request to the given [path]
   /// and returns [List] of Type [T].
   /// You can pass your own queries, headers weather to attach custom headers or not.
   /// Or add custom options which overrides headers and custom headers.
@@ -233,7 +233,7 @@ class PlayxNetworkClient {
     );
   }
 
-  /// Download file from the given [url]
+  /// Download a file from the given [path]
   /// and returns [NetworkResult] of [Response].
   /// [pathParameters] replaces `{placeholder}` segments in [path] before the request is sent.
   /// Set [attachCustomPathParameters] to `false` to skip any client-level `customPathParameters`.
@@ -298,7 +298,7 @@ class PlayxNetworkClient {
     );
   }
 
-  /// sends a [POST] request to the given [url]
+  /// sends a `POST` request to the given [path]
   /// and returns object of Type [T].
   /// You can pass your own queries, headers weather to attach custom headers or not.
   /// Or add custom options which overrides headers and custom headers.
@@ -367,7 +367,7 @@ class PlayxNetworkClient {
     );
   }
 
-  /// sends a [POST] request to the given [url]
+  /// sends a `POST` request to the given [path]
   /// and returns [List] of Type [T].
   /// You can pass your own queries, headers weather to attach custom headers or not.
   /// Or add custom options which overrides headers and custom headers.
@@ -438,7 +438,7 @@ class PlayxNetworkClient {
     );
   }
 
-  /// sends a [DELETE] request to the given [url]
+  /// sends a `DELETE` request to the given [path]
   /// and returns object of Type [T].
   ///
   /// [fromJson] is optional. When it is omitted, any successful response is
@@ -514,7 +514,7 @@ class PlayxNetworkClient {
     );
   }
 
-  /// sends a [DELETE] request to the given [url]
+  /// sends a `DELETE` request to the given [path]
   /// and returns [List] of Type [T].
   /// You can pass your own queries, headers weather to attach custom headers or not.
   /// Or add custom options which overrides headers and custom headers.
@@ -581,7 +581,7 @@ class PlayxNetworkClient {
     );
   }
 
-  /// sends a [PUT] request to the given [url]
+  /// sends a `PUT` request to the given [path]
   /// and returns object of Type [T].
   /// You can pass your own queries, headers weather to attach custom headers or not.
   /// Or add custom options which overrides headers and custom headers.
@@ -650,7 +650,7 @@ class PlayxNetworkClient {
     );
   }
 
-  /// sends a [PUT] request to the given [url]
+  /// sends a `PUT` request to the given [path]
   /// and returns [List] of Type [T].
   /// You can pass your own queries, headers weather to attach custom headers or not.
   /// Or add custom options which overrides headers and custom headers.
@@ -721,7 +721,7 @@ class PlayxNetworkClient {
     );
   }
 
-  /// sends a [PATCH] request to the given [url]
+  /// sends a `PATCH` request to the given [path]
   /// and returns object of Type [T].
   /// You can pass your own queries, headers weather to attach custom headers or not.
   /// Or add custom options which overrides headers and custom headers.
@@ -791,7 +791,7 @@ class PlayxNetworkClient {
     );
   }
 
-  /// sends a [PATCH] request to the given [url]
+  /// sends a `PATCH` request to the given [path]
   /// and returns [List] of Type [T].
   /// You can pass your own queries, headers weather to attach custom headers or not.
   /// Or add custom options which overrides headers and custom headers.
@@ -866,7 +866,7 @@ class PlayxNetworkClient {
   // Streaming requests
   // ---------------------------------------------------------------------------
 
-  /// Sends a [GET] request to the given [path] and returns a
+  /// Sends a `GET` request to the given [path] and returns a
   /// [NetworkStreamResult] wrapping a [Stream] of decoded events.
   ///
   /// The [format] parameter controls how the raw byte chunks emitted by the
@@ -944,7 +944,7 @@ class PlayxNetworkClient {
     );
   }
 
-  /// Sends a [POST] request to the given [path] and returns a
+  /// Sends a `POST` request to the given [path] and returns a
   /// [NetworkStreamResult] wrapping a [Stream] of decoded events.
   ///
   /// See [getStream] for the meaning of [format] and the streaming semantics.
@@ -999,7 +999,7 @@ class PlayxNetworkClient {
     );
   }
 
-  /// Convenience method for consuming Server-Sent Events (SSE) via a [GET]
+  /// Convenience method for consuming Server-Sent Events (SSE) via a `GET`
   /// request. Returns a [NetworkStreamResult] of [PlayxSseEvent].
   ///
   /// This is [getStream] with `format: PlayxStreamFormat.sse`, plus the
@@ -1042,7 +1042,7 @@ class PlayxNetworkClient {
     settings: settings,
   );
 
-  /// Convenience method for consuming Server-Sent Events (SSE) via a [POST]
+  /// Convenience method for consuming Server-Sent Events (SSE) via a `POST`
   /// request. Returns a [NetworkStreamResult] of [PlayxSseEvent].
   ///
   /// This is [postStream] with `format: PlayxStreamFormat.sse`, plus the SSE

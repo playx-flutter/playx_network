@@ -72,7 +72,7 @@ class DioClient {
     return dio.copyWith(interceptors: interceptors);
   }
 
-  /// sends a [GET] request to the given [url]
+  /// sends a `GET` request to the given [path]
   ///
   /// [pathParameters] replaces `{placeholder}` segments in [path] before the
   /// request is sent. Set [attachCustomPathParameters] to `false` to skip any
@@ -111,7 +111,7 @@ class DioClient {
     );
   }
 
-  /// Download file from the given [url]
+  /// Download a file from the given [path]
   ///
   /// [pathParameters] replaces `{placeholder}` segments in [path] before the
   /// request is sent. Set [attachCustomPathParameters] to `false` to skip any
@@ -160,7 +160,7 @@ class DioClient {
     );
   }
 
-  /// sends a [POST] request to the given [url]
+  /// sends a `POST` request to the given [path]
   ///
   /// [pathParameters] replaces `{placeholder}` segments in [path] before the
   /// request is sent. Set [attachCustomPathParameters] to `false` to skip any
@@ -205,7 +205,7 @@ class DioClient {
     );
   }
 
-  /// sends a [DELETE] request to the given [url]
+  /// sends a `DELETE` request to the given [path]
   ///
   /// [pathParameters] replaces `{placeholder}` segments in [path] before the
   /// request is sent. Set [attachCustomPathParameters] to `false` to skip any
@@ -246,7 +246,7 @@ class DioClient {
     );
   }
 
-  /// sends a [PUT] request to the given [url]
+  /// sends a `PUT` request to the given [path]
   ///
   /// [pathParameters] replaces `{placeholder}` segments in [path] before the
   /// request is sent. Set [attachCustomPathParameters] to `false` to skip any
@@ -291,7 +291,7 @@ class DioClient {
     );
   }
 
-  /// sends a [PATCH] request to the given [url]
+  /// sends a `PATCH` request to the given [path]
   ///
   /// [pathParameters] replaces `{placeholder}` segments in [path] before the
   /// request is sent. Set [attachCustomPathParameters] to `false` to skip any
@@ -364,7 +364,7 @@ class DioClient {
     );
   }
 
-  /// Sends a [GET] request and returns the response as a raw [ResponseBody]
+  /// Sends a `GET` request and returns the response as a raw [ResponseBody]
   /// stream instead of waiting for the whole body.
   ///
   /// [pathParameters] replaces `{placeholder}` segments in [path] before the
@@ -405,7 +405,7 @@ class DioClient {
     return response.data!;
   }
 
-  /// Sends a [POST] request and returns the response as a raw [ResponseBody]
+  /// Sends a `POST` request and returns the response as a raw [ResponseBody]
   /// stream instead of waiting for the whole body.
   Future<ResponseBody> postStream(
     String path, {

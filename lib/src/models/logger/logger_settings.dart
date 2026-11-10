@@ -11,37 +11,37 @@ class PlayxNetworkLoggerSettings extends Equatable {
   // Print Dio logger if true
   final bool enabled;
 
-  /// Print [response.data] if true
+  /// Print `response.data` if true
   final bool printResponseData;
 
-  /// Print [response.headers] if true
+  /// Print `response.headers` if true
   final bool printResponseHeaders;
 
-  /// Print [response.statusMessage] if true
+  /// Print `response.statusMessage` if true
   final bool printResponseMessage;
 
-  /// Print [response.redirects] if true
+  /// Print `response.redirects` if true
   final bool printResponseRedirects;
 
   /// Print response time if true
   final bool printResponseTime;
 
-  /// Print [error.response.data] if true
+  /// Print `error.response.data` if true
   final bool printErrorData;
 
-  /// Print [error.response.headers] if true
+  /// Print `error.response.headers` if true
   final bool printErrorHeaders;
 
-  /// Print [error.message] if true
+  /// Print `error.message` if true
   final bool printErrorMessage;
 
-  /// Print [request.data] if true
+  /// Print `request.data` if true
   final bool printRequestData;
 
-  /// Print [request.headers] if true
+  /// Print `request.headers` if true
   final bool printRequestHeaders;
 
-  /// Print [request.extra] if true
+  /// Print `request.extra` if true
   final bool printRequestExtra;
 
   /// Whether to enable ANSI colors in logs.
