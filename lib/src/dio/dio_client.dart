@@ -448,7 +448,11 @@ extension DioClientExtensions on Dio {
       options ?? this.options,
     );
     dio.httpClientAdapter = httpClientAdapter ?? this.httpClientAdapter;
-    dio.interceptors.addAll(interceptors ?? this.interceptors);
+    // A new Dio already has Dio's default interceptor; drop it so it is not
+    // duplicated by the copied ones (which include the original's).
+    dio.interceptors
+      ..clear(keepImplyContentTypeInterceptor: false)
+      ..addAll(interceptors ?? this.interceptors);
     dio.transformer = transformer ?? this.transformer;
     return dio;
   }
